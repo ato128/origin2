@@ -74,7 +74,7 @@ struct CourseSetupSheet: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .toolbar(.hidden, for: .navigationBar)
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .contentShape(Rectangle())
         .onTapGesture {
             focusedField = nil
@@ -112,7 +112,7 @@ private extension CourseSetupSheet {
 
             Text(tr("css_scan_sub"))
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(UpdoTheme.filmy(0.55))
                 .fixedSize(horizontal: false, vertical: true)
 
             PhotosPicker(
@@ -257,7 +257,7 @@ struct ScheduleScanPreviewSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(tr("css_scan_preview_sub", kept.count))
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
 
                         ForEach(courses) { course in
                             if !removedIDs.contains(course.id) {
@@ -286,13 +286,13 @@ struct ScheduleScanPreviewSheet: View {
                     .padding(20)
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .navigationTitle(tr("css_scan_preview_title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(tr("common_cancel")) { dismiss() }
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(UpdoTheme.filmy(0.6))
                 }
             }
         }
@@ -304,7 +304,7 @@ struct ScheduleScanPreviewSheet: View {
                 HStack(spacing: 7) {
                     Text(course.name)
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(2)
 
                     if !course.code.isEmpty {
@@ -317,12 +317,12 @@ struct ScheduleScanPreviewSheet: View {
                 if course.slots.isEmpty {
                     Text(tr("css_scan_slot_none"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.38))
+                        .foregroundStyle(UpdoTheme.filmy(0.38))
                 } else {
                     ForEach(Array(course.slots.enumerated()), id: \.offset) { _, slot in
                         Text("\(weekdayName(slot.weekday)) \(timeText(slot.startMinute))–\(timeText(slot.startMinute + slot.durationMinute))\(slot.room.map { " · \($0)" } ?? "")")
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(UpdoTheme.filmy(0.6))
                     }
                 }
             }
@@ -334,17 +334,17 @@ struct ScheduleScanPreviewSheet: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(UpdoTheme.filmy(0.35))
             }
             .buttonStyle(.plain)
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                        .strokeBorder(UpdoTheme.filmy(0.08), lineWidth: 1)
                 )
         )
     }
@@ -389,7 +389,7 @@ private extension CourseSetupSheet {
                         Text(tr("css_courses"))
                             .font(.system(size: 42, weight: .heavy))
                             .tracking(-1.0)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
 
@@ -415,14 +415,14 @@ private extension CourseSetupSheet {
                 } label: {
                     Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(.white.opacity(0.88))
+                        .foregroundStyle(UpdoTheme.filmy(0.88))
                         .frame(width: 42, height: 42)
                         .background(
                             Circle()
-                                .fill(Color.white.opacity(0.070))
+                                .fill(UpdoTheme.filmy(0.070))
                                 .overlay(
                                     Circle()
-                                        .stroke(Color.white.opacity(0.105), lineWidth: 1)
+                                        .stroke(UpdoTheme.filmy(0.105), lineWidth: 1)
                                 )
                         )
                 }
@@ -431,7 +431,7 @@ private extension CourseSetupSheet {
 
             Text(tr("css_header_body"))
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.50))
+                .foregroundStyle(UpdoTheme.filmy(0.50))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -566,11 +566,11 @@ private extension CourseSetupSheet {
             VStack(alignment: .leading, spacing: 3) {
                 Text(tr("css_loading_catalog"))
                     .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("css_finding_courses"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
             }
 
             Spacer()
@@ -594,11 +594,11 @@ private extension CourseSetupSheet {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("css_no_catalog_yet"))
                         .font(.system(size: 16, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("css_add_manual_for_now"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                 }
 
                 Spacer()
@@ -636,11 +636,11 @@ private extension CourseSetupSheet {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("css_catalog_unavailable"))
                         .font(.system(size: 16, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(text)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(3)
                 }
 
@@ -685,7 +685,7 @@ private extension CourseSetupSheet {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(item.course_name)
                         .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
@@ -694,7 +694,7 @@ private extension CourseSetupSheet {
                             miniLabel(item.course_code, tint: gold)
                         }
 
-                        miniLabel("Y\(item.year_number) T\(item.term_number ?? 0)", tint: .white.opacity(0.46))
+                        miniLabel("Y\(item.year_number) T\(item.term_number ?? 0)", tint: UpdoTheme.filmy(0.46))
 
                         if item.is_elective == true {
                             miniLabel(tr("sas_elective_caps"), tint: secondaryAccent)
@@ -711,7 +711,7 @@ private extension CourseSetupSheet {
                         LinearGradient(
                             colors: [
                                 tint.opacity(isSelected ? 0.120 : 0.070),
-                                Color.white.opacity(0.040),
+                                UpdoTheme.filmy(0.040),
                                 Color.black.opacity(0.025)
                             ],
                             startPoint: .topLeading,
@@ -806,11 +806,11 @@ private extension CourseSetupSheet {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(tr("sas_no_active_courses"))
                             .font(.system(size: 15, weight: .heavy))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(tr("sas_add_catalog_or_manual"))
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.48))
+                            .foregroundStyle(UpdoTheme.filmy(0.48))
                     }
 
                     Spacer()
@@ -841,14 +841,14 @@ private extension CourseSetupSheet {
             VStack(alignment: .leading, spacing: 4) {
                 Text(course.name)
                     .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(2)
 
                 if !course.code.isEmpty {
                     Text(course.code.uppercased())
                         .font(.system(size: 10, weight: .heavy, design: .monospaced))
                         .tracking(0.7)
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
                 }
             }
 
@@ -888,7 +888,7 @@ private extension CourseSetupSheet {
                 Text(title)
                     .font(.system(size: 22, weight: .heavy))
                     .tracking(-0.25)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -923,11 +923,11 @@ private extension CourseSetupSheet {
                 Text(title.uppercased())
                     .font(.system(size: 8, weight: .heavy, design: .monospaced))
                     .tracking(0.8)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 Text(value)
                     .font(.system(size: 13, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.70)
             }
@@ -952,19 +952,19 @@ private extension CourseSetupSheet {
             TextField(
                 "",
                 text: text,
-                prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30))
+                prompt: Text(placeholder).foregroundStyle(UpdoTheme.filmy(0.30))
             )
             .textInputAutocapitalization(capitalization)
             .autocorrectionDisabled()
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(UpdoTheme.textPrimary)
             .tint(tint)
         }
         .padding(.horizontal, 13)
         .frame(height: 52)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.060))
+                .fill(UpdoTheme.filmy(0.060))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(tint.opacity(0.13), lineWidth: 1)
@@ -1054,7 +1054,7 @@ private extension CourseSetupSheet {
                 LinearGradient(
                     colors: [
                         tint.opacity(0.080),
-                        Color.white.opacity(0.040),
+                        UpdoTheme.filmy(0.040),
                         Color.black.opacity(0.020)
                     ],
                     startPoint: .topLeading,
@@ -1072,7 +1072,7 @@ private extension CourseSetupSheet {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.060),
+                        UpdoTheme.filmy(0.060),
                         tint.opacity(0.060),
                         secondaryAccent.opacity(0.035),
                         Color.black.opacity(0.040)

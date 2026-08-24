@@ -49,7 +49,7 @@ struct InsightsIdentityLevelSheet: View {
                 .padding(.bottom, 34)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
     }
 
     private var background: some View {
@@ -79,7 +79,7 @@ struct InsightsIdentityLevelSheet: View {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(tr("iils_identity"))
                         .font(.system(size: 38, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("iils_level"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
@@ -100,7 +100,7 @@ struct InsightsIdentityLevelSheet: View {
 
                 Text(tr("ils_requirements"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer()
@@ -110,15 +110,15 @@ struct InsightsIdentityLevelSheet: View {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.095),
-                                        Color.white.opacity(0.045)
+                                        UpdoTheme.filmy(0.095),
+                                        UpdoTheme.filmy(0.045)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -126,7 +126,7 @@ struct InsightsIdentityLevelSheet: View {
                             )
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                             )
                             .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
                     )
@@ -152,13 +152,13 @@ struct InsightsIdentityLevelSheet: View {
 
                     Text(currentLevel.title)
                         .font(.system(size: 31, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.74)
 
                     Text(snapshot.isMaxLevel ? "Maksimum seviyedesin" : tr("ils_progressing_lv", nextLevel.level))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                 }
 
                 Spacer()
@@ -178,13 +178,13 @@ struct InsightsIdentityLevelSheet: View {
 
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.34))
+                        .fill(snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.green) : UpdoTheme.filmy(0.34))
                         .frame(width: 7, height: 7)
 
                     Text(snapshot.isReadyForLevelUp ? tr("iils_level_ready_caps") : snapshot.statusText.uppercased())
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(0.7)
-                        .foregroundStyle(snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.42))
+                        .foregroundStyle(snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.green) : UpdoTheme.filmy(0.42))
                         .lineLimit(1)
                         .minimumScaleFactor(0.70)
                 }
@@ -211,7 +211,7 @@ struct InsightsIdentityLevelSheet: View {
 
                     Text(tr("ils_level_reqs"))
                         .font(.system(size: 22, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 }
 
                 Spacer()
@@ -281,12 +281,12 @@ struct InsightsIdentityLevelSheet: View {
 
                 Text("\(tr("iid_level_caps").capitalized) \(nextLevel.level) • \(nextLevel.title)")
                     .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(2)
 
                 Text(nextLevelSummary)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(UpdoTheme.filmy(0.52))
                     .lineLimit(2)
             }
 
@@ -334,7 +334,7 @@ struct InsightsIdentityLevelSheet: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.13), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.13), lineWidth: 1)
                     )
                     .shadow(color: Color(arenaHex: AppArenaPalette.gold).opacity(0.22), radius: 16, y: 8)
             )
@@ -374,7 +374,7 @@ struct InsightsIdentityLevelSheet: View {
 
                 Text(title)
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Spacer()
 
@@ -393,7 +393,7 @@ struct InsightsIdentityLevelSheet: View {
                     LinearGradient(
                         colors: [
                             resolvedTint.opacity(0.060),
-                            Color.white.opacity(0.035)
+                            UpdoTheme.filmy(0.035)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -411,11 +411,11 @@ struct InsightsIdentityLevelSheet: View {
             Text(tr("iils_lv_short"))
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(UpdoTheme.filmy(0.52))
 
             Text("\(level)")
                 .font(.system(size: 28, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .monospacedDigit()
         }
         .frame(width: 66, height: 66)
@@ -438,7 +438,7 @@ struct InsightsIdentityLevelSheet: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.075))
+                    .fill(UpdoTheme.filmy(0.075))
 
                 Capsule()
                     .fill(
@@ -465,7 +465,7 @@ struct InsightsIdentityLevelSheet: View {
                     colors: [
                         tint.opacity(0.075 + strength * 0.035),
                         Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

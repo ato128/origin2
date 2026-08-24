@@ -81,15 +81,15 @@ struct UniversityPickerSheet: View {
                             Text(tr("event_close"))
                                 .font(.system(size: 13, weight: .black, design: .rounded))
                         }
-                        .foregroundStyle(.white.opacity(0.82))
+                        .foregroundStyle(UpdoTheme.filmy(0.82))
                         .padding(.horizontal, 13)
                         .padding(.vertical, 9)
                         .background(
                             Capsule()
-                                .fill(Color.white.opacity(0.075))
+                                .fill(UpdoTheme.filmy(0.075))
                                 .overlay(
                                     Capsule()
-                                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                        .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                                 )
                         )
                     }
@@ -138,7 +138,7 @@ struct UniversityPickerSheet: View {
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(tr("ups_choose"))
                     .font(.system(size: 35, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("ups_university_lc"))
                     .font(.system(size: 33, weight: .regular, design: .serif))
@@ -157,7 +157,7 @@ struct UniversityPickerSheet: View {
 
             Text(tr("ups_sub"))
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.56))
+                .foregroundStyle(UpdoTheme.filmy(0.56))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -182,11 +182,11 @@ struct UniversityPickerSheet: View {
                 TextField(
                     "",
                     text: $searchText,
-                    prompt: Text(tr("ups_search")).foregroundStyle(.white.opacity(0.32))
+                    prompt: Text(tr("ups_search")).foregroundStyle(UpdoTheme.filmy(0.32))
                 )
                 .textInputAutocapitalization(.words)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
                 if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Button {
@@ -194,7 +194,7 @@ struct UniversityPickerSheet: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.38))
+                            .foregroundStyle(UpdoTheme.filmy(0.38))
                     }
                     .buttonStyle(.plain)
                 }
@@ -203,10 +203,10 @@ struct UniversityPickerSheet: View {
             .frame(height: 56)
             .background(
                 RoundedRectangle(cornerRadius: 19, style: .continuous)
-                    .fill(Color.white.opacity(0.070))
+                    .fill(UpdoTheme.filmy(0.070))
                     .overlay(
                         RoundedRectangle(cornerRadius: 19, style: .continuous)
-                            .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.085), lineWidth: 1)
                     )
             )
         }
@@ -240,7 +240,7 @@ struct UniversityPickerSheet: View {
                         .font(.system(size: 15, weight: .black))
                 }
             }
-            .foregroundStyle(isSelected ? .black : .white.opacity(0.78))
+            .foregroundStyle(isSelected ? .black : UpdoTheme.filmy(0.78))
             .frame(maxWidth: .infinity)
             .frame(height: 48)
             .background(
@@ -248,12 +248,12 @@ struct UniversityPickerSheet: View {
                     .fill(
                         isSelected
                         ? AnyShapeStyle(UniversityPickerPalette.appGradient)
-                        : AnyShapeStyle(Color.white.opacity(0.070))
+                        : AnyShapeStyle(UpdoTheme.filmy(0.070))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
                             .stroke(
-                                isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.085),
+                                isSelected ? UpdoTheme.filmy(0.12) : UpdoTheme.filmy(0.085),
                                 lineWidth: 1
                             )
                     )
@@ -304,7 +304,7 @@ struct UniversityPickerSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(university.name)
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(2)
 
                     HStack(spacing: 7) {
@@ -319,11 +319,11 @@ struct UniversityPickerSheet: View {
 
                         Text("·")
                             .font(.system(size: 11, weight: .black))
-                            .foregroundStyle(.white.opacity(0.26))
+                            .foregroundStyle(UpdoTheme.filmy(0.26))
 
                         Text(tr("ups_catalog_ready"))
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.42))
+                            .foregroundStyle(UpdoTheme.filmy(0.42))
                     }
                 }
 
@@ -334,7 +334,7 @@ struct UniversityPickerSheet: View {
                     .foregroundStyle(
                         isSelected
                         ? Color(arenaHex: UniversityPickerPalette.appCyan)
-                        : .white.opacity(0.28)
+                        : UpdoTheme.filmy(0.28)
                     )
             }
             .padding(14)
@@ -346,7 +346,7 @@ struct UniversityPickerSheet: View {
                             colors: [
                                 Color(arenaHex: UniversityPickerPalette.appBlue).opacity(0.15),
                                 Color(arenaHex: UniversityPickerPalette.appPurple).opacity(0.11),
-                                Color.white.opacity(0.045)
+                                UpdoTheme.filmy(0.045)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -358,7 +358,7 @@ struct UniversityPickerSheet: View {
                             .stroke(
                                 isSelected
                                 ? Color(arenaHex: UniversityPickerPalette.appBlue).opacity(0.26)
-                                : Color.white.opacity(0.070),
+                                : UpdoTheme.filmy(0.070),
                                 lineWidth: 1
                             )
                     )
@@ -377,11 +377,11 @@ struct UniversityPickerSheet: View {
 
             Text(tr("ups_loading"))
                 .font(.system(size: 15, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.90))
+                .foregroundStyle(UpdoTheme.filmy(0.90))
 
             Text(tr("ups_preparing"))
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.46))
+                .foregroundStyle(UpdoTheme.filmy(0.46))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -402,12 +402,12 @@ struct UniversityPickerSheet: View {
 
             Text(tr("ups_could_not_load"))
                 .font(.system(size: 19, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Text(text)
                 .font(.system(size: 14, weight: .semibold))
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.white.opacity(0.54))
+                .foregroundStyle(UpdoTheme.filmy(0.54))
                 .padding(.horizontal, 24)
 
             Button {
@@ -433,21 +433,21 @@ struct UniversityPickerSheet: View {
     private var emptyState: some View {
         VStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.070))
+                .fill(UpdoTheme.filmy(0.070))
                 .frame(width: 66, height: 66)
                 .overlay(
                     Image(systemName: "building.columns")
                         .font(.system(size: 27, weight: .black))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(UpdoTheme.filmy(0.52))
                 )
 
             Text(tr("ups_no_university"))
                 .font(.system(size: 19, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Text(tr("ups_try_different"))
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.54))
+                .foregroundStyle(UpdoTheme.filmy(0.54))
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 44)
@@ -541,7 +541,7 @@ private enum UniversityPickerPalette {
             colors: [
                 Color(arenaHex: appBlue).opacity(0.045),
                 Color(arenaHex: appPurple).opacity(0.055),
-                Color.white.opacity(0.040)
+                UpdoTheme.filmy(0.040)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing

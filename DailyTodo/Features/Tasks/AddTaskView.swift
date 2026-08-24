@@ -121,7 +121,7 @@ struct AddTaskView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .tint(UpdoTheme.cyan)
     }
 
@@ -136,8 +136,8 @@ struct AddTaskView: View {
         .padding(4)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.045))
-                .overlay(Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1))
+                .fill(UpdoTheme.filmy(0.045))
+                .overlay(Capsule().stroke(UpdoTheme.filmy(0.08), lineWidth: 1))
         )
     }
 
@@ -164,7 +164,7 @@ struct AddTaskView: View {
                 Text(title)
                     .font(.system(size: 14, weight: .bold))
             }
-            .foregroundStyle(isSelected ? .black : .white.opacity(0.55))
+            .foregroundStyle(isSelected ? .black : UpdoTheme.filmy(0.55))
             .frame(maxWidth: .infinity)
             .frame(height: 40)
             .background {
@@ -193,10 +193,10 @@ struct AddTaskView: View {
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.05))
+                        .fill(UpdoTheme.filmy(0.05))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(titleFocused ? UpdoTheme.cyan.opacity(0.6) : Color.white.opacity(0.06), lineWidth: 1)
+                                .stroke(titleFocused ? UpdoTheme.cyan.opacity(0.6) : UpdoTheme.filmy(0.06), lineWidth: 1)
                         )
                 )
         }
@@ -446,7 +446,7 @@ struct AddTaskView: View {
 
     private var cardDivider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.06))
+            .fill(UpdoTheme.filmy(0.06))
             .frame(height: 1)
     }
 
@@ -464,10 +464,10 @@ struct AddTaskView: View {
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.05))
+                        .fill(UpdoTheme.filmy(0.05))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.04), lineWidth: 1)
                         )
                 )
         }
@@ -492,7 +492,7 @@ struct AddTaskView: View {
 
                             if selectedColor == item {
                                 Circle()
-                                    .stroke(Color.white.opacity(0.95), lineWidth: 2.2)
+                                    .stroke(UpdoTheme.filmy(0.95), lineWidth: 2.2)
                                     .frame(width: 36, height: 36)
 
                                 Circle()
@@ -517,10 +517,10 @@ struct AddTaskView: View {
 
     private var sectionCardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(Color.white.opacity(0.045))
+            .fill(UpdoTheme.filmy(0.045))
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
             )
     }
 
@@ -635,10 +635,10 @@ struct AddTaskView: View {
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.05))
+                        .fill(UpdoTheme.filmy(0.05))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.04), lineWidth: 1)
                         )
                 )
         }
@@ -656,7 +656,7 @@ struct AddTaskView: View {
                 .padding(.vertical, 9)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.05))
+                        .fill(UpdoTheme.filmy(0.05))
                 )
         }
         .buttonStyle(.plain)
@@ -674,7 +674,7 @@ struct AddTaskView: View {
                 .padding(.vertical, 9)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.05))
+                        .fill(UpdoTheme.filmy(0.05))
                 )
         }
         .buttonStyle(.plain)
@@ -689,7 +689,7 @@ struct AddTaskView: View {
             Text(title.uppercased())
                 .font(.system(size: 11, weight: .black, design: .monospaced))
                 .tracking(1.8)
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(UpdoTheme.filmy(0.5))
         }
         .padding(.leading, 2)
     }

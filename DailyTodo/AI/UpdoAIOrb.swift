@@ -28,6 +28,8 @@ struct UpdoAIOrb: View {
     @State private var transitionStart: TimeInterval = 0
     private let transitionDuration: TimeInterval = 0.6
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var cyan: Color { Color(arenaHex: "#2DD4FF") }
     private var blue: Color { Color(arenaHex: "#3B82F6") }
     private var purple: Color { Color(arenaHex: "#8B5CF6") }
@@ -92,11 +94,14 @@ struct UpdoAIOrb: View {
 
             // ── Glass sphere ────────────────────────────────────────────
             ZStack {
-                // Deep glass base, lit slightly from the upper left.
+                // Deep glass base, lit slightly from the upper left. Brighter,
+                // airier base on light appearance so the orb doesn't read as dark.
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [Color(arenaHex: "#101A38"), Color(arenaHex: "#05070F")],
+                            colors: colorScheme == .light
+                                ? [Color(arenaHex: "#5B79D6"), Color(arenaHex: "#2C3C7C")]
+                                : [Color(arenaHex: "#101A38"), Color(arenaHex: "#05070F")],
                             center: .init(x: 0.38, y: 0.30),
                             startRadius: 0,
                             endRadius: size * 0.85
@@ -145,7 +150,7 @@ struct UpdoAIOrb: View {
                             stops: [
                                 .init(color: .clear, location: 0.0),
                                 .init(color: .clear, location: 0.62),
-                                .init(color: Color.black.opacity(0.38), location: 1.0)
+                                .init(color: Color.black.opacity(colorScheme == .light ? 0.16 : 0.38), location: 1.0)
                             ],
                             center: .init(x: 0.42, y: 0.36),
                             startRadius: 0,
@@ -163,12 +168,12 @@ struct UpdoAIOrb: View {
                 .strokeBorder(
                     AngularGradient(
                         stops: [
-                            .init(color: .white.opacity(0.75), location: 0.0),
-                            .init(color: .white.opacity(0.06), location: 0.20),
+                            .init(color: UpdoTheme.filmy(0.75), location: 0.0),
+                            .init(color: UpdoTheme.filmy(0.06), location: 0.20),
                             .init(color: cyan.opacity(0.35), location: 0.45),
-                            .init(color: .white.opacity(0.05), location: 0.68),
+                            .init(color: UpdoTheme.filmy(0.05), location: 0.68),
                             .init(color: purple.opacity(0.30), location: 0.85),
-                            .init(color: .white.opacity(0.75), location: 1.0)
+                            .init(color: UpdoTheme.filmy(0.75), location: 1.0)
                         ],
                         center: .center,
                         angle: .degrees(-58 + 6 * sin(t * 0.5))
@@ -181,7 +186,7 @@ struct UpdoAIOrb: View {
             Ellipse()
                 .fill(
                     RadialGradient(
-                        colors: [Color.white.opacity(0.55), .clear],
+                        colors: [UpdoTheme.filmy(0.55), .clear],
                         center: .center,
                         startRadius: 0,
                         endRadius: size * 0.16

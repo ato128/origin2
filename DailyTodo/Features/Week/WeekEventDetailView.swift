@@ -298,7 +298,7 @@ private extension WeekEventDetailView {
             } label: {
                 Text(String(localized: "week_event_edit"))
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(

@@ -70,7 +70,7 @@ private extension FocusDetailSectionV3 {
                     colors: [
                         accent.opacity(0.070),
                         secondaryAccent.opacity(0.042),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -113,7 +113,7 @@ private extension FocusDetailSectionV3 {
 
                 Text(appLanguageIsEnglish() ? "Details" : "Detaylar")
                     .font(.system(size: 25, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -154,11 +154,11 @@ private extension FocusDetailSectionV3 {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white.opacity(0.94))
+                    .foregroundStyle(UpdoTheme.filmy(0.94))
 
                 Text(subtitle)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .lineLimit(2)
             }
 
@@ -172,7 +172,7 @@ private extension FocusDetailSectionV3 {
                     LinearGradient(
                         colors: [
                             accent.opacity(0.050),
-                            Color.white.opacity(0.035)
+                            UpdoTheme.filmy(0.035)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -180,7 +180,7 @@ private extension FocusDetailSectionV3 {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.065), lineWidth: 1)
                 )
         )
     }

@@ -211,7 +211,7 @@ struct SuggestedNextActionCard: View {
                                     )
                                 )
                         )
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .shadow(color: accent.opacity(0.18), radius: 10, y: 4)
                 }
                 .buttonStyle(.plain)
@@ -249,7 +249,7 @@ struct SuggestedNextActionCard: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.04),
+                                    UpdoTheme.filmy(0.04),
                                     Color.clear,
                                     Color.clear
                                 ],

@@ -121,16 +121,16 @@ struct BYOKeySheet: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(tr("byo_title"))
                                     .font(.system(size: 19, weight: .black))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                                 Text(tr("byo_sub"))
                                     .font(.system(size: 12.5, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.5))
+                                    .foregroundStyle(UpdoTheme.filmy(0.5))
                             }
                         }
 
                         Text(tr("byo_explain"))
                             .font(.system(size: 13.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(UpdoTheme.filmy(0.65))
                             .lineSpacing(3)
 
                         if store.hasKey {
@@ -140,11 +140,11 @@ struct BYOKeySheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(tr("byo_active"))
                                         .font(.system(size: 14, weight: .black))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(UpdoTheme.textPrimary)
                                     if let masked = store.maskedKey {
                                         Text(masked)
                                             .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                            .foregroundStyle(.white.opacity(0.45))
+                                            .foregroundStyle(UpdoTheme.filmy(0.45))
                                     }
                                 }
                                 Spacer()
@@ -180,14 +180,14 @@ struct BYOKeySheet: View {
                             HStack(spacing: 8) {
                                 SecureField("sk-...", text: $keyInput)
                                     .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
                                     .padding(.horizontal, 15)
                                     .frame(height: 50)
                                     .background(
                                         RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                            .fill(Color.white.opacity(0.05))
+                                            .fill(UpdoTheme.filmy(0.05))
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 15, style: .continuous)
                                                     .strokeBorder(fieldBorderColor, lineWidth: 1)
@@ -267,7 +267,7 @@ struct BYOKeySheet: View {
 
                             Text(tr("byo_privacy"))
                                 .font(.system(size: 11.5, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.4))
+                                .foregroundStyle(UpdoTheme.filmy(0.4))
                                 .lineSpacing(2)
                         }
 
@@ -276,7 +276,7 @@ struct BYOKeySheet: View {
                     .padding(20)
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -294,7 +294,7 @@ struct BYOKeySheet: View {
         switch checkState {
         case .invalidFormat, .rejected: return Color(arenaHex: "#FF5A44").opacity(0.6)
         case .noFunds: return Color(arenaHex: "#FBBF24").opacity(0.6)
-        default: return Color.white.opacity(0.09)
+        default: return UpdoTheme.filmy(0.09)
         }
     }
 
@@ -329,10 +329,10 @@ struct BYOKeySheet: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(UpdoTheme.filmy(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
+                        .strokeBorder(UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
     }
@@ -347,7 +347,7 @@ struct BYOKeySheet: View {
 
             Text(text)
                 .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(UpdoTheme.filmy(0.72))
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

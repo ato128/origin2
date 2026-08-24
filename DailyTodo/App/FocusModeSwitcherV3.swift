@@ -32,11 +32,11 @@ struct FocusModeSwitcherV3: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                         }
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.38))
+                        .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.38))
 
                         ZStack {
                             Capsule()
-                                .fill(Color.white.opacity(0.05))
+                                .fill(UpdoTheme.filmy(0.05))
                                 .frame(height: 2.5)
 
                             if isSelected {

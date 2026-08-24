@@ -31,7 +31,7 @@ enum IdentityRarity: String {
 
     var glow: Color {
         switch self {
-        case .common: return .white.opacity(0.18)
+        case .common: return UpdoTheme.filmy(0.18)
         case .rare: return .blue
         case .epic: return .purple
         case .legendary: return .orange

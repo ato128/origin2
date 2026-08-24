@@ -54,7 +54,7 @@ struct FocusCelebrationView: View {
             return ("\(delta) dk", Color(arenaHex: AppArenaPalette.coral), "arrow.down")
         }
 
-        return (tr("fcv_same"), .white.opacity(0.6), "equal")
+        return (tr("fcv_same"), UpdoTheme.filmy(0.6), "equal")
     }
 
     private var encouragementText: String {
@@ -116,6 +116,8 @@ struct FocusCelebrationView: View {
             }
         }
         .onDisappear { pulse = false }
+        // Immersive completion celebration stays dark in any app appearance.
+        .preferredColorScheme(.dark)
     }
 
     private var heroItalicWord: String {
@@ -148,7 +150,7 @@ struct FocusCelebrationView: View {
             HStack(alignment: .firstTextBaseline, spacing: 9) {
                 Text(tr("fcv_congrats"))
                     .font(.system(size: 38, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(heroItalicWord)
                     .font(.system(size: 32, weight: .regular, design: .serif))
@@ -186,7 +188,7 @@ struct FocusCelebrationView: View {
                         .monospacedDigit()
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [.white, .white.opacity(0.72)],
+                                colors: [.white, UpdoTheme.filmy(0.72)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
@@ -196,12 +198,12 @@ struct FocusCelebrationView: View {
                     Text("dk")
                         .font(.system(size: 30, weight: .regular, design: .serif))
                         .italic()
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(UpdoTheme.filmy(0.55))
                 }
 
                 Text(tr("fcv_min_completed"))
                     .font(.system(size: 14.5, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(UpdoTheme.filmy(0.55))
             }
             .scaleEffect(iconBounce ? 1.0 : 0.92)
             .opacity(iconBounce ? 1.0 : 0.0)
@@ -216,7 +218,7 @@ struct FocusCelebrationView: View {
         HStack(spacing: 10) {
             Text(tr("fcv_last_time_line", summary.previousMinutes ?? 0))
                 .font(.system(size: 13.5, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(UpdoTheme.filmy(0.52))
 
             if let delta = deltaInfo {
                 HStack(spacing: 5) {
@@ -268,10 +270,10 @@ struct FocusCelebrationView: View {
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.035))
+                .fill(UpdoTheme.filmy(0.035))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
         .opacity(showStats ? 1.0 : 0.0)
@@ -280,7 +282,7 @@ struct FocusCelebrationView: View {
 
     private var statHairline: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.08))
+            .fill(UpdoTheme.filmy(0.08))
             .frame(width: 1, height: 30)
     }
 
@@ -301,14 +303,14 @@ struct FocusCelebrationView: View {
                 Text(value)
                     .font(.system(size: 17, weight: .bold))
                     .monospacedDigit()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
 
             Text(label)
                 .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(UpdoTheme.filmy(0.45))
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
@@ -361,7 +363,7 @@ struct FocusCelebrationView: View {
 
                     Text(tr("fcv_streak_safe"))
                         .font(.system(size: 13.5, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(UpdoTheme.filmy(0.9))
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
             } else if let task = suggestedTask {
@@ -369,12 +371,12 @@ struct FocusCelebrationView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(task.title)
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
 
                         Text(tr("fcv_task_missing"))
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
                             .lineLimit(2)
                     }
 
@@ -407,11 +409,11 @@ struct FocusCelebrationView: View {
                 .fill(
                     taskDone
                     ? AnyShapeStyle(green.opacity(0.07))
-                    : AnyShapeStyle(Color.white.opacity(0.04))
+                    : AnyShapeStyle(UpdoTheme.filmy(0.04))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(taskDone ? green.opacity(0.22) : Color.white.opacity(0.07), lineWidth: 1)
+                        .stroke(taskDone ? green.opacity(0.22) : UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
         .opacity(showStats ? 1.0 : 0.0)
@@ -423,16 +425,16 @@ struct FocusCelebrationView: View {
         return HStack(spacing: 4) {
             Image(systemName: done ? "checkmark.circle.fill" : "circle.dashed")
                 .font(.system(size: 11, weight: .black))
-                .foregroundStyle(done ? green : .white.opacity(0.38))
+                .foregroundStyle(done ? green : UpdoTheme.filmy(0.38))
 
             Text(label)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(done ? .white.opacity(0.88) : .white.opacity(0.5))
+                .foregroundStyle(done ? UpdoTheme.filmy(0.88) : UpdoTheme.filmy(0.5))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
-            Capsule().fill(done ? green.opacity(0.12) : Color.white.opacity(0.05))
+            Capsule().fill(done ? green.opacity(0.12) : UpdoTheme.filmy(0.05))
         )
     }
 
@@ -441,7 +443,7 @@ struct FocusCelebrationView: View {
         Text(encouragementText)
             .font(.system(size: 15.5, weight: .regular, design: .serif))
             .italic()
-            .foregroundStyle(.white.opacity(0.62))
+            .foregroundStyle(UpdoTheme.filmy(0.62))
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 12)

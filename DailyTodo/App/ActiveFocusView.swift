@@ -133,6 +133,8 @@ struct ActiveFocusView: View {
             .ignoresSafeArea()
         }
         .toolbar(.hidden, for: .navigationBar)
+        // Immersive running-focus session stays dark in any app appearance.
+        .preferredColorScheme(.dark)
         .onAppear {
             guard PerformanceSettings.enableSlowAmbientAnimations else {
                 pulse = false
@@ -197,7 +199,7 @@ private extension ActiveFocusView {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(titleText)
                         .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
 
@@ -209,7 +211,7 @@ private extension ActiveFocusView {
 
                 Text(durationText)
                     .font(.system(size: 13, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
             }
 
             Spacer()
@@ -232,16 +234,16 @@ private extension ActiveFocusView {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 17, weight: .black))
-                .foregroundStyle(.white.opacity(0.94))
+                .foregroundStyle(UpdoTheme.filmy(0.94))
                 .frame(width: 52, height: 52)
                 .background(
                     Circle()
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.095),
+                                    UpdoTheme.filmy(0.095),
                                     Color.black.opacity(0.24),
-                                    Color.white.opacity(0.045)
+                                    UpdoTheme.filmy(0.045)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -249,7 +251,7 @@ private extension ActiveFocusView {
                         )
                         .overlay(
                             Circle()
-                                .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                         )
                         .shadow(
                             color: Color.black.opacity(0.24),
@@ -286,7 +288,7 @@ private extension ActiveFocusView {
                 .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 26 : 14)
 
             Circle()
-                .stroke(Color.white.opacity(0.065), lineWidth: ringLineWidth)
+                .stroke(UpdoTheme.filmy(0.065), lineWidth: ringLineWidth)
                 .frame(width: ringSize, height: ringSize)
 
             Circle()
@@ -311,7 +313,7 @@ private extension ActiveFocusView {
                 .opacity(focusSession.isPaused ? 0.42 : 1)
 
             Circle()
-                .stroke(Color.white.opacity(0.040), lineWidth: 1.1)
+                .stroke(UpdoTheme.filmy(0.040), lineWidth: 1.1)
                 .frame(width: ringSize - 36, height: ringSize - 36)
 
             Circle()
@@ -319,7 +321,7 @@ private extension ActiveFocusView {
                     LinearGradient(
                         colors: [
                             theme.accent.opacity(0.085 * PerformanceSettings.radialOpacityMultiplier),
-                            Color.white.opacity(0.018)
+                            UpdoTheme.filmy(0.018)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -328,7 +330,7 @@ private extension ActiveFocusView {
                 .frame(width: ringSize - 56, height: ringSize - 56)
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.045), lineWidth: 1)
                 )
 
             VStack(spacing: 10) {
@@ -348,7 +350,7 @@ private extension ActiveFocusView {
 
                 Text(subtitleText)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
             }
         }
         .frame(height: 360)
@@ -366,12 +368,12 @@ private extension ActiveFocusView {
             VStack(spacing: 7) {
                 Text(bottomHeadline)
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white.opacity(0.96))
+                    .foregroundStyle(UpdoTheme.filmy(0.96))
                     .multilineTextAlignment(.center)
 
                 Text(bottomSubtitle)
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
@@ -413,11 +415,11 @@ private extension ActiveFocusView {
 
                     Text(sharedPanelTitle)
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(UpdoTheme.filmy(0.95))
 
                     Text(sharedPanelSubtitle)
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(1)
                 }
 
@@ -479,7 +481,7 @@ private extension ActiveFocusView {
                         colors: [
                             theme.accent.opacity(0.070),
                             theme.secondaryAccent.opacity(0.040),
-                            Color.white.opacity(0.035)
+                            UpdoTheme.filmy(0.035)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -511,14 +513,14 @@ private extension ActiveFocusView {
                 } label: {
                     Text("+\(participants.count - visibleParticipants.count)")
                         .font(.system(size: 14, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(UpdoTheme.filmy(0.92))
                         .frame(width: 52, height: 52)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.045))
+                                .fill(UpdoTheme.filmy(0.045))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                                        .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
                                 )
                         )
                 }
@@ -535,7 +537,7 @@ private extension ActiveFocusView {
 
             Text(participant.name)
                 .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.92))
+                .foregroundStyle(UpdoTheme.filmy(0.92))
                 .lineLimit(1)
 
             Spacer(minLength: 0)
@@ -545,10 +547,10 @@ private extension ActiveFocusView {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.065), lineWidth: 1)
                 )
         )
     }
@@ -564,11 +566,11 @@ private extension ActiveFocusView {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(participant.name)
                             .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(.white.opacity(0.95))
+                            .foregroundStyle(UpdoTheme.filmy(0.95))
 
                         Text(participantStatusText(participant))
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.48))
+                            .foregroundStyle(UpdoTheme.filmy(0.48))
                     }
 
                     Spacer()
@@ -579,10 +581,10 @@ private extension ActiveFocusView {
                 .frame(height: 44)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.038))
+                        .fill(UpdoTheme.filmy(0.038))
                         .overlay(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Color.white.opacity(0.060), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.060), lineWidth: 1)
                         )
                 )
             }
@@ -612,11 +614,11 @@ private extension ActiveFocusView {
                 Text(title.uppercased())
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(UpdoTheme.filmy(0.38))
 
                 Text(value)
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white.opacity(0.95))
+                    .foregroundStyle(UpdoTheme.filmy(0.95))
                     .lineLimit(1)
             }
 
@@ -649,7 +651,7 @@ private extension ActiveFocusView {
                     Text(focusSession.isPaused ? "Devam Et" : "Duraklat")
                         .font(.system(size: 17, weight: .black))
                 }
-                .foregroundStyle(.white.opacity(0.96))
+                .foregroundStyle(UpdoTheme.filmy(0.96))
                 .frame(maxWidth: .infinity)
                 .frame(height: 64)
                 .background(
@@ -657,8 +659,8 @@ private extension ActiveFocusView {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.070),
-                                    Color.white.opacity(0.040)
+                                    UpdoTheme.filmy(0.070),
+                                    UpdoTheme.filmy(0.040)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -666,7 +668,7 @@ private extension ActiveFocusView {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.085), lineWidth: 1)
                         )
                 )
             }
@@ -690,7 +692,7 @@ private extension ActiveFocusView {
                     .overlay(
                         Image(systemName: "stop.fill")
                             .font(.system(size: 22, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
                     .shadow(
                         color: Color(arenaHex: AppArenaPalette.coral).opacity(0.18),

@@ -26,17 +26,17 @@ struct EditProfileView: View {
                         TextField("Full name", text: $fullName)
                             .textInputAutocapitalization(.words)
                             .padding()
-                            .background(Color.white.opacity(0.08))
+                            .background(UpdoTheme.filmy(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         TextField("Username", text: $username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .padding()
-                            .background(Color.white.opacity(0.08))
+                            .background(UpdoTheme.filmy(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     }
 
                     if let errorMessage {
@@ -61,7 +61,7 @@ struct EditProfileView: View {
                             } else {
                                 Text("Save Changes")
                                     .font(.headline.bold())
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                             }
                         }
                         .frame(height: 56)
@@ -79,7 +79,7 @@ struct EditProfileView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                 }
             }
             .onAppear {

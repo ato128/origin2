@@ -54,15 +54,15 @@ struct AuthFormSheetView: View {
                         Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                             .font(.system(size: 12, weight: .black))
                     }
-                    .foregroundStyle(.white.opacity(0.82))
+                    .foregroundStyle(UpdoTheme.filmy(0.82))
                     .padding(.horizontal, 13)
                     .padding(.vertical, 9)
                     .background(
                         Capsule()
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 Capsule()
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
                 }
@@ -87,7 +87,7 @@ private extension AuthFormSheetView {
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(mode.titleFirst)
                     .font(.system(size: 36, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(mode.titleAccent)
                     .font(.system(size: 34, weight: .regular, design: .serif))
@@ -108,7 +108,7 @@ private extension AuthFormSheetView {
 
             Text(mode.subtitle)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.58))
+                .foregroundStyle(UpdoTheme.filmy(0.58))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -176,7 +176,7 @@ private extension AuthFormSheetView {
                     Text((isLoading || session.isLoading) ? "Please wait..." : mode.buttonTitle)
                         .font(.system(size: 18, weight: .black, design: .rounded))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 58)
                 .background(
@@ -184,12 +184,12 @@ private extension AuthFormSheetView {
                         .fill(
                             canSubmit
                             ? AnyShapeStyle(AuthFormPalette.hotGradient)
-                            : AnyShapeStyle(Color.white.opacity(0.10))
+                            : AnyShapeStyle(UpdoTheme.filmy(0.10))
                         )
                 )
                 .overlay(
                     Capsule()
-                        .stroke(Color.white.opacity(canSubmit ? 0.16 : 0.06), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(canSubmit ? 0.16 : 0.06), lineWidth: 1)
                 )
                 .shadow(
                     color: canSubmit ? Color(arenaHex: AuthFormPalette.appPurple).opacity(0.24) : .clear,
@@ -207,7 +207,7 @@ private extension AuthFormSheetView {
                 } label: {
                     Text(appLanguageIsEnglish() ? "Forgot password?" : "Şifreni mi unuttun?")
                         .font(.system(size: 14, weight: .black, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                         .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
                 }
@@ -330,7 +330,7 @@ private extension AuthFormSheetView {
             Text(title.uppercased())
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(1.4)
-                .foregroundStyle(Color.white.opacity(0.46))
+                .foregroundStyle(UpdoTheme.filmy(0.46))
 
             HStack(spacing: 12) {
                 Image(systemName: systemImage)
@@ -343,7 +343,7 @@ private extension AuthFormSheetView {
                     .autocorrectionDisabled()
                     .keyboardType(title.lowercased() == "email" ? .emailAddress : .default)
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(Color(arenaHex: AuthFormPalette.appCyan))
             }
             .padding(.horizontal, 16)
@@ -362,7 +362,7 @@ private extension AuthFormSheetView {
             Text(title.uppercased())
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(1.4)
-                .foregroundStyle(Color.white.opacity(0.46))
+                .foregroundStyle(UpdoTheme.filmy(0.46))
 
             HStack(spacing: 12) {
                 Image(systemName: "lock.fill")
@@ -380,7 +380,7 @@ private extension AuthFormSheetView {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .tint(Color(arenaHex: AuthFormPalette.appCyan))
 
                 Button {
@@ -388,7 +388,7 @@ private extension AuthFormSheetView {
                 } label: {
                     Image(systemName: showText.wrappedValue ? "eye.slash.fill" : "eye.fill")
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(Color.white.opacity(0.52))
+                        .foregroundStyle(UpdoTheme.filmy(0.52))
                 }
                 .buttonStyle(.plain)
             }
@@ -400,10 +400,10 @@ private extension AuthFormSheetView {
 
     var authFormFieldSurface: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white.opacity(0.070))
+            .fill(UpdoTheme.filmy(0.070))
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.085), lineWidth: 1)
             )
     }
 
@@ -415,7 +415,7 @@ private extension AuthFormSheetView {
 
             Text(text)
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundStyle(UpdoTheme.filmy(0.82))
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer()

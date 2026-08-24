@@ -8,6 +8,7 @@ import SwiftUI
 
 struct AppBackground: View {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    @Environment(\.colorScheme) private var colorScheme
 
     private var theme: AppTheme {
         AppTheme(rawValue: appTheme) ?? .gradient
@@ -15,15 +16,21 @@ struct AppBackground: View {
 
     var body: some View {
         ZStack {
-            switch theme {
-            case .light:
+            // Light appearance always shows the warm eggshell field; the dark
+            // "style" choice (gradient / dark / amoled) applies only in dark mode.
+            if colorScheme == .light {
                 premiumCreamBackground
-            case .dark:
-                darkBackground
-            case .amoled:
-                amoledBackground
-            case .gradient:
-                gradientBackground
+            } else {
+                switch theme {
+                case .light:
+                    premiumCreamBackground
+                case .dark:
+                    darkBackground
+                case .amoled:
+                    amoledBackground
+                case .gradient:
+                    gradientBackground
+                }
             }
         }
         .ignoresSafeArea()
@@ -36,9 +43,9 @@ private extension AppBackground {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.996, green: 0.978, blue: 0.935),
-                    Color(red: 0.978, green: 0.940, blue: 0.860),
-                    Color(red: 0.950, green: 0.900, blue: 0.805)
+                    Color(red: 0.984, green: 0.965, blue: 0.925),
+                    Color(red: 0.957, green: 0.933, blue: 0.882),
+                    Color(red: 0.937, green: 0.906, blue: 0.839)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -46,8 +53,8 @@ private extension AppBackground {
 
             RadialGradient(
                 colors: [
-                    Color(red: 0.58, green: 0.38, blue: 1.00).opacity(0.34),
-                    Color(red: 0.74, green: 0.56, blue: 1.00).opacity(0.16),
+                    Color(red: 0.58, green: 0.38, blue: 1.00).opacity(0.11),
+                    Color(red: 0.74, green: 0.56, blue: 1.00).opacity(0.05),
                     .clear
                 ],
                 center: UnitPoint(x: -0.18, y: 0.18),
@@ -57,8 +64,8 @@ private extension AppBackground {
 
             RadialGradient(
                 colors: [
-                    Color(red: 0.16, green: 0.62, blue: 1.00).opacity(0.30),
-                    Color(red: 0.48, green: 0.78, blue: 1.00).opacity(0.14),
+                    Color(red: 0.16, green: 0.62, blue: 1.00).opacity(0.10),
+                    Color(red: 0.48, green: 0.78, blue: 1.00).opacity(0.05),
                     .clear
                 ],
                 center: UnitPoint(x: 1.20, y: 0.22),
@@ -68,8 +75,8 @@ private extension AppBackground {
 
             RadialGradient(
                 colors: [
-                    Color(red: 0.42, green: 0.26, blue: 1.00).opacity(0.30),
-                    Color(red: 0.22, green: 0.54, blue: 1.00).opacity(0.16),
+                    Color(red: 0.42, green: 0.26, blue: 1.00).opacity(0.09),
+                    Color(red: 0.22, green: 0.54, blue: 1.00).opacity(0.05),
                     .clear
                 ],
                 center: UnitPoint(x: -0.16, y: 0.94),
@@ -79,8 +86,8 @@ private extension AppBackground {
 
             RadialGradient(
                 colors: [
-                    Color(red: 0.18, green: 0.58, blue: 1.00).opacity(0.28),
-                    Color(red: 0.72, green: 0.36, blue: 1.00).opacity(0.16),
+                    Color(red: 0.18, green: 0.58, blue: 1.00).opacity(0.08),
+                    Color(red: 0.72, green: 0.36, blue: 1.00).opacity(0.05),
                     .clear
                 ],
                 center: UnitPoint(x: 1.18, y: 0.98),
@@ -90,8 +97,8 @@ private extension AppBackground {
 
             RadialGradient(
                 colors: [
-                    Color.white.opacity(0.42),
-                    Color.white.opacity(0.20),
+                    Color.white.opacity(0.34),
+                    Color.white.opacity(0.16),
                     .clear
                 ],
                 center: UnitPoint(x: 0.50, y: 0.42),
@@ -101,9 +108,9 @@ private extension AppBackground {
 
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.48),
+                    Color.white.opacity(0.40),
                     .clear,
-                    Color(red: 0.66, green: 0.54, blue: 0.40).opacity(0.10)
+                    Color(red: 0.66, green: 0.54, blue: 0.40).opacity(0.09)
                 ],
                 startPoint: .top,
                 endPoint: .bottom

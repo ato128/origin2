@@ -245,7 +245,7 @@ private extension FocusView {
                 Text(effectiveStageStatusText.uppercased())
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(1.8)
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(UpdoTheme.filmy(0.55))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
@@ -276,13 +276,13 @@ private extension FocusView {
                 Text(isActive ? tr("focus_countdown_caps") : tr("focus_minutes_caps"))
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(2.5)
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(UpdoTheme.filmy(0.55))
 
                 Spacer(minLength: 8)
 
                 Text(isActive ? effectiveStageMetaText : tr("focus_finish_prefix", focusFinishText))
                     .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(UpdoTheme.filmy(0.40))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
@@ -303,7 +303,7 @@ private extension FocusView {
 
     var editorialDivider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.07))
+            .fill(UpdoTheme.filmy(0.07))
             .frame(height: 1)
     }
 
@@ -326,7 +326,7 @@ private extension FocusView {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text("Focus")
                         .font(.system(size: 39, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(focusHeaderAccent)
                         .font(.system(size: 36, weight: .regular, design: .serif))
@@ -413,7 +413,7 @@ private extension FocusView {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: systemName)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white.opacity(0.86))
+                    .foregroundStyle(UpdoTheme.filmy(0.86))
                     .frame(width: 46, height: 46)
                     .background(
                         Color.clear
@@ -488,18 +488,18 @@ private extension FocusView {
                 Text(title)
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(UpdoTheme.filmy(0.40))
                     .frame(width: 50, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(value)
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
 
                     Text(subtitle)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
@@ -508,7 +508,7 @@ private extension FocusView {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(.white.opacity(0.24))
+                    .foregroundStyle(UpdoTheme.filmy(0.24))
             }
             .padding(.vertical, 12)
         }
@@ -529,11 +529,11 @@ private extension FocusView {
             VStack(alignment: .leading, spacing: 3) {
                 Text(tr("fv_crew_start"))
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("fv_crew_start_sub"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .lineLimit(2)
             }
 
@@ -547,7 +547,7 @@ private extension FocusView {
                     LinearGradient(
                         colors: [
                             Color(arenaHex: AppArenaPalette.green).opacity(0.060),
-                            Color.white.opacity(0.035)
+                            UpdoTheme.filmy(0.035)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -618,16 +618,16 @@ private extension FocusView {
                     Text(title.uppercased())
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(1.3)
-                        .foregroundStyle(.white.opacity(0.36))
+                        .foregroundStyle(UpdoTheme.filmy(0.36))
 
                     Text(value)
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white.opacity(0.96))
+                        .foregroundStyle(UpdoTheme.filmy(0.96))
                         .lineLimit(1)
 
                     Text(subtitle)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                         .lineLimit(1)
                         .minimumScaleFactor(0.80)
                 }
@@ -636,7 +636,7 @@ private extension FocusView {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(.white.opacity(0.25))
+                    .foregroundStyle(UpdoTheme.filmy(0.25))
             }
             .padding(14)
             .frame(maxWidth: .infinity)
@@ -648,7 +648,7 @@ private extension FocusView {
                             colors: [
                                 selectedModeAccent.opacity(0.060),
                                 Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
-                                Color.white.opacity(0.035)
+                                UpdoTheme.filmy(0.035)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -756,7 +756,7 @@ private extension FocusView {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(Color.white.opacity(0.13), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.13), lineWidth: 1)
                         )
                 )
                 .shadow(
@@ -828,7 +828,7 @@ private extension FocusView {
 
                         Text(tr("hf_join"))
                             .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .padding(.horizontal, 12)
                             .frame(height: 34)
                             .background(
@@ -839,10 +839,10 @@ private extension FocusView {
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.white.opacity(0.05))
+                            .fill(UpdoTheme.filmy(0.05))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
                             )
                     )
                 }
@@ -999,7 +999,7 @@ private extension FocusView {
                             Text(tr("fv_start_crew"))
                                 .font(.system(size: 17, weight: .black))
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(
@@ -1023,7 +1023,7 @@ private extension FocusView {
                 .padding(.bottom, 26)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .presentationDetents([.large])
     }
 
@@ -1044,7 +1044,7 @@ private extension FocusView {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text("Crew Focus")
                         .font(.system(size: 32, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("fvs_title_italic"))
                         .font(.system(size: 29, weight: .regular, design: .serif))
@@ -1056,7 +1056,7 @@ private extension FocusView {
 
                 Text(tr("fv_crew_pick_sub"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer(minLength: 8)
@@ -1066,14 +1066,14 @@ private extension FocusView {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 40, height: 40)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.06))
+                            .fill(UpdoTheme.filmy(0.06))
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -1085,7 +1085,7 @@ private extension FocusView {
         Text("— \(text) —")
             .font(.system(size: 10, weight: .black, design: .monospaced))
             .tracking(2.2)
-            .foregroundStyle(.white.opacity(0.34))
+            .foregroundStyle(UpdoTheme.filmy(0.34))
     }
 
     var crewLaunchSummaryCard: some View {
@@ -1115,14 +1115,14 @@ private extension FocusView {
         VStack(alignment: .leading, spacing: 4) {
             Text(title.uppercased())
                 .font(.system(size: 9, weight: .black, design: .monospaced))
-                .foregroundStyle(Color.white.opacity(0.40))
+                .foregroundStyle(UpdoTheme.filmy(0.40))
                 .tracking(1.2)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(value)
                 .font(.system(size: 17, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .monospacedDigit()
         }
         .padding(.horizontal, 14)
@@ -1130,10 +1130,10 @@ private extension FocusView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(UpdoTheme.filmy(0.05))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
                 )
         )
     }
@@ -1154,8 +1154,8 @@ private extension FocusView {
                                         colors: [
                                             selectedCrewID == crew.id
                                             ? selectedModeAccent.opacity(0.30)
-                                            : Color.white.opacity(0.08),
-                                            Color.white.opacity(0.04)
+                                            : UpdoTheme.filmy(0.08),
+                                            UpdoTheme.filmy(0.04)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -1166,8 +1166,8 @@ private extension FocusView {
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundStyle(
                                     selectedCrewID == crew.id
-                                    ? Color.white.opacity(0.96)
-                                    : Color.white.opacity(0.76)
+                                    ? UpdoTheme.filmy(0.96)
+                                    : UpdoTheme.filmy(0.76)
                                 )
                         }
                         .frame(width: 46, height: 46)
@@ -1193,13 +1193,13 @@ private extension FocusView {
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.white.opacity(selectedCrewID == crew.id ? 0.09 : 0.05))
+                            .fill(UpdoTheme.filmy(selectedCrewID == crew.id ? 0.09 : 0.05))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                                     .stroke(
                                         selectedCrewID == crew.id
                                         ? selectedModeAccent.opacity(0.35)
-                                        : Color.white.opacity(0.05),
+                                        : UpdoTheme.filmy(0.05),
                                         lineWidth: 1
                                     )
                             )
@@ -1225,8 +1225,8 @@ private extension FocusView {
                                     colors: [
                                         selectedCrewTaskID == nil
                                         ? Color.green.opacity(0.24)
-                                        : Color.white.opacity(0.08),
-                                        Color.white.opacity(0.04)
+                                        : UpdoTheme.filmy(0.08),
+                                        UpdoTheme.filmy(0.04)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -1235,7 +1235,7 @@ private extension FocusView {
 
                         Image(systemName: "sparkles")
                             .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(selectedCrewTaskID == nil ? .white : Color.white.opacity(0.72))
+                            .foregroundStyle(selectedCrewTaskID == nil ? .white : UpdoTheme.filmy(0.72))
                     }
                     .frame(width: 46, height: 46)
 
@@ -1259,13 +1259,13 @@ private extension FocusView {
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(selectedCrewTaskID == nil ? 0.09 : 0.05))
+                        .fill(UpdoTheme.filmy(selectedCrewTaskID == nil ? 0.09 : 0.05))
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .stroke(
                                     selectedCrewTaskID == nil
                                     ? Color.green.opacity(0.28)
-                                    : Color.white.opacity(0.05),
+                                    : UpdoTheme.filmy(0.05),
                                     lineWidth: 1
                                 )
                         )
@@ -1287,8 +1287,8 @@ private extension FocusView {
                                         colors: [
                                             isSelected
                                             ? selectedModeAccent.opacity(0.28)
-                                            : Color.white.opacity(0.08),
-                                            Color.white.opacity(0.04)
+                                            : UpdoTheme.filmy(0.08),
+                                            UpdoTheme.filmy(0.04)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -1297,7 +1297,7 @@ private extension FocusView {
 
                             Image(systemName: "checklist")
                                 .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(isSelected ? .white : Color.white.opacity(0.74))
+                                .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.74))
                         }
                         .frame(width: 46, height: 46)
 
@@ -1322,13 +1322,13 @@ private extension FocusView {
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.white.opacity(isSelected ? 0.09 : 0.05))
+                            .fill(UpdoTheme.filmy(isSelected ? 0.09 : 0.05))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                                     .stroke(
                                         isSelected
                                         ? selectedModeAccent.opacity(0.32)
-                                        : Color.white.opacity(0.05),
+                                        : UpdoTheme.filmy(0.05),
                                         lineWidth: 1
                                     )
                             )
@@ -1400,27 +1400,27 @@ private extension FocusView {
                         if isLocked {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(Color.white.opacity(0.7))
+                                .foregroundStyle(UpdoTheme.filmy(0.7))
                         } else if isSelected {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 21, weight: .bold))
                                 .foregroundStyle(selectedModeAccent)
                         } else {
                             Circle()
-                                .stroke(Color.white.opacity(0.18), lineWidth: 1.2)
+                                .stroke(UpdoTheme.filmy(0.18), lineWidth: 1.2)
                                 .frame(width: 20, height: 20)
                         }
                     }
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.white.opacity(isSelected || isLocked ? 0.09 : 0.05))
+                            .fill(UpdoTheme.filmy(isSelected || isLocked ? 0.09 : 0.05))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                                     .stroke(
                                         isSelected || isLocked
                                         ? selectedModeAccent.opacity(0.30)
-                                        : Color.white.opacity(0.05),
+                                        : UpdoTheme.filmy(0.05),
                                         lineWidth: 1
                                     )
                             )
@@ -1635,7 +1635,7 @@ private extension FocusView {
                 .blur(radius: 36)
 
             Circle()
-                .stroke(Color.white.opacity(0.16), lineWidth: 14)
+                .stroke(UpdoTheme.filmy(0.16), lineWidth: 14)
                 .frame(width: 236, height: 236)
 
             Circle()
@@ -1643,9 +1643,9 @@ private extension FocusView {
                 .stroke(
                     AngularGradient(
                         gradient: Gradient(colors: [
-                            Color.white.opacity(0.98),
+                            UpdoTheme.filmy(0.98),
                             selectedModeAccent.opacity(0.95),
-                            Color.white.opacity(0.98)
+                            UpdoTheme.filmy(0.98)
                         ]),
                         center: .center
                     ),
@@ -1657,11 +1657,11 @@ private extension FocusView {
             VStack(spacing: 8) {
                 Text(durationText)
                     .font(.system(size: 34, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("fv_focus_preparing"))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.72))
+                    .foregroundStyle(UpdoTheme.filmy(0.72))
             }
         }
     }
@@ -1790,10 +1790,10 @@ private extension FocusView {
                     VStack(spacing: 12) {
                         Image(systemName: "person.2")
                             .font(.system(size: 34, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.3))
+                            .foregroundStyle(UpdoTheme.filmy(0.3))
                         Text(tr("fv_no_friends"))
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(UpdoTheme.filmy(0.55))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                     }
@@ -1817,10 +1817,10 @@ private extension FocusView {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(friend.name)
                                                 .font(.system(size: 15.5, weight: .bold))
-                                                .foregroundStyle(.white)
+                                                .foregroundStyle(UpdoTheme.textPrimary)
                                             Text(tr("fv_friend_invite_sub", resolvedMinutes))
                                                 .font(.system(size: 12, weight: .semibold))
-                                                .foregroundStyle(.white.opacity(0.45))
+                                                .foregroundStyle(UpdoTheme.filmy(0.45))
                                         }
 
                                         Spacer(minLength: 8)
@@ -1833,10 +1833,10 @@ private extension FocusView {
                                     .padding(.vertical, 11)
                                     .background(
                                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .fill(Color.white.opacity(0.05))
+                                            .fill(UpdoTheme.filmy(0.05))
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                    .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+                                                    .strokeBorder(UpdoTheme.filmy(0.09), lineWidth: 1)
                                             )
                                     )
                                 }
@@ -1847,17 +1847,17 @@ private extension FocusView {
                     }
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(tr("fv_pick_friend_title"))
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button(tr("common_cancel")) { showFriendPickerSheet = false }
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(UpdoTheme.filmy(0.6))
                 }
             }
         }
@@ -1912,7 +1912,7 @@ private extension FocusView {
 
                 ZStack {
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(Color.white.opacity(0.05))
+                        .fill(UpdoTheme.filmy(0.05))
 
                     Picker(appLanguageIsEnglish() ? "Minutes" : "Dakika", selection: $customMinutes) {
                         ForEach(5...180, id: \.self) { minute in
@@ -1944,7 +1944,7 @@ private extension FocusView {
                         Text(appLanguageIsEnglish() ? "Use \(customMinutes) min" : "\(customMinutes) dk Kullan")
                             .font(.system(size: 16, weight: .heavy, design: .rounded))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(
@@ -1981,7 +1981,7 @@ private extension FocusView {
                 .frame(height: 34)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(customMinutes == minute ? Color.blue.opacity(0.9) : Color.white.opacity(0.06))
+                        .fill(customMinutes == minute ? Color.blue.opacity(0.9) : UpdoTheme.filmy(0.06))
                 )
         }
         .buttonStyle(.plain)
@@ -2008,7 +2008,7 @@ private extension FocusView {
                                 HStack(spacing: 12) {
                                     Image(systemName: goal.icon)
                                         .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(.white.opacity(0.92))
+                                        .foregroundStyle(UpdoTheme.filmy(0.92))
                                         .frame(width: 38, height: 38)
                                         .background(
                                             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -2042,7 +2042,7 @@ private extension FocusView {
                                 .padding(14)
                                 .background(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(Color.white.opacity(0.05))
+                                        .fill(UpdoTheme.filmy(0.05))
                                 )
                             }
                             .buttonStyle(.plain)
@@ -2079,7 +2079,7 @@ private extension FocusView {
                                 HStack(spacing: 12) {
                                     Image(systemName: style.icon)
                                         .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(.white.opacity(0.92))
+                                        .foregroundStyle(UpdoTheme.filmy(0.92))
                                         .frame(width: 38, height: 38)
                                         .background(
                                             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -2113,7 +2113,7 @@ private extension FocusView {
                                 .padding(14)
                                 .background(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(Color.white.opacity(0.05))
+                                        .fill(UpdoTheme.filmy(0.05))
                                 )
                             }
                             .buttonStyle(.plain)
@@ -2144,8 +2144,8 @@ struct FocusHeroDigits: View {
     private var fill: LinearGradient {
         LinearGradient(
             colors: [
-                Color.white.opacity(0.96),
-                Color.white.opacity(0.74),
+                UpdoTheme.filmy(0.96),
+                UpdoTheme.filmy(0.74),
                 Color(white: 0.42),
                 accent.opacity(0.45)
             ],
@@ -2163,7 +2163,7 @@ struct FocusHeroDigits: View {
                     Text(":")
                         .font(.system(size: size * 0.76, weight: .regular, design: .serif))
                         .italic()
-                        .foregroundStyle(.white.opacity(0.32))
+                        .foregroundStyle(UpdoTheme.filmy(0.32))
                         .offset(y: -size * 0.06)
                         .padding(.horizontal, 1)
                 }
@@ -2198,16 +2198,16 @@ private extension View {
     func editorialDurationChip(selected: Bool, accent: Color) -> some View {
         self
             .font(.system(size: 13, weight: .black, design: .monospaced))
-            .foregroundStyle(selected ? accent : Color.white.opacity(0.5))
+            .foregroundStyle(selected ? accent : UpdoTheme.filmy(0.5))
             .frame(maxWidth: .infinity)
             .frame(height: 40)
             .background(
                 Capsule(style: .continuous)
-                    .fill(selected ? accent.opacity(0.13) : Color.white.opacity(0.035))
+                    .fill(selected ? accent.opacity(0.13) : UpdoTheme.filmy(0.035))
                     .overlay(
                         Capsule(style: .continuous)
                             .stroke(
-                                selected ? accent.opacity(0.55) : Color.white.opacity(0.08),
+                                selected ? accent.opacity(0.55) : UpdoTheme.filmy(0.08),
                                 lineWidth: selected ? 1.5 : 1
                             )
                     )

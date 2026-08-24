@@ -759,7 +759,7 @@ private struct AuraStyleView: View {
         VStack(spacing: 8) {
             Text(state.title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(Color.white.opacity(0.85))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
@@ -835,7 +835,7 @@ private struct ArenaStyleView: View {
                     Text("\(liveStyleLocalized("SEANS", "SESSION")) \(totalMinutes)\(liveStyleLocalized("DK", "MIN"))")
                         .font(.system(size: 10, weight: .heavy))
                         .italic()
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(Color.white.opacity(0.5))
 
                     Spacer(minLength: 6)
 

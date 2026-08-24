@@ -272,7 +272,7 @@ struct FocusSessionView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                                 .background(primaryButtonDisabled ? Color.gray.opacity(0.35) : Color.accentColor)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                                 .clipShape(RoundedRectangle(cornerRadius: 16))
                         }
                         .buttonStyle(.plain)

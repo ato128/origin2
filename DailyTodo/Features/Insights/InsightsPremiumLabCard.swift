@@ -92,17 +92,17 @@ struct InsightsPremiumLabCard: View {
                         .shadow(color: gold.opacity(0.35), radius: 10, y: 5)
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 22, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("iplc_exam_planner"))
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
                     Text(tr("iplc_exam_sub"))
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(UpdoTheme.filmy(0.55))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -113,7 +113,7 @@ struct InsightsPremiumLabCard: View {
                     proActiveBadge(tint: gold)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(UpdoTheme.filmy(0.4))
                 }
             }
             .padding(14)
@@ -121,7 +121,7 @@ struct InsightsPremiumLabCard: View {
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(LinearGradient(
-                        colors: [gold.opacity(0.10), coral.opacity(0.05), Color(arenaHex: AppArenaPalette.surface).opacity(0.92)],
+                        colors: [gold.opacity(0.10), coral.opacity(0.05), AppArenaPalette.surfaceColor.opacity(0.92)],
                         startPoint: .topLeading, endPoint: .bottomTrailing))
                     .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(gold.opacity(0.22), lineWidth: 1))
@@ -193,7 +193,7 @@ struct InsightsPremiumLabCard: View {
                         startPoint: .topLeading, endPoint: .bottomTrailing))
                     .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(RadialGradient(
-                            colors: [.white.opacity(0.22), .clear],
+                            colors: [UpdoTheme.filmy(0.22), .clear],
                             center: .topTrailing, startRadius: 4, endRadius: 160)))
                     .shadow(color: Color(arenaHex: AppArenaPalette.gold).opacity(0.25), radius: 14, y: 7)
             )
@@ -233,14 +233,14 @@ struct InsightsComingSoonSheet: View {
                     .foregroundStyle(toolInfo.primary)
                 Text(toolInfo.title)
                     .font(.system(size: 28, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                 Text(tr("iplc_already_active"))
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
                 Spacer()
                 Button(appLanguageIsEnglish() ? "Close" : "Kapat") { dismiss() }
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
                     .background(RoundedRectangle(cornerRadius: 16).fill(toolInfo.primary.opacity(0.3)))
@@ -249,6 +249,6 @@ struct InsightsComingSoonSheet: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
     }
 }

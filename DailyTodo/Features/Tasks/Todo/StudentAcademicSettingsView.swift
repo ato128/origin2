@@ -103,7 +103,7 @@ struct StudentAcademicSettingsView: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .contentShape(Rectangle())
         .onTapGesture {
             focusedField = nil
@@ -177,7 +177,7 @@ private extension StudentAcademicSettingsView {
                         Text(tr("sas_student"))
                             .font(.system(size: 42, weight: .heavy))
                             .tracking(-1.0)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
 
@@ -203,14 +203,14 @@ private extension StudentAcademicSettingsView {
                 } label: {
                     Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(.white.opacity(0.88))
+                        .foregroundStyle(UpdoTheme.filmy(0.88))
                         .frame(width: 42, height: 42)
                         .background(
                             Circle()
-                                .fill(Color.white.opacity(0.070))
+                                .fill(UpdoTheme.filmy(0.070))
                                 .overlay(
                                     Circle()
-                                        .stroke(Color.white.opacity(0.105), lineWidth: 1)
+                                        .stroke(UpdoTheme.filmy(0.105), lineWidth: 1)
                                 )
                         )
                 }
@@ -219,7 +219,7 @@ private extension StudentAcademicSettingsView {
 
             Text(tr("sas_header_body"))
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.50))
+                .foregroundStyle(UpdoTheme.filmy(0.50))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -229,8 +229,8 @@ private extension StudentAcademicSettingsView {
                 primaryActionButton(
                     title: isSavingProfile ? "SAVING..." : "SAVE ACADEMIC PROFILE",
                     icon: isSavingProfile ? "clock" : "checkmark.circle.fill",
-                    tint: canSaveProfile ? accent : Color.white.opacity(0.16),
-                    foreground: canSaveProfile ? .black : .white.opacity(0.46)
+                    tint: canSaveProfile ? accent : UpdoTheme.filmy(0.16),
+                    foreground: canSaveProfile ? .black : UpdoTheme.filmy(0.46)
                 )
             }
             .buttonStyle(.plain)
@@ -270,11 +270,11 @@ private extension StudentAcademicSettingsView {
                         Text(tr("sas_university_caps"))
                             .font(.system(size: 9, weight: .heavy, design: .monospaced))
                             .tracking(1.1)
-                            .foregroundStyle(.white.opacity(0.38))
+                            .foregroundStyle(UpdoTheme.filmy(0.38))
 
                         Text(institutionName.isEmpty ? "Choose university" : institutionName)
                             .font(.system(size: 15, weight: .heavy))
-                            .foregroundStyle(institutionName.isEmpty ? .white.opacity(0.42) : .white)
+                            .foregroundStyle(institutionName.isEmpty ? UpdoTheme.filmy(0.42) : .white)
                             .lineLimit(2)
 
                         if !institutionCountry.isEmpty {
@@ -289,7 +289,7 @@ private extension StudentAcademicSettingsView {
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(.white.opacity(0.30))
+                        .foregroundStyle(UpdoTheme.filmy(0.30))
                 }
                 .padding(13)
                 .background(rowSurface(tint: accent))
@@ -300,7 +300,7 @@ private extension StudentAcademicSettingsView {
                 Text(tr("sas_year_caps"))
                     .font(.system(size: 9, weight: .heavy, design: .monospaced))
                     .tracking(1.1)
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(UpdoTheme.filmy(0.38))
 
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 9), count: 2),
@@ -335,7 +335,7 @@ private extension StudentAcademicSettingsView {
         } label: {
             Text(yearTitle(year))
                 .font(.system(size: 14, weight: .heavy))
-                .foregroundStyle(isSelected ? .black.opacity(0.80) : .white.opacity(0.82))
+                .foregroundStyle(isSelected ? .black.opacity(0.80) : UpdoTheme.filmy(0.82))
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
                 .background(
@@ -349,12 +349,12 @@ private extension StudentAcademicSettingsView {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            : AnyShapeStyle(Color.white.opacity(0.060))
+                            : AnyShapeStyle(UpdoTheme.filmy(0.060))
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(
-                                    isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.070),
+                                    isSelected ? UpdoTheme.filmy(0.12) : UpdoTheme.filmy(0.070),
                                     lineWidth: 1
                                 )
                         )
@@ -440,11 +440,11 @@ private extension StudentAcademicSettingsView {
                     Text(tr("sas_department_caps"))
                         .font(.system(size: 9, weight: .heavy, design: .monospaced))
                         .tracking(1.1)
-                        .foregroundStyle(.white.opacity(0.38))
+                        .foregroundStyle(UpdoTheme.filmy(0.38))
 
                     Text(majorName.isEmpty ? "Choose major" : majorName)
                         .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(majorName.isEmpty ? .white.opacity(0.42) : .white)
+                        .foregroundStyle(majorName.isEmpty ? UpdoTheme.filmy(0.42) : .white)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
@@ -466,7 +466,7 @@ private extension StudentAcademicSettingsView {
                         Text(tr("sas_manual_entry_available"))
                             .font(.system(size: 10, weight: .heavy, design: .monospaced))
                             .tracking(0.6)
-                            .foregroundStyle(.white.opacity(0.34))
+                            .foregroundStyle(UpdoTheme.filmy(0.34))
                     } else {
                         Text("\(majors.count) majors ready")
                             .font(.system(size: 10, weight: .heavy, design: .monospaced))
@@ -479,7 +479,7 @@ private extension StudentAcademicSettingsView {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(.white.opacity(0.30))
+                    .foregroundStyle(UpdoTheme.filmy(0.30))
             }
             .padding(13)
             .background(rowSurface(tint: secondaryAccent))
@@ -492,7 +492,7 @@ private extension StudentAcademicSettingsView {
             Text(tr("sas_custom_major_caps"))
                 .font(.system(size: 9, weight: .heavy, design: .monospaced))
                 .tracking(1.1)
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
 
             HStack(spacing: 10) {
                 Image(systemName: "pencil")
@@ -507,10 +507,10 @@ private extension StudentAcademicSettingsView {
                             handleManualMajorTextChanged(newValue)
                         }
                     ),
-                    prompt: Text(tr("sas_type_department")).foregroundStyle(.white.opacity(0.30))
+                    prompt: Text(tr("sas_type_department")).foregroundStyle(UpdoTheme.filmy(0.30))
                 )
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
                 .focused($focusedField, equals: .customMajor)
@@ -610,7 +610,7 @@ private extension StudentAcademicSettingsView {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(course.course_name)
                         .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(alreadyAdded ? .white.opacity(0.58) : .white)
+                        .foregroundStyle(alreadyAdded ? UpdoTheme.filmy(0.58) : .white)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
@@ -619,7 +619,7 @@ private extension StudentAcademicSettingsView {
                             miniLabel(course.course_code, tint: gold)
                         }
 
-                        miniLabel("Y\(course.year_number) T\(course.term_number ?? 0)", tint: .white.opacity(0.46))
+                        miniLabel("Y\(course.year_number) T\(course.term_number ?? 0)", tint: UpdoTheme.filmy(0.46))
 
                         if course.is_elective == true {
                             miniLabel(tr("sas_elective_caps"), tint: secondaryAccent)
@@ -680,14 +680,14 @@ private extension StudentAcademicSettingsView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(course.name)
                     .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(2)
 
                 if !course.code.isEmpty {
                     Text(course.code.uppercased())
                         .font(.system(size: 10, weight: .heavy, design: .monospaced))
                         .tracking(0.7)
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
                 }
             }
 
@@ -755,8 +755,8 @@ private extension StudentAcademicSettingsView {
                 primaryActionButton(
                     title: isSavingCourse ? "ADDING..." : "ADD COURSE",
                     icon: isSavingCourse ? "clock" : "plus.circle.fill",
-                    tint: canAddManualCourse ? green : Color.white.opacity(0.16),
-                    foreground: canAddManualCourse ? .black : .white.opacity(0.46)
+                    tint: canAddManualCourse ? green : UpdoTheme.filmy(0.16),
+                    foreground: canAddManualCourse ? .black : UpdoTheme.filmy(0.46)
                 )
             }
             .buttonStyle(.plain)
@@ -1252,7 +1252,7 @@ private struct AcademicMajorPickerSheet: View {
                 .padding(.top, 12)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .onAppear {
             manualMajorText = selectedMajorName
         }
@@ -1281,11 +1281,11 @@ private struct AcademicMajorPickerSheet: View {
                 Text(tr("sas_choose_major"))
                     .font(.system(size: 34, weight: .heavy))
                     .tracking(-0.8)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("sas_search_or_type"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
             }
 
             Spacer()
@@ -1295,14 +1295,14 @@ private struct AcademicMajorPickerSheet: View {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white.opacity(0.88))
+                    .foregroundStyle(UpdoTheme.filmy(0.88))
                     .frame(width: 42, height: 42)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.070))
+                            .fill(UpdoTheme.filmy(0.070))
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.105), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.105), lineWidth: 1)
                             )
                     )
             }
@@ -1322,12 +1322,12 @@ private struct AcademicMajorPickerSheet: View {
             TextField(
                 "",
                 text: $searchText,
-                prompt: Text(tr("sas_search_major")).foregroundStyle(.white.opacity(0.30))
+                prompt: Text(tr("sas_search_major")).foregroundStyle(UpdoTheme.filmy(0.30))
             )
             .textInputAutocapitalization(.words)
             .autocorrectionDisabled()
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(UpdoTheme.textPrimary)
             .tint(accent)
 
             if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -1336,7 +1336,7 @@ private struct AcademicMajorPickerSheet: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white.opacity(0.34))
+                        .foregroundStyle(UpdoTheme.filmy(0.34))
                 }
                 .buttonStyle(.plain)
             }
@@ -1345,7 +1345,7 @@ private struct AcademicMajorPickerSheet: View {
         .frame(height: 54)
         .background(
             RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(Color.white.opacity(0.065))
+                .fill(UpdoTheme.filmy(0.065))
                 .overlay(
                     RoundedRectangle(cornerRadius: 19, style: .continuous)
                         .stroke(accent.opacity(0.13), lineWidth: 1)
@@ -1361,11 +1361,11 @@ private struct AcademicMajorPickerSheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(tr("sas_loading_majors"))
                     .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("sas_preparing_dept_catalog"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer()
@@ -1389,11 +1389,11 @@ private struct AcademicMajorPickerSheet: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("sas_could_not_load_majors"))
                         .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(text)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(3)
                 }
 
@@ -1439,11 +1439,11 @@ private struct AcademicMajorPickerSheet: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("sas_no_matching_major"))
                         .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("sas_try_another"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(2)
                 }
 
@@ -1478,13 +1478,13 @@ private struct AcademicMajorPickerSheet: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(major.name)
                         .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
                     HStack(spacing: 7) {
                         if let faculty = major.faculty_name, !faculty.isEmpty {
-                            miniLabel(faculty, tint: .white.opacity(0.45))
+                            miniLabel(faculty, tint: UpdoTheme.filmy(0.45))
                         }
 
                         if let language = major.language, !language.isEmpty {
@@ -1506,7 +1506,7 @@ private struct AcademicMajorPickerSheet: View {
             Text(tr("sas_type_manually_caps"))
                 .font(.system(size: 9, weight: .heavy, design: .monospaced))
                 .tracking(1.1)
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
 
             HStack(spacing: 10) {
                 Image(systemName: "pencil")
@@ -1516,19 +1516,19 @@ private struct AcademicMajorPickerSheet: View {
                 TextField(
                     "",
                     text: $manualMajorText,
-                    prompt: Text(tr("sas_type_department")).foregroundStyle(.white.opacity(0.30))
+                    prompt: Text(tr("sas_type_department")).foregroundStyle(UpdoTheme.filmy(0.30))
                 )
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .tint(accent)
             }
             .padding(.horizontal, 13)
             .frame(height: 50)
             .background(
                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(Color.white.opacity(0.060))
+                    .fill(UpdoTheme.filmy(0.060))
                     .overlay(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
                             .stroke(accent.opacity(0.13), lineWidth: 1)
@@ -1582,7 +1582,7 @@ private struct AcademicMajorPickerSheet: View {
                 LinearGradient(
                     colors: [
                         tint.opacity(0.080),
-                        Color.white.opacity(0.040),
+                        UpdoTheme.filmy(0.040),
                         Color.black.opacity(0.020)
                     ],
                     startPoint: .topLeading,
@@ -1621,7 +1621,7 @@ private extension StudentAcademicSettingsView {
                 Text(title)
                     .font(.system(size: 22, weight: .heavy))
                     .tracking(-0.25)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -1656,11 +1656,11 @@ private extension StudentAcademicSettingsView {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .lineLimit(2)
             }
 
@@ -1683,11 +1683,11 @@ private extension StudentAcademicSettingsView {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer()
@@ -1716,11 +1716,11 @@ private extension StudentAcademicSettingsView {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(message)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(3)
                 }
 
@@ -1771,12 +1771,12 @@ private extension StudentAcademicSettingsView {
             TextField(
                 "",
                 text: text,
-                prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30))
+                prompt: Text(placeholder).foregroundStyle(UpdoTheme.filmy(0.30))
             )
             .textInputAutocapitalization(capitalization)
             .autocorrectionDisabled()
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(UpdoTheme.textPrimary)
             .tint(tint)
         }
         .padding(.horizontal, 13)
@@ -1833,7 +1833,7 @@ private extension StudentAcademicSettingsView {
 
     func inputSurface(tint: Color) -> some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.060))
+            .fill(UpdoTheme.filmy(0.060))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(tint.opacity(0.13), lineWidth: 1)
@@ -1846,7 +1846,7 @@ private extension StudentAcademicSettingsView {
                 LinearGradient(
                     colors: [
                         tint.opacity(0.080),
-                        Color.white.opacity(0.040),
+                        UpdoTheme.filmy(0.040),
                         Color.black.opacity(0.020)
                     ],
                     startPoint: .topLeading,
@@ -1864,7 +1864,7 @@ private extension StudentAcademicSettingsView {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.060),
+                        UpdoTheme.filmy(0.060),
                         tint.opacity(0.060),
                         secondaryAccent.opacity(0.035),
                         Color.black.opacity(0.040)

@@ -31,7 +31,7 @@ extension CrewChatView {
                 } label: {
                     Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                         .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .frame(width: 46, height: 46)
                         .liquidGlass(in: Circle())
                         .contentShape(Rectangle())
@@ -53,7 +53,7 @@ extension CrewChatView {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(crew.name)
                                 .font(.system(size: 15, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                                 .lineLimit(1)
 
                             HStack(spacing: 6) {
@@ -63,7 +63,7 @@ extension CrewChatView {
 
                                 Text(activeFocusSession != nil ? "Live focus" : "Crew chat")
                                     .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(.white.opacity(0.58))
+                                    .foregroundStyle(UpdoTheme.filmy(0.58))
                                     .lineLimit(1)
                             }
                         }
@@ -127,7 +127,7 @@ extension CrewChatView {
 
             Text(text)
                 .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(UpdoTheme.filmy(0.72))
                 .lineLimit(1)
 
             Spacer()
@@ -141,7 +141,7 @@ extension CrewChatView {
                         colors: [
                             Color(arenaHex: "#A3E635").opacity(0.075),
                             Color(arenaHex: "#1593FF").opacity(0.050),
-                            Color.white.opacity(0.045)
+                            UpdoTheme.filmy(0.045)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -149,7 +149,7 @@ extension CrewChatView {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.09), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
         )
@@ -176,18 +176,18 @@ extension CrewChatView {
                 .overlay(
                     Image(systemName: "person.3.fill")
                         .font(.system(size: 30, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 )
                 .shadow(color: hexColor(crew.colorHex).opacity(0.18), radius: 18, y: 8)
 
             VStack(spacing: 7) {
                 Text("crew_chat_empty_title")
                     .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text("crew_chat_empty_subtitle")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .multilineTextAlignment(.center)
             }
 

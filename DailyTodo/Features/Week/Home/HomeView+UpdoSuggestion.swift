@@ -566,7 +566,7 @@ extension HomeView {
 
                     Text(suggestion.headline)
                         .font(.system(size: 14.5, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -595,7 +595,7 @@ extension HomeView {
                                 .font(.system(size: 13, weight: .semibold))
                                 .lineLimit(1)
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.onAccent)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 9)
                         .background(onFire ? fireGradient : UpdoTheme.gradientAI, in: Capsule())
@@ -641,7 +641,7 @@ extension HomeView {
                 GeometryReader { geo in
                     let frac = target > 0 ? CGFloat(challengeProgress) / CGFloat(target) : 0
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.08))
+                        Capsule().fill(UpdoTheme.filmy(0.08))
                         Capsule().fill(tint).frame(width: max(4, geo.size.width * min(frac, 1)))
                     }
                 }
@@ -707,7 +707,7 @@ extension HomeView {
 
                         Text(headerLine(suggestion: suggestion, onFire: onFire))
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white.opacity(aiSuggestionExpanded && !onFire ? 0.5 : 0.85))
+                            .foregroundStyle(UpdoTheme.filmy(aiSuggestionExpanded && !onFire ? 0.5 : 0.85))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     }
@@ -716,7 +716,7 @@ extension HomeView {
 
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(UpdoTheme.filmy(0.4))
                         .rotationEffect(.degrees(aiSuggestionExpanded ? 180 : 0))
                 }
                 .contentShape(Rectangle())
@@ -731,12 +731,12 @@ extension HomeView {
 
                     Text(suggestion.headline)
                         .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Text(suggestion.reason)
                         .font(.system(size: 14.5, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.62))
+                        .foregroundStyle(UpdoTheme.filmy(0.62))
                         .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -755,7 +755,7 @@ extension HomeView {
                                 Text(onFire ? tr("ai_sg_ch_continue") : suggestion.ctaTitle)
                                     .font(.system(size: 15, weight: .semibold))
                             }
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.onAccent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(onFire ? fireGradient : UpdoTheme.gradientAI, in: Capsule())
@@ -777,7 +777,7 @@ extension HomeView {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 10, weight: .bold))
                         }
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
                     }
                     .buttonStyle(.plain)
                 }
@@ -826,13 +826,13 @@ extension HomeView {
                 Spacer(minLength: 6)
                 Text(tr(key, challengeProgress, target))
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
             }
 
             GeometryReader { geo in
                 let frac = target > 0 ? CGFloat(challengeProgress) / CGFloat(target) : 0
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.08))
+                    Capsule().fill(UpdoTheme.filmy(0.08))
                     Capsule().fill(tint).frame(width: max(4, geo.size.width * frac))
                 }
             }
@@ -861,7 +861,7 @@ extension HomeView {
 
                     Text(tr("hv_ai_today_ask"))
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
@@ -901,7 +901,7 @@ extension HomeView {
             HStack(spacing: 9) {
                 TextField(tr("hv_ai_bar_placeholder"), text: $aiQuickInput, axis: .vertical)
                     .font(.system(size: 14))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(UpdoTheme.cyan)
                     .lineLimit(1...3)
                     .focused($aiQuickFocused)
@@ -913,12 +913,12 @@ extension HomeView {
                 } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(quickInputReady ? Color.white : .white.opacity(0.4))
+                        .foregroundStyle(quickInputReady ? Color.white : UpdoTheme.filmy(0.4))
                         .frame(width: 30, height: 30)
                         .background(
                             Circle().fill(quickInputReady
                                           ? AnyShapeStyle(UpdoTheme.cyan)
-                                          : AnyShapeStyle(Color.white.opacity(0.08)))
+                                          : AnyShapeStyle(UpdoTheme.filmy(0.08)))
                         )
                 }
                 .buttonStyle(.plain)
@@ -929,7 +929,7 @@ extension HomeView {
             .padding(.vertical, 6)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(UpdoTheme.filmy(0.06))
                     .overlay(Capsule(style: .continuous).stroke(UpdoTheme.border, lineWidth: 1))
             )
         }
@@ -1007,7 +1007,7 @@ extension HomeView {
                       ? (challengeIsComplete ? "checkmark" : "flame.fill")
                       : "flag.checkered")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }

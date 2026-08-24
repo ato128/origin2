@@ -209,7 +209,7 @@ struct OnboardingSpotlightTour: View {
 
                 Text("Updo AI")
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Spacer(minLength: 8)
 
@@ -226,7 +226,7 @@ struct OnboardingSpotlightTour: View {
                         .font(.system(size: 11, weight: .black))
                         .foregroundStyle(muted)
                         .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.white.opacity(0.06)))
+                        .background(Circle().fill(UpdoTheme.filmy(0.06)))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tr("common_skip"))
@@ -236,7 +236,7 @@ struct OnboardingSpotlightTour: View {
 
             Text(tr(current.descKey))
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.66))
+                .foregroundStyle(UpdoTheme.filmy(0.66))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
                 .id("d\(step)")
@@ -288,7 +288,7 @@ struct OnboardingSpotlightTour: View {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .strokeBorder(
                         LinearGradient(
-                            colors: [cyan.opacity(0.32), Color.white.opacity(0.05)],
+                            colors: [cyan.opacity(0.32), UpdoTheme.filmy(0.05)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
@@ -304,7 +304,7 @@ struct OnboardingSpotlightTour: View {
         return (
             Text(lead.isEmpty ? "" : lead + " ")
                 .font(.system(size: 23, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
             + Text(accent)
                 .font(.system(size: 23, weight: .bold, design: .serif))
                 .italic()
@@ -316,7 +316,7 @@ struct OnboardingSpotlightTour: View {
         HStack(spacing: 5) {
             ForEach(0..<steps.count, id: \.self) { i in
                 Capsule()
-                    .fill(i == step ? cyan : Color.white.opacity(0.15))
+                    .fill(i == step ? cyan : UpdoTheme.filmy(0.15))
                     .frame(width: i == step ? 16 : 5, height: 5)
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: step)
             }

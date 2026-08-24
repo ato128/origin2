@@ -36,14 +36,14 @@ struct SignInView: View {
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.06))
+                                .fill(UpdoTheme.filmy(0.06))
                         )
 
                     SecureField("Password", text: $password)
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.06))
+                                .fill(UpdoTheme.filmy(0.06))
                         )
                 }
 
@@ -74,7 +74,7 @@ struct SignInView: View {
                         Capsule()
                             .fill(Color.accentColor)
                     )
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                 }
                 .buttonStyle(.plain)
 
@@ -176,7 +176,7 @@ struct ForgotPasswordSheet: View {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(isEN ? "Reset" : "Şifreni")
                                 .font(.system(size: 38, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                             Text(isEN ? "password" : "sıfırla")
                                 .font(.system(size: 35, weight: .regular, design: .serif))
                                 .italic()
@@ -191,7 +191,7 @@ struct ForgotPasswordSheet: View {
                              ? (isEN ? "Enter your email — we'll send a 6-digit code." : "E-postanı gir — 6 haneli bir kod göndereceğiz.")
                              : (isEN ? "Enter the code from your email and a new password." : "E-postana gelen kodu ve yeni şifreni gir."))
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(UpdoTheme.filmy(0.55))
 
                         VStack(spacing: 12) {
                             if step == .email {
@@ -235,7 +235,7 @@ struct ForgotPasswordSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(isEN ? "Close" : "Kapat") { dismiss() }
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(UpdoTheme.filmy(0.7))
                 }
             }
         }
@@ -255,16 +255,16 @@ struct ForgotPasswordSheet: View {
                 if secure { SecureField(placeholder, text: text) } else { TextField(placeholder, text: text) }
             }
             .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(UpdoTheme.textPrimary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 15)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(UpdoTheme.filmy(0.05))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.08), lineWidth: 1)
                 )
         )
     }
@@ -278,7 +278,7 @@ struct ForgotPasswordSheet: View {
                 if isBusy {
                     ProgressView().tint(.white)
                 } else {
-                    Text(title).font(.system(size: 17, weight: .black)).foregroundStyle(.white)
+                    Text(title).font(.system(size: 17, weight: .black)).foregroundStyle(UpdoTheme.textPrimary)
                 }
                 Spacer()
             }
@@ -301,7 +301,7 @@ struct ForgotPasswordSheet: View {
                 .foregroundStyle(color)
             Text(text)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)

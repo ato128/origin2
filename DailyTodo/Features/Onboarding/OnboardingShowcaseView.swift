@@ -88,7 +88,7 @@ struct OnboardingShowcaseView: View {
         HStack(spacing: 8) {
             ForEach(0..<pages.count, id: \.self) { i in
                 Capsule()
-                    .fill(i == index ? page.accent : Color.white.opacity(0.16))
+                    .fill(i == index ? page.accent : UpdoTheme.filmy(0.16))
                     .frame(width: i == index ? 22 : 7, height: 7)
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: index)
             }
@@ -102,7 +102,7 @@ struct OnboardingShowcaseView: View {
                 Text(tr("common_skip"))
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .tracking(0.5)
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
             }
         }
     }
@@ -120,7 +120,7 @@ struct OnboardingShowcaseView: View {
 
             Text(tr(page.benefitKey))
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.56))
+                .foregroundStyle(UpdoTheme.filmy(0.56))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -236,7 +236,7 @@ private struct PhoneFrame<Content: View>: View {
                 RoundedRectangle(cornerRadius: 44, style: .continuous)
                     .stroke(
                         LinearGradient(
-                            colors: [Color.white.opacity(0.32), Color.white.opacity(0.06)],
+                            colors: [UpdoTheme.filmy(0.32), UpdoTheme.filmy(0.06)],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         ),
                         lineWidth: 5

@@ -79,7 +79,7 @@ struct TaskScheduleSheet: View {
                 } label: {
                     Text(tr("tss_save"))
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(

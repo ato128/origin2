@@ -49,7 +49,7 @@ extension CrewChatView {
                 } label: {
                     Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                         .font(.system(size: 20, weight: .black))
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(UpdoTheme.filmy(0.95))
                         .frame(width: 42, height: 42)
                         .liquidGlass(in: Circle())
                 }
@@ -64,7 +64,7 @@ extension CrewChatView {
                     )
                     .textFieldStyle(.plain)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(Color(arenaHex: "#2DD4FF"))
                     .focused($isComposerFocused)
                     .submitLabel(.send)
@@ -108,7 +108,7 @@ extension CrewChatView {
 
                 Text(currentReply.displayText)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(UpdoTheme.filmy(0.62))
                     .lineLimit(1)
             }
 
@@ -119,14 +119,14 @@ extension CrewChatView {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.78))
+                    .foregroundStyle(UpdoTheme.filmy(0.78))
                     .frame(width: 26, height: 26)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.080))
+                            .fill(UpdoTheme.filmy(0.080))
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.09), lineWidth: 1)
                             )
                     )
             }
@@ -143,7 +143,7 @@ extension CrewChatView {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.25), radius: 12, y: 6)
         )
@@ -166,7 +166,7 @@ extension CrewChatView {
 
                 Image(systemName: canSend ? "arrow.up" : "mic.fill")
                     .font(.system(size: canSend ? 13 : 17, weight: .black))
-                    .foregroundStyle(canSend ? .black : .white.opacity(0.72))
+                    .foregroundStyle(canSend ? .black : UpdoTheme.filmy(0.72))
             }
         }
         .buttonStyle(.plain)
@@ -199,11 +199,11 @@ extension CrewChatView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tr("fc_photo_ready"))
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("fc_add_caption"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .lineLimit(2)
             }
 
@@ -217,7 +217,7 @@ extension CrewChatView {
                         colors: [
                             Color(arenaHex: "#1593FF").opacity(0.055),
                             Color(arenaHex: "#7C3AED").opacity(0.045),
-                            Color.white.opacity(0.040)
+                            UpdoTheme.filmy(0.040)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -225,7 +225,7 @@ extension CrewChatView {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.09), lineWidth: 1)
                 )
         )
     }

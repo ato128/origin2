@@ -381,7 +381,7 @@ struct InsightsView: View {
 
                 Text(tr("ins_title"))
                     .font(.system(size: 39, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
             }
@@ -395,7 +395,7 @@ struct InsightsView: View {
             } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(UpdoTheme.filmy(0.85))
                     .frame(width: 46, height: 46)
                     .background(
                         Color.clear
@@ -452,7 +452,7 @@ struct InsightsView: View {
                     Group {
                         Text(resolvedUserName)
                             .font(.system(size: 28, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
                             .opacity(heroEntered ? 1 : 0)
@@ -480,7 +480,7 @@ struct InsightsView: View {
                             Text(school.uppercased())
                                 .font(.system(size: 10, weight: .black, design: .monospaced))
                                 .tracking(1.4)
-                                .foregroundStyle(.white.opacity(0.42))
+                                .foregroundStyle(UpdoTheme.filmy(0.42))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.6)
                                 .padding(.top, 7)
@@ -526,11 +526,11 @@ struct InsightsView: View {
             VStack(spacing: 3) {
                 Text(tr("ins_hero_scroll_cue"))
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(UpdoTheme.filmy(0.35))
 
                 Image(systemName: "chevron.compact.down")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(UpdoTheme.filmy(0.35))
                     .offset(y: heroCueBounce ? 3 : -1)
             }
             .padding(.bottom, 6)
@@ -603,7 +603,7 @@ struct InsightsView: View {
 
     private var heroStatDivider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.10))
+            .fill(UpdoTheme.filmy(0.10))
             .frame(width: 1, height: 26)
     }
 
@@ -624,13 +624,13 @@ struct InsightsView: View {
                 Text(value)
                     .font(.system(size: 19, weight: .black))
                     .monospacedDigit()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Text(label)
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .tracking(1.3)
-                .foregroundStyle(.white.opacity(0.40))
+                .foregroundStyle(UpdoTheme.filmy(0.40))
         }
         .frame(maxWidth: .infinity)
     }
@@ -662,13 +662,13 @@ struct InsightsView: View {
                 Text(title)
                     .font(.system(size: 13.5, weight: .bold))
             }
-            .foregroundStyle(.white.opacity(0.85))
+            .foregroundStyle(UpdoTheme.filmy(0.85))
             .frame(maxWidth: .infinity)
             .frame(height: 40)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.05))
-                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.11), lineWidth: 1))
+                    .fill(UpdoTheme.filmy(0.05))
+                    .overlay(Capsule().strokeBorder(UpdoTheme.filmy(0.11), lineWidth: 1))
             )
             .contentShape(Capsule())
         }
@@ -720,7 +720,7 @@ struct InsightsView: View {
             }
 
             Circle()
-                .stroke(Color.white.opacity(0.07), lineWidth: 9)
+                .stroke(UpdoTheme.filmy(0.07), lineWidth: 9)
                 .frame(width: 168, height: 168)
 
             // Progress arc + tip knob share one -90° container so the knob
@@ -823,11 +823,11 @@ struct InsightsView: View {
             HStack(spacing: 7) {
                 Text(tr("iid_step_prefix"))
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
 
                 Text(missingRequirementsText(snapshot))
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.82))
+                    .foregroundStyle(UpdoTheme.filmy(0.82))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
@@ -839,7 +839,7 @@ struct InsightsView: View {
             .frame(height: 34)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.05))
+                    .fill(UpdoTheme.filmy(0.05))
                     .overlay(
                         Capsule().strokeBorder(accent.opacity(0.22), lineWidth: 1)
                     )
@@ -871,15 +871,15 @@ struct InsightsView: View {
             Text(tr("iid_next_level_fmt", snapshot.level + 1))
                 .font(.system(size: 10.5, weight: .black, design: .monospaced))
                 .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(UpdoTheme.filmy(0.42))
 
             if !snapshot.isMaxLevel {
                 Text("·")
-                    .foregroundStyle(.white.opacity(0.25))
+                    .foregroundStyle(UpdoTheme.filmy(0.25))
 
                 Text(snapshot.percentText)
                     .font(.system(size: 10.5, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(UpdoTheme.filmy(0.55))
             }
         }
     }
@@ -959,7 +959,7 @@ struct InsightsView: View {
                 Text(isEN ? "Analytics · Pro" : "Analizler · Pro")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.6)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(UpdoTheme.filmy(0.7))
 
                 Button {
                     HapticManager.shared.action()
@@ -1007,11 +1007,11 @@ struct InsightsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(tr("ins_streak_broken_title"))
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("ins_streak_broken_sub", progression.brokenStreakValue))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(UpdoTheme.filmy(0.6))
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -1050,7 +1050,7 @@ struct InsightsView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(UpdoTheme.filmy(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(coral.opacity(0.3), lineWidth: 1)
@@ -1092,7 +1092,7 @@ struct InsightsView: View {
                 Text(tr("ins_title_caps"))
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .tracking(1.6)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .opacity(smallTitleOpacity)
             }
             .padding(.top, 12)
@@ -1255,7 +1255,7 @@ struct InsightsView: View {
 
                 Text("Lv.\(pending.pendingLevel) • \(pending.pendingTitle)")
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
             }
 

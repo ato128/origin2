@@ -29,7 +29,7 @@ struct SwipeToReplyModifier: ViewModifier {
             .overlay(alignment: isFromMe ? .trailing : .leading) {
                 Image(systemName: "arrowshape.turn.up.left.fill")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(UpdoTheme.filmy(0.75))
                     .opacity(Double(min(abs(offsetX) / 50, 1)))
                     .offset(x: isFromMe ? 34 : -34)
             }
@@ -139,23 +139,23 @@ struct ChatMessageActionsPopover: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
 
-            Divider().overlay(Color.white.opacity(0.12))
+            Divider().overlay(UpdoTheme.filmy(0.12))
 
             // Aksiyonlar
             actionRow(tr("chat_action_reply"), icon: "arrowshape.turn.up.left", action: onReply)
 
             if canCopy {
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(UpdoTheme.filmy(0.08))
                 actionRow(tr("common_copy"), icon: "doc.on.doc", action: onCopy)
             }
 
             if let extraActionTitle, let extraActionIcon, let onExtra {
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(UpdoTheme.filmy(0.08))
                 actionRow(extraActionTitle, icon: extraActionIcon, action: onExtra)
             }
 
             if let onReport {
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(UpdoTheme.filmy(0.08))
                 actionRow(
                     appLanguageIsEnglish() ? "Report" : "Bildir",
                     icon: "flag",
@@ -165,7 +165,7 @@ struct ChatMessageActionsPopover: View {
             }
 
             if let onBlock {
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(UpdoTheme.filmy(0.08))
                 actionRow(
                     appLanguageIsEnglish() ? "Block user" : "Kullanıcıyı engelle",
                     icon: "hand.raised",
@@ -213,7 +213,7 @@ struct ChatReactionBadges: View {
                         if reaction.count > 1 {
                             Text("\(reaction.count)")
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.9))
+                                .foregroundStyle(UpdoTheme.filmy(0.9))
                         }
                     }
                     .padding(.horizontal, 6)

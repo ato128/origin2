@@ -110,6 +110,8 @@ struct PaywallView: View {
             }
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.05)) { appeared = true }
         }
+        // Premium paywall keeps its fixed gold-on-dark luxury look in any app appearance.
+        .preferredColorScheme(.dark)
     }
 
     private var topTint: Color {
@@ -157,9 +159,9 @@ struct PaywallView: View {
 
             (
                 Text(tr("pw_line1") + "\n")
-                    .font(.system(size: 30, weight: .bold)).foregroundStyle(.white)
+                    .font(.system(size: 30, weight: .bold)).foregroundStyle(UpdoTheme.textPrimary)
                 + Text(tr("pw_unlimited_w"))
-                    .font(.system(size: 30, weight: .bold)).foregroundStyle(.white)
+                    .font(.system(size: 30, weight: .bold)).foregroundStyle(UpdoTheme.textPrimary)
                 + Text(tr("pw_grow_w"))
                     .font(.system(size: 30, weight: .bold, design: .serif)).italic().foregroundStyle(accent)
             )
@@ -167,7 +169,7 @@ struct PaywallView: View {
 
             Text(tr("pw_subtitle"))
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(UpdoTheme.filmy(0.5))
                 .multilineTextAlignment(.center)
                 .padding(.top, 2)
         }
@@ -186,7 +188,7 @@ struct PaywallView: View {
                     .shadow(color: cyan.opacity(0.45), radius: 24, y: 9)
             } else {
                 Circle().fill(goldGradient).frame(width: 80, height: 80)
-                    .overlay(Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
+                    .overlay(Circle().strokeBorder(UpdoTheme.filmy(0.3), lineWidth: 1))
                     .shadow(color: gold.opacity(0.55), radius: 24, y: 9)
                 Image(systemName: "crown.fill")
                     .font(.system(size: 34, weight: .semibold))
@@ -223,7 +225,7 @@ struct PaywallView: View {
                 HStack(spacing: 8) {
                     UpdoAIOrb(size: 20)
                     Text("Premium AI").font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
+                        .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.55))
                 }
                 .padding(.horizontal, 13).padding(.top, 10)
 
@@ -232,7 +234,7 @@ struct PaywallView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isSelected ? cyan : cyan.opacity(0.45))
                     Text(tr("pw_tier_ai_sub")).font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(isSelected ? .white.opacity(0.6) : .white.opacity(0.3))
+                        .foregroundStyle(isSelected ? UpdoTheme.filmy(0.6) : UpdoTheme.filmy(0.3))
                 }
                 .padding(.horizontal, 13).padding(.top, 4).padding(.bottom, 14)
             }
@@ -266,7 +268,7 @@ struct PaywallView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(goldGradient)
                     Text("Premium").font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
+                        .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.55))
                 }
                 .padding(.horizontal, 13).padding(.top, 10)
 
@@ -275,7 +277,7 @@ struct PaywallView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isSelected ? gold : gold.opacity(0.45))
                     Text(tr("pw_tier_byo_sub")).font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(isSelected ? .white.opacity(0.6) : .white.opacity(0.3))
+                        .foregroundStyle(isSelected ? UpdoTheme.filmy(0.6) : UpdoTheme.filmy(0.3))
                 }
                 .padding(.horizontal, 13).padding(.top, 4).padding(.bottom, 14)
             }
@@ -291,7 +293,7 @@ struct PaywallView: View {
     private func tierBorder(_ isSelected: Bool, gradient: LinearGradient) -> some View {
         RoundedRectangle(cornerRadius: 20)
             .strokeBorder(
-                isSelected ? AnyShapeStyle(gradient) : AnyShapeStyle(Color.white.opacity(0.08)),
+                isSelected ? AnyShapeStyle(gradient) : AnyShapeStyle(UpdoTheme.filmy(0.08)),
                 lineWidth: isSelected ? 2 : 1
             )
     }
@@ -332,7 +334,7 @@ struct PaywallView: View {
             ForEach(Array(benefits.enumerated()), id: \.element) { idx, b in
                 benefitRow(index: idx, text: b)
                 if idx < benefits.count - 1 {
-                    Rectangle().fill(Color.white.opacity(0.05)).frame(height: 1)
+                    Rectangle().fill(UpdoTheme.filmy(0.05)).frame(height: 1)
                 }
             }
         }
@@ -349,7 +351,7 @@ struct PaywallView: View {
             benefitIcon(index: idx)
             Text(b)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
             Spacer(minLength: 0)
         }
         .padding(.vertical, 9)
@@ -401,9 +403,9 @@ struct PaywallView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("pw_annual")).font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
+                        .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.55))
                     Text(annualPrice + tr("pw_per_yr")).font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(isSelected ? .white.opacity(0.6) : .white.opacity(0.3))
+                        .foregroundStyle(isSelected ? UpdoTheme.filmy(0.6) : UpdoTheme.filmy(0.3))
                     Text(savingsText).font(.system(size: 11, weight: .black))
                         .foregroundStyle(isSelected ? accent : accent.opacity(0.45))
                 }
@@ -427,11 +429,11 @@ struct PaywallView: View {
                 Color.clear.frame(height: 29)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("pw_monthly")).font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
+                        .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.55))
                     Text(monthlyPrice + tr("pw_per_mo")).font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(isSelected ? .white.opacity(0.6) : .white.opacity(0.3))
+                        .foregroundStyle(isSelected ? UpdoTheme.filmy(0.6) : UpdoTheme.filmy(0.3))
                     Text(tr("pw_renews_monthly")).font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(isSelected ? .white.opacity(0.45) : .white.opacity(0.25))
+                        .foregroundStyle(isSelected ? UpdoTheme.filmy(0.45) : UpdoTheme.filmy(0.25))
                 }
                 .padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 16)
             }
@@ -446,7 +448,7 @@ struct PaywallView: View {
     private func planBorder(_ isSelected: Bool) -> some View {
         RoundedRectangle(cornerRadius: 18)
             .strokeBorder(
-                isSelected ? AnyShapeStyle(tierGradient) : AnyShapeStyle(Color.white.opacity(0.08)),
+                isSelected ? AnyShapeStyle(tierGradient) : AnyShapeStyle(UpdoTheme.filmy(0.08)),
                 lineWidth: isSelected ? 2 : 1
             )
     }
@@ -457,7 +459,7 @@ struct PaywallView: View {
         let priceText = selectedPlan == .annual ? annualPrice + tr("pw_per_yr") : monthlyPrice + tr("pw_per_mo")
         return Text("\(priceText) · \(tr("pw_cancel_anytime"))")
             .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(.white.opacity(0.42))
+            .foregroundStyle(UpdoTheme.filmy(0.42))
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
     }
@@ -486,7 +488,7 @@ struct PaywallView: View {
 
             Button { Task { await restore() } } label: {
                 Text(tr("pw_restore")).font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.4)).underline(color: .white.opacity(0.22))
+                    .foregroundStyle(UpdoTheme.filmy(0.4)).underline(color: UpdoTheme.filmy(0.22))
             }
             .buttonStyle(.plain)
         }
@@ -508,7 +510,7 @@ struct PaywallView: View {
     private func trustItem(icon: String, text: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon).font(.system(size: 12)).foregroundStyle(accent.opacity(0.8))
-            Text(text).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.5))
+            Text(text).font(.system(size: 12, weight: .semibold)).foregroundStyle(UpdoTheme.filmy(0.5))
         }
     }
 
@@ -549,13 +551,13 @@ struct PaywallView: View {
     private var legal: some View {
         VStack(spacing: 8) {
             Text(tr("pw_legal")).font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.25)).multilineTextAlignment(.center)
+                .foregroundStyle(UpdoTheme.filmy(0.25)).multilineTextAlignment(.center)
             HStack(spacing: 4) {
                 Link(tr("pw_privacy"), destination: URL(string: "https://ato128.github.io/updo-support/privacy.html")!)
                 Text("·")
                 Link(tr("pw_terms"), destination: URL(string: "https://ato128.github.io/updo-support/terms.html")!)
             }
-            .font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.30))
+            .font(.system(size: 11, weight: .medium)).foregroundStyle(UpdoTheme.filmy(0.30))
         }
     }
 
@@ -570,7 +572,7 @@ struct PaywallView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 26)).symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.white.opacity(0.25))
+                    .foregroundStyle(UpdoTheme.filmy(0.25))
             }
             .padding(.top, 16).padding(.trailing, 20)
         }

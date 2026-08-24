@@ -135,7 +135,7 @@ struct IdentityLevelUpCelebrationView: View {
             Text(tr("iluc_evolved_caps"))
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(UpdoTheme.filmy(0.42))
         }
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 10)
@@ -147,15 +147,15 @@ struct IdentityLevelUpCelebrationView: View {
                 Text("\(tr("iils_lv_short")) \(oldLevel)")
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(1.0)
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
                     .padding(.horizontal, 10)
                     .frame(height: 28)
                     .background(
                         Capsule()
-                            .fill(Color.white.opacity(0.070))
+                            .fill(UpdoTheme.filmy(0.070))
                             .overlay(
                                 Capsule()
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
 
@@ -186,14 +186,14 @@ struct IdentityLevelUpCelebrationView: View {
 
             Text(title)
                 .font(.system(size: 42, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.72)
 
             Text(tr("ilu_new_status"))
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.50))
+                .foregroundStyle(UpdoTheme.filmy(0.50))
                 .multilineTextAlignment(.center)
         }
         .opacity(appeared ? 1 : 0)
@@ -236,7 +236,7 @@ struct IdentityLevelUpCelebrationView: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.14), lineWidth: 1)
                     )
                     .shadow(
                         color: goldAccent.opacity(0.18),
@@ -286,7 +286,7 @@ struct IdentityLevelUpCelebrationView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.055),
+                                UpdoTheme.filmy(0.055),
                                 Color.clear
                             ],
                             startPoint: .top,
@@ -332,17 +332,17 @@ struct IdentityLevelUpCelebrationView: View {
                 .opacity(0.74)
 
             Circle()
-                .stroke(Color.white.opacity(0.070), lineWidth: 14)
+                .stroke(UpdoTheme.filmy(0.070), lineWidth: 14)
                 .frame(width: 164, height: 164)
 
             Circle()
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color.white.opacity(0.16),
+                            UpdoTheme.filmy(0.16),
                             goldAccent.opacity(0.20 * PerformanceSettings.radialOpacityMultiplier),
                             resolvedAccent.opacity(0.12 * PerformanceSettings.radialOpacityMultiplier),
-                            Color.white.opacity(0.030)
+                            UpdoTheme.filmy(0.030)
                         ],
                         center: .topLeading,
                         startRadius: 8,
@@ -352,7 +352,7 @@ struct IdentityLevelUpCelebrationView: View {
                 .frame(width: 154, height: 154)
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.13), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.13), lineWidth: 1)
                 )
                 .shadow(
                     color: goldAccent.opacity(0.20),
@@ -364,11 +364,11 @@ struct IdentityLevelUpCelebrationView: View {
                 Text(tr("iils_lv_short"))
                     .font(.system(size: 15, weight: .black, design: .monospaced))
                     .tracking(1.2)
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(UpdoTheme.filmy(0.52))
 
                 Text("\(newLevel)")
                     .font(.system(size: 72, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .contentTransition(.numericText())
                     .monospacedDigit()
             }

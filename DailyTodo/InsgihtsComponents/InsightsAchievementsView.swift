@@ -142,7 +142,7 @@ struct InsightsAchievementsView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(tr("iav_achievements"))
                         .font(.system(size: 37, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
 
@@ -163,7 +163,7 @@ struct InsightsAchievementsView: View {
 
                 Text(tr("ia_subtitle"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .lineLimit(2)
             }
 
@@ -174,15 +174,15 @@ struct InsightsAchievementsView: View {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.095),
-                                        Color.white.opacity(0.045)
+                                        UpdoTheme.filmy(0.095),
+                                        UpdoTheme.filmy(0.045)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -190,7 +190,7 @@ struct InsightsAchievementsView: View {
                             )
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                             )
                             .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
                     )
@@ -215,11 +215,11 @@ struct InsightsAchievementsView: View {
 
                 Text(tr("ia_unlocked_n", unlocked.count))
                     .font(.system(size: 27, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(appLanguageIsEnglish() ? "\(activePaths.count) active paths • \(badges.count) total badges" : "\(activePaths.count) aktif yol • \(badges.count) toplam rozet")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .lineLimit(2)
             }
 
@@ -227,7 +227,7 @@ struct InsightsAchievementsView: View {
 
             ZStack {
                 Circle()
-                    .stroke(Color.white.opacity(0.075), lineWidth: 10)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 10)
                     .frame(width: 82, height: 82)
 
                 Circle()
@@ -256,12 +256,12 @@ struct InsightsAchievementsView: View {
                 VStack(spacing: 1) {
                     Text("\(paths.count)")
                         .font(.system(size: 25, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .monospacedDigit()
 
                     Text(tr("iav_path_caps"))
                         .font(.system(size: 9, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
                 }
             }
         }
@@ -283,18 +283,18 @@ struct InsightsAchievementsView: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 8) {
                 Rectangle()
-                    .fill(Color.white.opacity(0.28))
+                    .fill(UpdoTheme.filmy(0.28))
                     .frame(width: 18, height: 1)
 
                 Text(title.uppercased())
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.8)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
             }
 
             Text(subtitle)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.46))
+                .foregroundStyle(UpdoTheme.filmy(0.46))
         }
         .padding(.top, 4)
     }
@@ -445,13 +445,13 @@ private struct AchievementPathCard: View {
 
                             Text(current.title)
                                 .font(.system(size: 22, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.72)
 
                             Text(current.subtitle)
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.52))
+                                .foregroundStyle(UpdoTheme.filmy(0.52))
                                 .lineLimit(1)
                         }
 
@@ -502,11 +502,11 @@ private struct AchievementPathCard: View {
 
                 Text(path.title)
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(path.subtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer()
@@ -556,7 +556,7 @@ private struct AchievementPathCard: View {
             if path.badges.count > 5 {
                 Text("+\(path.badges.count - 5)")
                     .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .padding(.leading, 8)
             }
 
@@ -571,16 +571,16 @@ private struct AchievementPathCard: View {
         } label: {
             ZStack {
                 Circle()
-                    .fill(badge.isUnlocked ? path.tint.opacity(0.22) : Color.white.opacity(0.075))
+                    .fill(badge.isUnlocked ? path.tint.opacity(0.22) : UpdoTheme.filmy(0.075))
                     .frame(width: 34, height: 34)
                     .overlay(
                         Circle()
-                            .stroke(badge.isUnlocked ? path.tint.opacity(0.18) : Color.white.opacity(0.07), lineWidth: 1)
+                            .stroke(badge.isUnlocked ? path.tint.opacity(0.18) : UpdoTheme.filmy(0.07), lineWidth: 1)
                     )
 
                 Image(systemName: badge.isUnlocked ? "checkmark" : badge.icon)
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(badge.isUnlocked ? path.tint : .white.opacity(0.42))
+                    .foregroundStyle(badge.isUnlocked ? path.tint : UpdoTheme.filmy(0.42))
             }
         }
         .buttonStyle(.plain)
@@ -588,7 +588,7 @@ private struct AchievementPathCard: View {
 
     private func pathConnector(isActive: Bool) -> some View {
         Rectangle()
-            .fill(isActive ? path.tint.opacity(0.75) : Color.white.opacity(0.14))
+            .fill(isActive ? path.tint.opacity(0.75) : UpdoTheme.filmy(0.14))
             .frame(width: 34, height: 3)
     }
 
@@ -596,7 +596,7 @@ private struct AchievementPathCard: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.075))
+                    .fill(UpdoTheme.filmy(0.075))
 
                 Capsule()
                     .fill(
@@ -654,12 +654,12 @@ private struct EarnedBadgeCard: View {
 
                 Text(badge.title)
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(2)
 
                 Text(badge.subtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(UpdoTheme.filmy(0.52))
                     .lineLimit(2)
 
                 Capsule()
@@ -673,9 +673,9 @@ private struct EarnedBadgeCard: View {
                 GeometryReader { geo in
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.0),
-                            Color.white.opacity(0.14),
-                            Color.white.opacity(0.0)
+                            UpdoTheme.filmy(0.0),
+                            UpdoTheme.filmy(0.14),
+                            UpdoTheme.filmy(0.0)
                         ],
                         startPoint: .leading,
                         endPoint: .trailing
@@ -711,7 +711,7 @@ private struct AchievementSurface: View {
                     colors: [
                         tint.opacity(0.075 + strength * 0.035),
                         Color(arenaHex: AppArenaPalette.purple).opacity(0.038),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -776,14 +776,14 @@ private struct AchievementDetailSheet: View {
                     } label: {
                         Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                             .font(.system(size: 12, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .frame(width: 34, height: 34)
                             .background(
                                 Circle()
-                                    .fill(Color.white.opacity(0.080))
+                                    .fill(UpdoTheme.filmy(0.080))
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                            .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                                     )
                             )
                     }
@@ -808,18 +808,18 @@ private struct AchievementDetailSheet: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(badge.title)
                             .font(.system(size: 26, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(2)
 
                         Text(badge.isUnlocked ? tr("ia_earned_label") : tr("ia_not_done"))
                             .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(badge.isUnlocked ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.58))
+                            .foregroundStyle(badge.isUnlocked ? Color(arenaHex: AppArenaPalette.green) : UpdoTheme.filmy(0.58))
                     }
                 }
 
                 Text(badge.subtitle)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(UpdoTheme.filmy(0.62))
                     .lineSpacing(3)
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -827,7 +827,7 @@ private struct AchievementDetailSheet: View {
                         Text(tr("ia_progress_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.2)
-                            .foregroundStyle(.white.opacity(0.42))
+                            .foregroundStyle(UpdoTheme.filmy(0.42))
 
                         Spacer()
 
@@ -839,7 +839,7 @@ private struct AchievementDetailSheet: View {
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
                             Capsule()
-                                .fill(Color.white.opacity(0.075))
+                                .fill(UpdoTheme.filmy(0.075))
 
                             Capsule()
                                 .fill(badge.isUnlocked ? Color(arenaHex: AppArenaPalette.green) : badge.accent)
@@ -853,7 +853,7 @@ private struct AchievementDetailSheet: View {
             }
             .padding(22)
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
     }
 }
 
@@ -885,7 +885,7 @@ private struct AchievementPathDetailSheet: View {
                 .padding(.bottom, 30)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
     }
 
     private var header: some View {
@@ -904,11 +904,11 @@ private struct AchievementPathDetailSheet: View {
 
                 Text(path.title)
                     .font(.system(size: 34, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(path.subtitle)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
             }
 
             Spacer()
@@ -918,14 +918,14 @@ private struct AchievementPathDetailSheet: View {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 40, height: 40)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.080))
+                            .fill(UpdoTheme.filmy(0.080))
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -953,11 +953,11 @@ private struct AchievementPathDetailSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(tr("rel_done_of", path.unlockedCount, path.badges.count))
                         .font(.system(size: 22, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("ia_progress_next"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                 }
 
                 Spacer()
@@ -970,7 +970,7 @@ private struct AchievementPathDetailSheet: View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.white.opacity(0.075))
+                        .fill(UpdoTheme.filmy(0.075))
 
                     Capsule()
                         .fill(
@@ -1031,7 +1031,7 @@ private struct AchievementPathDetailSheet: View {
 
                         Image(systemName: nodeIcon(badge: badge, isLocked: isLocked))
                             .font(.system(size: isCurrent ? 24 : 20, weight: .black))
-                            .foregroundStyle(isLocked ? .white.opacity(0.38) : nodeTint)
+                            .foregroundStyle(isLocked ? UpdoTheme.filmy(0.38) : nodeTint)
                     }
                     .shadow(
                         color: isCurrent ? path.tint.opacity(0.26) : .clear,
@@ -1044,7 +1044,7 @@ private struct AchievementPathDetailSheet: View {
                         VStack(spacing: 5) {
                             ForEach(0..<5, id: \.self) { _ in
                                 Capsule()
-                                    .fill(badge.isUnlocked ? path.tint.opacity(0.65) : Color.white.opacity(0.13))
+                                    .fill(badge.isUnlocked ? path.tint.opacity(0.65) : UpdoTheme.filmy(0.13))
                                     .frame(width: 4, height: 10)
                             }
                         }
@@ -1068,18 +1068,18 @@ private struct AchievementPathDetailSheet: View {
 
                     Text(badge.title)
                         .font(.system(size: 22, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(2)
 
                     Text(badge.subtitle)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.54))
+                        .foregroundStyle(UpdoTheme.filmy(0.54))
                         .lineLimit(2)
 
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
                             Capsule()
-                                .fill(Color.white.opacity(0.075))
+                                .fill(UpdoTheme.filmy(0.075))
 
                             Capsule()
                                 .fill(badge.isUnlocked ? Color(arenaHex: AppArenaPalette.green) : path.tint)
@@ -1126,7 +1126,7 @@ private struct AchievementPathDetailSheet: View {
     ) -> Color {
         if badge.isUnlocked { return Color(arenaHex: AppArenaPalette.green) }
         if isCurrent { return path.tint }
-        if isLocked { return .white.opacity(0.38) }
+        if isLocked { return UpdoTheme.filmy(0.38) }
         return path.tint
     }
 }

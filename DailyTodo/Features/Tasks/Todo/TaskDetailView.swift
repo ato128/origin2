@@ -859,7 +859,7 @@ private extension TaskDetailView {
             } label: {
                 Text(tr("task_detail_add_to_week"))
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(
@@ -912,7 +912,7 @@ private extension TaskDetailView {
             } label: {
                 Text(primaryActionTitle)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(
@@ -1068,7 +1068,7 @@ private extension TaskDetailView {
 
                 if isSelected {
                     Circle()
-                        .stroke(Color.white.opacity(0.95), lineWidth: 2.2)
+                        .stroke(UpdoTheme.filmy(0.95), lineWidth: 2.2)
                         .frame(width: 36, height: 36)
 
                     Circle()
@@ -1128,11 +1128,11 @@ private extension TaskDetailView {
 
             HStack(spacing: 10) {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(text)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

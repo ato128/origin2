@@ -136,7 +136,7 @@ struct UserAvatarView: View {
                     .clipShape(Circle())
                     .overlay(
                         Circle()
-                            .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                            .strokeBorder(UpdoTheme.filmy(0.14), lineWidth: 1)
                     )
             } else {
                 Circle()
@@ -145,7 +145,7 @@ struct UserAvatarView: View {
                             colors: [
                                 tint.opacity(0.24),
                                 Color(arenaHex: AppArenaPalette.purple).opacity(0.15),
-                                Color.white.opacity(0.040)
+                                UpdoTheme.filmy(0.040)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -158,7 +158,7 @@ struct UserAvatarView: View {
 
                 Text(initials)
                     .font(.system(size: size * 0.30, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
         .frame(width: size, height: size)
@@ -186,7 +186,7 @@ struct CrewAvatarView: View {
                     .scaledToFill()
                     .frame(width: size, height: size)
                     .clipShape(shape)
-                    .overlay(shape.strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
+                    .overlay(shape.strokeBorder(UpdoTheme.filmy(0.14), lineWidth: 1))
             } else {
                 shape.fill(
                     LinearGradient(
@@ -202,7 +202,7 @@ struct CrewAvatarView: View {
                 Text(String(name.prefix(1)))
                     .font(.system(size: size * 0.45, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
         .frame(width: size, height: size)

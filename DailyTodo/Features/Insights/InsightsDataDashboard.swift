@@ -148,7 +148,7 @@ struct InsightsDataDashboard: View {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 Text(durationText(weekMinutes))
                                     .font(.system(size: 30, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                                     .monospacedDigit()
 
                                 if let delta = weekDelta {
@@ -159,7 +159,7 @@ struct InsightsDataDashboard: View {
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.35))
+                            .foregroundStyle(UpdoTheme.filmy(0.35))
                     }
 
                     barChart(values: last7Days.map { focusMinutes(on: $0) }, tint: accent)
@@ -186,12 +186,12 @@ struct InsightsDataDashboard: View {
                 .font(.system(size: 11, weight: .bold))
                 .monospacedDigit()
         }
-        .foregroundStyle(delta.isUp ? green : Color.white.opacity(0.5))
+        .foregroundStyle(delta.isUp ? green : UpdoTheme.filmy(0.5))
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(delta.isUp ? green.opacity(0.13) : Color.white.opacity(0.06))
+                .fill(delta.isUp ? green.opacity(0.13) : UpdoTheme.filmy(0.06))
         )
     }
 
@@ -218,7 +218,7 @@ struct InsightsDataDashboard: View {
 
                     Text(tr("insd_hours_peak", hours.peakHour))
                         .font(.system(size: 14.5, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(UpdoTheme.filmy(0.85))
                 }
 
                 Spacer(minLength: 0)
@@ -249,11 +249,11 @@ struct InsightsDataDashboard: View {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text("\(tasksThisWeek)")
                             .font(.system(size: 19, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .monospacedDigit()
                         Text(tr("insd_completed_label"))
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
                     }
                 }
 
@@ -271,11 +271,11 @@ struct InsightsDataDashboard: View {
                 let done = tasksCompleted(on: day) > 0
                 VStack(spacing: 4) {
                     Circle()
-                        .fill(done ? green : Color.white.opacity(0.10))
+                        .fill(done ? green : UpdoTheme.filmy(0.10))
                         .frame(width: 7, height: 7)
                     Text(weekdayLetter(day))
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.white.opacity(isToday(day) ? 0.85 : 0.32))
+                        .foregroundStyle(UpdoTheme.filmy(isToday(day) ? 0.85 : 0.32))
                 }
             }
         }
@@ -291,7 +291,7 @@ struct InsightsDataDashboard: View {
                 VStack(spacing: 7) {
                     ZStack(alignment: .bottom) {
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(Color.white.opacity(0.05))
+                            .fill(UpdoTheme.filmy(0.05))
                             .frame(height: 60)
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
                             .fill(LinearGradient(colors: [tint, tint.opacity(0.55)],
@@ -300,7 +300,7 @@ struct InsightsDataDashboard: View {
                     }
                     Text(weekdayLetter(day))
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(isToday(day) ? 0.9 : 0.4))
+                        .foregroundStyle(UpdoTheme.filmy(isToday(day) ? 0.9 : 0.4))
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -311,19 +311,19 @@ struct InsightsDataDashboard: View {
         VStack(spacing: 3) {
             Text(value)
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(label)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(UpdoTheme.filmy(0.45))
         }
         .frame(maxWidth: .infinity)
     }
 
     private var statDivider: some View {
-        Rectangle().fill(Color.white.opacity(0.08)).frame(width: 1, height: 26)
+        Rectangle().fill(UpdoTheme.filmy(0.08)).frame(width: 1, height: 26)
     }
 
     // MARK: - Formatting
@@ -401,11 +401,11 @@ struct InsightsFocusHistorySheet: View {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
                     }
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .onAppear {
                 let ids = friends.compactMap { $0.backendUserID }
                 if !ids.isEmpty {
@@ -481,7 +481,7 @@ struct InsightsFocusHistorySheet: View {
                             if i % 2 == 0 || isToday {
                                 Text("\(cal.component(.day, from: b.date))")
                                     .font(.system(size: 7.5, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(.white.opacity(isToday ? 0.75 : 0.3))
+                                    .foregroundStyle(UpdoTheme.filmy(isToday ? 0.75 : 0.3))
                             } else {
                                 Text(" ").font(.system(size: 7.5))
                             }
@@ -523,11 +523,11 @@ struct InsightsFocusHistorySheet: View {
                     Text(isEN ? "You focus most around \(String(format: "%02d:00", peak))."
                               : "En çok \(String(format: "%02d:00", peak)) civarı odaklanıyorsun.")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.72))
+                        .foregroundStyle(UpdoTheme.filmy(0.72))
                 } else {
                     Text(isEN ? "No focus data yet." : "Henüz focus verisi yok.")
                         .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
                 }
 
                 HStack(alignment: .bottom, spacing: 2) {
@@ -546,10 +546,10 @@ struct InsightsFocusHistorySheet: View {
                     ForEach([0, 6, 12, 18], id: \.self) { h in
                         Text(String(format: "%02d", h))
                             .font(.system(size: 7.5, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.3))
+                            .foregroundStyle(UpdoTheme.filmy(0.3))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Text("24").font(.system(size: 7.5, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.3))
+                    Text("24").font(.system(size: 7.5, weight: .bold, design: .monospaced)).foregroundStyle(UpdoTheme.filmy(0.3))
                 }
             }
         }
@@ -595,7 +595,7 @@ struct InsightsFocusHistorySheet: View {
                          ? "When your friends share their stats, you'll see how you stack up here."
                          : "Arkadaşların istatistiklerini paylaşınca buradan kıyaslamayı görürsün.")
                         .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
                     VStack(spacing: 9) {
@@ -603,22 +603,22 @@ struct InsightsFocusHistorySheet: View {
                             HStack(spacing: 10) {
                                 Text("\(rank + 1)")
                                     .font(.system(size: 12, weight: .black, design: .monospaced))
-                                    .foregroundStyle(rank == 0 ? gold : .white.opacity(0.4))
+                                    .foregroundStyle(rank == 0 ? gold : UpdoTheme.filmy(0.4))
                                     .frame(width: 16)
 
                                 Text(e.name)
                                     .font(.system(size: 13.5, weight: e.isMe ? .black : .semibold))
-                                    .foregroundStyle(e.isMe ? accent : .white.opacity(0.9))
+                                    .foregroundStyle(e.isMe ? accent : UpdoTheme.filmy(0.9))
                                     .lineLimit(1)
                                     .frame(width: 78, alignment: .leading)
 
                                 GeometryReader { geo in
                                     ZStack(alignment: .leading) {
-                                        Capsule().fill(Color.white.opacity(0.06)).frame(height: 8)
+                                        Capsule().fill(UpdoTheme.filmy(0.06)).frame(height: 8)
                                         Capsule()
                                             .fill(e.isMe
                                                   ? AnyShapeStyle(LinearGradient(colors: [accent, Color(arenaHex: AppArenaPalette.purple)], startPoint: .leading, endPoint: .trailing))
-                                                  : AnyShapeStyle(Color.white.opacity(0.22)))
+                                                  : AnyShapeStyle(UpdoTheme.filmy(0.22)))
                                             .frame(width: max(8, geo.size.width * CGFloat(Double(e.minutes) / Double(maxV))), height: 8)
                                     }
                                 }
@@ -626,7 +626,7 @@ struct InsightsFocusHistorySheet: View {
 
                                 Text(durationText(e.minutes))
                                     .font(.system(size: 11.5, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(.white.opacity(0.7))
+                                    .foregroundStyle(UpdoTheme.filmy(0.7))
                                     .frame(width: 52, alignment: .trailing)
                             }
                         }
@@ -654,7 +654,7 @@ struct InsightsFocusHistorySheet: View {
                 if completed.isEmpty {
                     Text(tr("insd_empty"))
                         .font(.system(size: 13.5, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 6)
                 } else {
@@ -679,31 +679,31 @@ struct InsightsFocusHistorySheet: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title.isEmpty ? tr("insd_focus_untitled") : title)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                 Text(dateText(session.endedAt))
                     .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
             }
             Spacer(minLength: 6)
             Text(durationText(mins))
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(UpdoTheme.filmy(0.8))
                 .monospacedDigit()
         }
     }
 
     private func stat(value: String, label: String) -> some View {
         VStack(spacing: 4) {
-            Text(value).font(.system(size: 18, weight: .bold)).foregroundStyle(.white).monospacedDigit()
+            Text(value).font(.system(size: 18, weight: .bold)).foregroundStyle(UpdoTheme.textPrimary).monospacedDigit()
                 .lineLimit(1).minimumScaleFactor(0.7)
-            Text(label).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.45))
+            Text(label).font(.system(size: 11, weight: .semibold)).foregroundStyle(UpdoTheme.filmy(0.45))
         }
         .frame(maxWidth: .infinity)
     }
 
     private var divider: some View {
-        Rectangle().fill(Color.white.opacity(0.08)).frame(width: 1, height: 30)
+        Rectangle().fill(UpdoTheme.filmy(0.08)).frame(width: 1, height: 30)
     }
 
     private func durationText(_ minutes: Int) -> String {
@@ -792,7 +792,7 @@ struct InsightsStreakCalendarCard: View {
                     Text(monthTitle)
                         .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                         .tracking(1.2)
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(UpdoTheme.filmy(0.4))
                 }
 
                 // Weekday letters (Monday-based).
@@ -800,7 +800,7 @@ struct InsightsStreakCalendarCard: View {
                     ForEach(0..<7, id: \.self) { idx in
                         Text(localizedWeekdayLetter(idx))
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.32))
+                            .foregroundStyle(UpdoTheme.filmy(0.32))
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -841,9 +841,9 @@ struct InsightsStreakCalendarCard: View {
             case .half:
                 Circle().strokeBorder(gold.opacity(0.55), lineWidth: 1.5)
             case .empty:
-                Circle().strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+                Circle().strokeBorder(UpdoTheme.filmy(0.09), lineWidth: 1)
             case .future:
-                Circle().fill(Color.white.opacity(0.025))
+                Circle().fill(UpdoTheme.filmy(0.025))
             }
 
             Text("\(number)")
@@ -851,14 +851,14 @@ struct InsightsStreakCalendarCard: View {
                 .monospacedDigit()
                 .foregroundStyle(
                     state == .full ? Color.black.opacity(0.85)
-                    : state == .future ? Color.white.opacity(0.18)
-                    : Color.white.opacity(0.6)
+                    : state == .future ? UpdoTheme.filmy(0.18)
+                    : UpdoTheme.filmy(0.6)
                 )
         }
         .frame(height: 30)
         .overlay {
             if isToday {
-                Circle().strokeBorder(Color.white.opacity(0.55), lineWidth: 1.5)
+                Circle().strokeBorder(UpdoTheme.filmy(0.55), lineWidth: 1.5)
             }
         }
     }
@@ -878,7 +878,7 @@ struct InsightsStreakCalendarCard: View {
 
             Text(text)
                 .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(UpdoTheme.filmy(0.42))
         }
     }
 }

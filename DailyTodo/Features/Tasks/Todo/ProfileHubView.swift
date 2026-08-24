@@ -23,6 +23,7 @@ struct ProfileHubView: View {
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled = true
     @AppStorage("showOnlyToday") private var showOnlyToday = false
+    @AppStorage("updoAppearanceMode") private var appearanceModeRaw = UpdoAppearanceMode.system.rawValue
 
     // Updo AI challenge streak (written from Home when a challenge is accepted).
     @AppStorage("challengeStreakCountV1") private var challengeStreakCount = 0
@@ -89,7 +90,7 @@ struct ProfileHubView: View {
                 .padding(.bottom, 28)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAuthSheet) {
@@ -172,6 +173,8 @@ struct ProfileHubView: View {
             )
 
             VStack(spacing: 16) {
+                themeModeControl
+
                 Button {
                     showAppIconPicker = true
                 } label: {
@@ -218,6 +221,50 @@ struct ProfileHubView: View {
             )
         }
     }
+
+    /// System / Light / Dark appearance switch. `System` follows the phone.
+    var themeModeControl: some View {
+        let isEN = appLanguageIsEnglish()
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "circle.lefthalf.filled")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                    .frame(width: 34, height: 34)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color(arenaHex: AppArenaPalette.cyan).opacity(0.14))
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isEN ? "Theme" : "Tema")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text(isEN ? "System, Light or Dark" : "Sistem, Açık veya Koyu")
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(UpdoTheme.textMuted)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            Picker("", selection: $appearanceModeRaw) {
+                Text(isEN ? "System" : "Sistem").tag(UpdoAppearanceMode.system.rawValue)
+                Text(isEN ? "Light" : "Açık").tag(UpdoAppearanceMode.light.rawValue)
+                Text(isEN ? "Dark" : "Koyu").tag(UpdoAppearanceMode.dark.rawValue)
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(UpdoTheme.filmy(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(UpdoTheme.border, lineWidth: 1)
+                )
+        )
+    }
 }
 
 // MARK: - Main Sections
@@ -231,16 +278,16 @@ private extension ProfileHubView {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
-                    .background(arenaCircleBackground(tint: .white.opacity(0.50)))
+                    .background(arenaCircleBackground(tint: UpdoTheme.filmy(0.50)))
             }
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 7) {
                 Text(tr("ph_header_title"))
                     .font(.system(size: 38, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.70)
             }
@@ -284,7 +331,7 @@ private extension ProfileHubView {
 
                 Image(systemName: "flame.fill")
                     .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -296,17 +343,17 @@ private extension ProfileHubView {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(challengeStreakCount)")
                         .font(.system(size: 28, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .monospacedDigit()
 
                     Text(tr("ph_ch_streak_title"))
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.78))
+                        .foregroundStyle(UpdoTheme.filmy(0.78))
                 }
 
                 Text(tr("ph_ch_streak_total", challengeAcceptedTotal))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
             }
 
             Spacer(minLength: 0)
@@ -367,7 +414,7 @@ private extension ProfileHubView {
                 )
 
                 Divider()
-                    .overlay(Color.white.opacity(0.075))
+                    .overlay(UpdoTheme.filmy(0.075))
 
                 toggleRow(
                     icon: "calendar",
@@ -378,7 +425,7 @@ private extension ProfileHubView {
                 )
 
                 Divider()
-                    .overlay(Color.white.opacity(0.075))
+                    .overlay(UpdoTheme.filmy(0.075))
 
                 Button {
                     showNotificationSettings = true
@@ -393,7 +440,7 @@ private extension ProfileHubView {
                 .buttonStyle(.plain)
 
                 Divider()
-                    .overlay(Color.white.opacity(0.075))
+                    .overlay(UpdoTheme.filmy(0.075))
 
                 profileRow(
                     icon: "timer",
@@ -431,11 +478,11 @@ private extension ProfileHubView {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("settings_app_language_title"))
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("ph_lang_picker"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                 }
 
                 Spacer()
@@ -470,7 +517,7 @@ private extension ProfileHubView {
                 italic: tr("ph_w_about_updo"),
                 subtitle: tr("ph_about_sub"),
                 icon: "info.circle.fill",
-                tint: .white.opacity(0.72)
+                tint: UpdoTheme.filmy(0.72)
             )
 
             VStack(spacing: 16) {
@@ -487,7 +534,7 @@ private extension ProfileHubView {
                 .buttonStyle(.plain)
 
                 Divider()
-                    .overlay(Color.white.opacity(0.075))
+                    .overlay(UpdoTheme.filmy(0.075))
 
                 Button {
                     HapticManager.shared.selection()
@@ -507,7 +554,7 @@ private extension ProfileHubView {
                 .buttonStyle(.plain)
 
                 Divider()
-                    .overlay(Color.white.opacity(0.075))
+                    .overlay(UpdoTheme.filmy(0.075))
 
                 Button {
                     showMadeWithCare = true
@@ -524,7 +571,7 @@ private extension ProfileHubView {
             .padding(18)
             .background(
                 arenaCardBackground(
-                    tint: .white.opacity(0.45),
+                    tint: UpdoTheme.filmy(0.45),
                     radius: 30,
                     strength: 0.34
                 )
@@ -557,7 +604,7 @@ private extension ProfileHubView {
                 .buttonStyle(.plain)
                 .disabled(isRestoring)
 
-                Divider().overlay(Color.white.opacity(0.075))
+                Divider().overlay(UpdoTheme.filmy(0.075))
 
                 Button {
                     HapticManager.shared.selection()
@@ -572,7 +619,7 @@ private extension ProfileHubView {
                 }
                 .buttonStyle(.plain)
 
-                Divider().overlay(Color.white.opacity(0.075))
+                Divider().overlay(UpdoTheme.filmy(0.075))
 
                 Button {
                     if let url = URL(string: Self.termsURL) { openURL(url) }
@@ -586,7 +633,7 @@ private extension ProfileHubView {
                 }
                 .buttonStyle(.plain)
 
-                Divider().overlay(Color.white.opacity(0.075))
+                Divider().overlay(UpdoTheme.filmy(0.075))
 
                 Button {
                     if let url = URL(string: Self.privacyURL) { openURL(url) }
@@ -666,14 +713,14 @@ private extension ProfileHubView {
 
                                 Text(tr("ph_sign_out_sub"))
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.48))
+                                    .foregroundStyle(UpdoTheme.filmy(0.48))
                             }
 
                             Spacer()
 
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 13, weight: .black))
-                                .foregroundStyle(.white.opacity(0.34))
+                                .foregroundStyle(UpdoTheme.filmy(0.34))
                         }
                         .padding(18)
                         .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.coral), radius: 30, strength: 0.48))
@@ -698,7 +745,7 @@ private extension ProfileHubView {
                             colors: [
                                 pageAccent.opacity(0.42),
                                 secondaryAccent.opacity(0.32),
-                                Color.white.opacity(0.060)
+                                UpdoTheme.filmy(0.060)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -713,13 +760,13 @@ private extension ProfileHubView {
 
                 Image(systemName: "person.fill")
                     .font(.system(size: 23, weight: .black))
-                    .foregroundStyle(.white.opacity(0.96))
+                    .foregroundStyle(UpdoTheme.filmy(0.96))
             }
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(user.fullName.isEmpty ? tr("ph_user") : user.fullName)
                     .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
 
                 if let academicLine = academicPrimaryLine {
@@ -730,19 +777,19 @@ private extension ProfileHubView {
                 } else {
                     Text("@\(user.username)")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.62))
+                        .foregroundStyle(UpdoTheme.filmy(0.62))
                         .lineLimit(1)
                 }
 
                 if let academicSecondaryLine {
                     Text(academicSecondaryLine)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.46))
+                        .foregroundStyle(UpdoTheme.filmy(0.46))
                         .lineLimit(1)
                 } else {
                     Text(user.email)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.38))
+                        .foregroundStyle(UpdoTheme.filmy(0.38))
                         .lineLimit(1)
                 }
             }
@@ -816,7 +863,7 @@ private extension ProfileHubView {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(title)
                         .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(italic)
                         .font(.system(size: 23, weight: .regular, design: .serif))
@@ -854,14 +901,14 @@ private extension ProfileHubView {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .black))
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
         }
     }
 
@@ -878,7 +925,7 @@ private extension ProfileHubView {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -902,7 +949,7 @@ private extension ProfileHubView {
             Text(title.uppercased())
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .tracking(0.45)
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundStyle(UpdoTheme.filmy(0.82))
                 .lineLimit(1)
         }
         .padding(.horizontal, 10)
@@ -942,9 +989,9 @@ private extension ProfileHubView {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.100),
+                        UpdoTheme.filmy(0.100),
                         Color.black.opacity(0.26),
-                        Color.white.opacity(0.050)
+                        UpdoTheme.filmy(0.050)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -952,7 +999,7 @@ private extension ProfileHubView {
             )
             .overlay(
                 Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
     }
@@ -964,7 +1011,7 @@ private extension ProfileHubView {
                     colors: [
                         tint.opacity(0.070 + strength * 0.035),
                         secondaryAccent.opacity(0.040),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1091,7 +1138,7 @@ private struct SmartNotificationSettingsView: View {
                     .padding(.bottom, 28)
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -1113,7 +1160,7 @@ private struct SmartNotificationSettingsView: View {
                 } label: {
                     Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .frame(width: 44, height: 44)
                         .background(circleBackground)
                 }
@@ -1137,7 +1184,7 @@ private struct SmartNotificationSettingsView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(tr("ph_w_smart"))
                         .font(.system(size: 38, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("ph_w_notifications_lc"))
                         .font(.system(size: 34, weight: .regular, design: .serif))
@@ -1160,7 +1207,7 @@ private struct SmartNotificationSettingsView: View {
                 isOn: $smartNotificationsEnabled
             )
 
-            Divider().overlay(Color.white.opacity(0.075))
+            Divider().overlay(UpdoTheme.filmy(0.075))
 
             toggleRow(
                 icon: "graduationcap.fill",
@@ -1172,7 +1219,7 @@ private struct SmartNotificationSettingsView: View {
             .disabled(!smartNotificationsEnabled)
             .opacity(smartNotificationsEnabled ? 1 : 0.45)
 
-            Divider().overlay(Color.white.opacity(0.075))
+            Divider().overlay(UpdoTheme.filmy(0.075))
 
             toggleRow(
                 icon: "flame.fill",
@@ -1184,7 +1231,7 @@ private struct SmartNotificationSettingsView: View {
             .disabled(!smartNotificationsEnabled)
             .opacity(smartNotificationsEnabled ? 1 : 0.45)
 
-            Divider().overlay(Color.white.opacity(0.075))
+            Divider().overlay(UpdoTheme.filmy(0.075))
 
             toggleRow(
                 icon: "timer",
@@ -1196,7 +1243,7 @@ private struct SmartNotificationSettingsView: View {
             .disabled(!smartNotificationsEnabled)
             .opacity(smartNotificationsEnabled ? 1 : 0.45)
 
-            Divider().overlay(Color.white.opacity(0.075))
+            Divider().overlay(UpdoTheme.filmy(0.075))
 
             toggleRow(
                 icon: "checklist",
@@ -1208,7 +1255,7 @@ private struct SmartNotificationSettingsView: View {
             .disabled(!smartNotificationsEnabled)
             .opacity(smartNotificationsEnabled ? 1 : 0.45)
 
-            Divider().overlay(Color.white.opacity(0.075))
+            Divider().overlay(UpdoTheme.filmy(0.075))
 
             toggleRow(
                 icon: "sparkles",
@@ -1242,11 +1289,11 @@ private struct SmartNotificationSettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tr("ph_rhythm_title"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(text)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .lineLimit(2)
             }
 
@@ -1258,23 +1305,23 @@ private struct SmartNotificationSettingsView: View {
 
     private var quietCard: some View {
         HStack(spacing: 13) {
-            iconBox("moon.zzz.fill", tint: .white.opacity(0.70))
+            iconBox("moon.zzz.fill", tint: UpdoTheme.filmy(0.70))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(tr("ph_quiet_hours_title"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("ph_quiet_hours"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .lineLimit(2)
             }
 
             Spacer()
         }
         .padding(18)
-        .background(cardBackground(.white.opacity(0.46), strength: 0.28))
+        .background(cardBackground(UpdoTheme.filmy(0.46), strength: 0.28))
     }
 
     private var philosophyCard: some View {
@@ -1285,17 +1332,17 @@ private struct SmartNotificationSettingsView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("ph_not_spam"))
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("ph_not_spam_sub"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                 }
             }
 
             Text(tr("ph_not_spam_body"))
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.48))
+                .foregroundStyle(UpdoTheme.filmy(0.48))
                 .lineSpacing(3)
         }
         .padding(18)
@@ -1315,7 +1362,7 @@ private struct SmartNotificationSettingsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -1343,8 +1390,8 @@ private struct SmartNotificationSettingsView: View {
 
     private var circleBackground: some View {
         Circle()
-            .fill(Color.white.opacity(0.08))
-            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
+            .fill(UpdoTheme.filmy(0.08))
+            .overlay(Circle().stroke(UpdoTheme.filmy(0.12), lineWidth: 1))
     }
 
     private func iconBackground(_ tint: Color) -> some View {
@@ -1363,7 +1410,7 @@ private struct SmartNotificationSettingsView: View {
                     colors: [
                         tint.opacity(0.070 + strength * 0.035),
                         Color(arenaHex: AppArenaPalette.purple).opacity(0.035),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1413,7 +1460,7 @@ private struct AboutUpdoView: View {
                     .padding(.bottom, 28)
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -1427,9 +1474,9 @@ private struct AboutUpdoView: View {
                 } label: {
                     Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .frame(width: 44, height: 44)
-                        .background(Circle().fill(Color.white.opacity(0.08)))
+                        .background(Circle().fill(UpdoTheme.filmy(0.08)))
                 }
                 .buttonStyle(.plain)
 
@@ -1447,7 +1494,7 @@ private struct AboutUpdoView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(tr("ph_about_title"))
                         .font(.system(size: 38, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("ph_about_title_italic"))
                         .font(.system(size: 31, weight: .regular, design: .serif))
@@ -1458,7 +1505,7 @@ private struct AboutUpdoView: View {
 
                 Text(tr("ph_about_body1"))
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(UpdoTheme.filmy(0.52))
                     .lineSpacing(3)
             }
         }
@@ -1480,12 +1527,12 @@ private struct AboutUpdoView: View {
 
             Image(systemName: "location.north.fill")
                 .font(.system(size: 17, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
         }
         .frame(width: 54, height: 54)
         .background(
             Circle()
-                .fill(Color.white.opacity(0.07))
+                .fill(UpdoTheme.filmy(0.07))
                 .overlay(Circle().stroke(cyan.opacity(0.20), lineWidth: 1))
         )
     }
@@ -1494,11 +1541,11 @@ private struct AboutUpdoView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(tr("ph_about_why"))
                 .font(.system(size: 22, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Text(tr("ph_about_body2"))
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(UpdoTheme.filmy(0.52))
                 .lineSpacing(4)
         }
         .padding(18)
@@ -1522,7 +1569,7 @@ private struct AboutUpdoView: View {
 
             Text(title)
                 .font(.system(size: 16, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -1543,11 +1590,11 @@ private struct AboutUpdoView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Updo")
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("ph_about_version"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer()
@@ -1563,7 +1610,7 @@ private struct AboutUpdoView: View {
                     colors: [
                         tint.opacity(0.070 + strength * 0.035),
                         Color(arenaHex: AppArenaPalette.purple).opacity(0.035),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1603,9 +1650,9 @@ private struct MadeWithCareView: View {
                         } label: {
                             Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                                 .font(.system(size: 15, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                                 .frame(width: 44, height: 44)
-                                .background(Circle().fill(Color.white.opacity(0.08)))
+                                .background(Circle().fill(UpdoTheme.filmy(0.08)))
                         }
                         .buttonStyle(.plain)
 
@@ -1663,7 +1710,7 @@ private struct MadeWithCareView: View {
 
                             Text(tr("ph_made_body"))
                                 .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.55))
+                                .foregroundStyle(UpdoTheme.filmy(0.55))
                                 .multilineTextAlignment(.center)
                                 .lineSpacing(4)
                                 .padding(.horizontal, 24)
@@ -1677,10 +1724,10 @@ private struct MadeWithCareView: View {
                         .padding(18)
                         .background(
                             RoundedRectangle(cornerRadius: 30, style: .continuous)
-                                .fill(Color(arenaHex: AppArenaPalette.surface).opacity(0.88))
+                                .fill(AppArenaPalette.surfaceColor.opacity(0.88))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 30, style: .continuous)
-                                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                        .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                                 )
                         )
                         .padding(.horizontal, 16)
@@ -1690,7 +1737,7 @@ private struct MadeWithCareView: View {
                     Spacer()
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -1709,7 +1756,7 @@ private struct MadeWithCareView: View {
 
             Text(text)
                 .font(.system(size: 15, weight: .black))
-                .foregroundStyle(.white.opacity(0.86))
+                .foregroundStyle(UpdoTheme.filmy(0.86))
 
             Spacer()
         }
@@ -1791,7 +1838,7 @@ struct AppIconPickerView: View {
                         .fontWeight(.bold)
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .sheet(isPresented: $showPaywall) {
                 PaywallView(context: "app_icon")
             }
@@ -1808,15 +1855,15 @@ struct AppIconPickerView: View {
                 IconThumb(fg: opt.fg, bg: opt.bg)
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.09), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(UpdoTheme.filmy(0.09), lineWidth: 1))
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(opt.name)
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                     Text(opt.pro ? "Updo Pro" : (appLanguageIsEnglish() ? "Default" : "Varsayılan"))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(opt.pro ? Color(arenaHex: AppArenaPalette.gold) : .white.opacity(0.45))
+                        .foregroundStyle(opt.pro ? Color(arenaHex: AppArenaPalette.gold) : UpdoTheme.filmy(0.45))
                 }
 
                 Spacer()
@@ -1834,8 +1881,8 @@ struct AppIconPickerView: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(selected ? Color(arenaHex: AppArenaPalette.green).opacity(0.5) : Color.white.opacity(0.07), lineWidth: 1))
+                    .fill(UpdoTheme.filmy(0.04))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(selected ? Color(arenaHex: AppArenaPalette.green).opacity(0.5) : UpdoTheme.filmy(0.07), lineWidth: 1))
             )
         }
         .buttonStyle(.plain)
@@ -1913,7 +1960,7 @@ struct LiveActivityStylePickerView: View {
 
                         Text(tr("las_hint"))
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.40))
+                            .foregroundStyle(UpdoTheme.filmy(0.40))
                     }
                     .padding(20)
                 }
@@ -1926,7 +1973,7 @@ struct LiveActivityStylePickerView: View {
                         .fontWeight(.bold)
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .sheet(isPresented: $showPaywall) {
                 PaywallView(context: "live_activity_style")
             }
@@ -1942,13 +1989,13 @@ struct LiveActivityStylePickerView: View {
                 Text("— \(tr("las_preview_caps")) —")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(2.2)
-                    .foregroundStyle(.white.opacity(0.34))
+                    .foregroundStyle(UpdoTheme.filmy(0.34))
 
                 Spacer()
 
                 Text(previewStyle.displayName)
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(previewStyle.isProOnly ? gold : .white.opacity(0.5))
+                    .foregroundStyle(previewStyle.isProOnly ? gold : UpdoTheme.filmy(0.5))
             }
 
             FocusLiveStyleCard(
@@ -2015,7 +2062,7 @@ struct LiveActivityStylePickerView: View {
             VStack(spacing: 5) {
                 Text(style.displayName)
                     .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
 
@@ -2031,14 +2078,14 @@ struct LiveActivityStylePickerView: View {
                     Text(style.isProOnly ? "PRO" : tr("las_default"))
                         .font(.system(size: 8.5, weight: .black, design: .monospaced))
                         .tracking(0.6)
-                        .foregroundStyle(style.isProOnly ? gold.opacity(0.85) : .white.opacity(0.4))
+                        .foregroundStyle(style.isProOnly ? gold.opacity(0.85) : UpdoTheme.filmy(0.4))
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 58)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(previewing ? 0.09 : 0.04))
+                    .fill(UpdoTheme.filmy(previewing ? 0.09 : 0.04))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .strokeBorder(
@@ -2046,7 +2093,7 @@ struct LiveActivityStylePickerView: View {
                                 ? cyan.opacity(0.55)
                                 : (selected
                                    ? Color(arenaHex: AppArenaPalette.green).opacity(0.5)
-                                   : Color.white.opacity(0.07)),
+                                   : UpdoTheme.filmy(0.07)),
                                 lineWidth: 1
                             )
                     )
@@ -2113,7 +2160,7 @@ struct WidgetStylePickerView: View {
 
                         Text(tr("ws_hint"))
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.40))
+                            .foregroundStyle(UpdoTheme.filmy(0.40))
                     }
                     .padding(20)
                 }
@@ -2126,7 +2173,7 @@ struct WidgetStylePickerView: View {
                         .fontWeight(.bold)
                 }
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .sheet(isPresented: $showPaywall) {
                 PaywallView(context: "widget_style")
             }
@@ -2142,7 +2189,7 @@ struct WidgetStylePickerView: View {
                 Text("— \(tr("las_preview_caps")) —")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(2.2)
-                    .foregroundStyle(.white.opacity(0.34))
+                    .foregroundStyle(UpdoTheme.filmy(0.34))
 
                 Spacer()
 
@@ -2150,7 +2197,7 @@ struct WidgetStylePickerView: View {
 
                 Text(previewStyle.displayName)
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(previewStyle.isProOnly ? gold : .white.opacity(0.5))
+                    .foregroundStyle(previewStyle.isProOnly ? gold : UpdoTheme.filmy(0.5))
             }
 
             HStack {
@@ -2202,11 +2249,11 @@ struct WidgetStylePickerView: View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 10, weight: .black, design: .monospaced))
-                .foregroundStyle(isOn ? .black : .white.opacity(0.5))
+                .foregroundStyle(isOn ? .black : UpdoTheme.filmy(0.5))
                 .frame(width: 22, height: 20)
                 .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(isOn ? cyan : Color.white.opacity(0.07))
+                        .fill(isOn ? cyan : UpdoTheme.filmy(0.07))
                 )
         }
         .buttonStyle(.plain)
@@ -2241,7 +2288,7 @@ struct WidgetStylePickerView: View {
             VStack(spacing: 5) {
                 Text(style.displayName)
                     .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
 
@@ -2257,14 +2304,14 @@ struct WidgetStylePickerView: View {
                     Text(style.isProOnly ? "PRO" : tr("las_default"))
                         .font(.system(size: 8.5, weight: .black, design: .monospaced))
                         .tracking(0.6)
-                        .foregroundStyle(style.isProOnly ? gold.opacity(0.85) : .white.opacity(0.4))
+                        .foregroundStyle(style.isProOnly ? gold.opacity(0.85) : UpdoTheme.filmy(0.4))
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 58)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(previewing ? 0.09 : 0.04))
+                    .fill(UpdoTheme.filmy(previewing ? 0.09 : 0.04))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .strokeBorder(
@@ -2272,7 +2319,7 @@ struct WidgetStylePickerView: View {
                                 ? cyan.opacity(0.55)
                                 : (selected
                                    ? Color(arenaHex: AppArenaPalette.green).opacity(0.5)
-                                   : Color.white.opacity(0.07)),
+                                   : UpdoTheme.filmy(0.07)),
                                 lineWidth: 1
                             )
                     )

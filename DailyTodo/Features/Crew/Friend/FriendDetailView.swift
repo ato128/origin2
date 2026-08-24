@@ -322,14 +322,14 @@ private extension FriendDetailView {
             } label: {
                 Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -339,7 +339,7 @@ private extension FriendDetailView {
 
             Text(friend.name)
                 .font(.system(size: 20, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
@@ -365,16 +365,16 @@ private extension FriendDetailView {
                     } else {
                         Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
                             .font(.system(size: 19, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     }
                 }
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(Color.white.opacity(0.075))
+                        .fill(UpdoTheme.filmy(0.075))
                         .overlay(
                             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                         )
                 )
             }
@@ -414,7 +414,7 @@ private extension FriendDetailView {
             VStack(spacing: 5) {
                 Text(friend.name)
                     .font(.system(size: 26, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
 
@@ -426,7 +426,7 @@ private extension FriendDetailView {
 
                     Text(heroStatusText)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(UpdoTheme.filmy(0.55))
                 }
             }
 
@@ -553,7 +553,7 @@ private extension FriendDetailView {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(friend.name)
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.62)
 
@@ -565,7 +565,7 @@ private extension FriendDetailView {
 
                     Text(friend.subtitle)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                         .lineLimit(2)
 
                     HStack(spacing: 8) {
@@ -742,7 +742,7 @@ private extension FriendDetailView {
 
                 Text(friendInsightLine)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(UpdoTheme.filmy(0.52))
                     .lineLimit(2)
 
                 Spacer()
@@ -830,7 +830,7 @@ private extension FriendDetailView {
             Text(format(mine))
                 .font(.system(size: 16, weight: .black, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(iLead ? gold : .white.opacity(0.85))
+                .foregroundStyle(iLead ? gold : UpdoTheme.filmy(0.85))
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: 5) {
@@ -840,23 +840,23 @@ private extension FriendDetailView {
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(0.8)
             }
-            .foregroundStyle(.white.opacity(0.40))
+            .foregroundStyle(UpdoTheme.filmy(0.40))
             .frame(minWidth: 84)
 
             Text(format(theirs))
                 .font(.system(size: 16, weight: .black, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(theyLead ? gold : .white.opacity(0.85))
+                .foregroundStyle(theyLead ? gold : UpdoTheme.filmy(0.85))
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .background(
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
     }
@@ -946,12 +946,12 @@ private extension FriendDetailView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
 
                 Text("\(hm(item.startMinute)) – \(hm(item.startMinute + item.durationMinute))")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
             }
 
             Spacer()
@@ -986,14 +986,14 @@ private extension FriendDetailView {
         VStack(spacing: 4) {
             Text(value)
                 .font(.system(size: 21, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .monospacedDigit()
                 .lineLimit(1)
 
             Text(title)
                 .font(.system(size: 9, weight: .bold, design: .monospaced))
                 .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
         }
@@ -1006,7 +1006,7 @@ private extension FriendDetailView {
         VStack(spacing: 5) {
             Text(value)
                 .font(.system(size: 18, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .monospacedDigit()
                 .lineLimit(1)
 
@@ -1074,7 +1074,7 @@ private extension FriendDetailView {
 
             Text(text)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.50))
+                .foregroundStyle(UpdoTheme.filmy(0.50))
                 .lineLimit(2)
 
             Spacer()
@@ -1088,19 +1088,19 @@ private extension FriendDetailView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -1112,7 +1112,7 @@ private extension FriendDetailView {
                     colors: [
                         tint.opacity(0.055),
                         FriendDetailArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1132,7 +1132,7 @@ private extension FriendDetailView {
                     colors: [
                         FriendDetailArenaPalette.blue.opacity(0.035),
                         FriendDetailArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1140,7 +1140,7 @@ private extension FriendDetailView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }

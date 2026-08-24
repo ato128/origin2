@@ -14,8 +14,8 @@ extension CrewChatView {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.16),
-                        Color.white.opacity(0.08)
+                        UpdoTheme.filmy(0.16),
+                        UpdoTheme.filmy(0.08)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -27,7 +27,7 @@ extension CrewChatView {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.18),
+                                UpdoTheme.filmy(0.18),
                                 Color.clear
                             ],
                             startPoint: .topLeading,
@@ -37,16 +37,16 @@ extension CrewChatView {
             )
             .overlay(
                 Circle()
-                    .stroke(Color.white.opacity(0.16), lineWidth: 0.9)
+                    .stroke(UpdoTheme.filmy(0.16), lineWidth: 0.9)
             )
             .overlay(
                 Circle()
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.28),
+                                UpdoTheme.filmy(0.28),
                                 Color.clear,
-                                Color.white.opacity(0.10)
+                                UpdoTheme.filmy(0.10)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -62,8 +62,8 @@ extension CrewChatView {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.15),
-                        Color.white.opacity(0.07)
+                        UpdoTheme.filmy(0.15),
+                        UpdoTheme.filmy(0.07)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -75,7 +75,7 @@ extension CrewChatView {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.16),
+                                UpdoTheme.filmy(0.16),
                                 Color.clear
                             ],
                             startPoint: .topLeading,
@@ -85,16 +85,16 @@ extension CrewChatView {
             )
             .overlay(
                 Capsule()
-                    .stroke(Color.white.opacity(0.14), lineWidth: 0.9)
+                    .stroke(UpdoTheme.filmy(0.14), lineWidth: 0.9)
             )
             .overlay(
                 Capsule()
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.24),
+                                UpdoTheme.filmy(0.24),
                                 Color.clear,
-                                Color.white.opacity(0.08)
+                                UpdoTheme.filmy(0.08)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -110,8 +110,8 @@ extension CrewChatView {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.14),
-                        Color.white.opacity(0.06)
+                        UpdoTheme.filmy(0.14),
+                        UpdoTheme.filmy(0.06)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -126,7 +126,7 @@ extension CrewChatView {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.16),
+                                UpdoTheme.filmy(0.16),
                                 Color.clear
                             ],
                             startPoint: .topLeading,
@@ -136,16 +136,16 @@ extension CrewChatView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.14), lineWidth: 0.9)
+                    .stroke(UpdoTheme.filmy(0.14), lineWidth: 0.9)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.22),
+                                UpdoTheme.filmy(0.22),
                                 Color.clear,
-                                Color.white.opacity(0.08)
+                                UpdoTheme.filmy(0.08)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing

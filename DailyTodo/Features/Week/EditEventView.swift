@@ -119,7 +119,7 @@ struct EditEventView: View {
                 Text(conflictSummary)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .tint(UpdoTheme.cyan)
     }
 
@@ -197,7 +197,7 @@ struct EditEventView: View {
                     .padding(.horizontal, 2)
                 }
 
-                Divider().overlay(Color.white.opacity(0.06))
+                Divider().overlay(UpdoTheme.filmy(0.06))
 
                 DatePicker(
                     "event_start",
@@ -250,7 +250,7 @@ struct EditEventView: View {
 
                                 if isSelected {
                                     Circle()
-                                        .stroke(Color.white.opacity(0.95), lineWidth: 2.2)
+                                        .stroke(UpdoTheme.filmy(0.95), lineWidth: 2.2)
                                         .frame(width: 38, height: 38)
 
                                     Circle()
@@ -284,10 +284,10 @@ struct EditEventView: View {
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(UpdoTheme.filmy(0.05))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.04), lineWidth: 1)
                     )
             )
         }
@@ -340,7 +340,7 @@ struct EditEventView: View {
         } label: {
             Text(localizedDayTitle(i))
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(isSelected ? .black : .white.opacity(0.6))
+                .foregroundStyle(isSelected ? .black : UpdoTheme.filmy(0.6))
                 .frame(width: 52, height: 40)
                 .background {
                     if isSelected {
@@ -349,7 +349,7 @@ struct EditEventView: View {
                             .matchedGeometryEffect(id: "day-selection-pill", in: daySelectionNamespace)
                     } else {
                         Capsule()
-                            .fill(Color.white.opacity(0.05))
+                            .fill(UpdoTheme.filmy(0.05))
                     }
                 }
                 .contentShape(Capsule())
@@ -365,10 +365,10 @@ struct EditEventView: View {
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(UpdoTheme.filmy(0.05))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.04), lineWidth: 1)
                     )
             )
     }
@@ -433,10 +433,10 @@ struct EditEventView: View {
 
     private var sectionCardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(Color.white.opacity(0.045))
+            .fill(UpdoTheme.filmy(0.045))
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
             )
     }
 

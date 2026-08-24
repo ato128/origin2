@@ -60,7 +60,7 @@ struct ImportScheduleView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .tint(UpdoTheme.cyan)
     }
 
@@ -186,10 +186,10 @@ struct ImportScheduleView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.045))
+            .fill(UpdoTheme.filmy(0.045))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
             )
     }
 

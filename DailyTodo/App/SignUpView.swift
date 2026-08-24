@@ -34,7 +34,7 @@ struct SignUpView: View {
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.06))
+                                .fill(UpdoTheme.filmy(0.06))
                         )
 
                     TextField("Email", text: $email)
@@ -43,7 +43,7 @@ struct SignUpView: View {
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.06))
+                                .fill(UpdoTheme.filmy(0.06))
                         )
 
                     TextField("Username", text: $username)
@@ -51,14 +51,14 @@ struct SignUpView: View {
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.06))
+                                .fill(UpdoTheme.filmy(0.06))
                         )
 
                     SecureField("Password", text: $password)
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.06))
+                                .fill(UpdoTheme.filmy(0.06))
                         )
                 }
 
@@ -89,7 +89,7 @@ struct SignUpView: View {
                         Capsule()
                             .fill(Color.accentColor)
                     )
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                 }
                 .buttonStyle(.plain)
 

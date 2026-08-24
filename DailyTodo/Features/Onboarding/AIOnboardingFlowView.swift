@@ -54,9 +54,9 @@ struct AIOnboardingFlowView: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(UpdoTheme.filmy(0.92))
                         .frame(width: 38, height: 38)
-                        .background(Circle().fill(Color.white.opacity(0.12)))
+                        .background(Circle().fill(UpdoTheme.filmy(0.12)))
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -116,7 +116,7 @@ struct AIOnboardingFlowView: View {
             HStack(spacing: 10) {
                 Text(store.currentLine)
                     .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -136,20 +136,20 @@ struct AIOnboardingFlowView: View {
                             colors: [
                                 Color(arenaHex: AppArenaPalette.cyan).opacity(0.07),
                                 Color(arenaHex: AppArenaPalette.purple).opacity(0.06),
-                                Color.white.opacity(0.04)
+                                UpdoTheme.filmy(0.04)
                             ],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         )
                     )
                     .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(Color.white.opacity(0.09), lineWidth: 1))
+                        .stroke(UpdoTheme.filmy(0.09), lineWidth: 1))
                     .shadow(color: Color.black.opacity(0.28), radius: 18, y: 10)
             )
 
             Triangle()
                 .fill(
                     LinearGradient(
-                        colors: [Color(arenaHex: AppArenaPalette.purple).opacity(0.10), Color.white.opacity(0.05)],
+                        colors: [Color(arenaHex: AppArenaPalette.purple).opacity(0.10), UpdoTheme.filmy(0.05)],
                         startPoint: .top, endPoint: .bottom
                     )
                 )
@@ -224,7 +224,7 @@ struct AIOnboardingFlowView: View {
     private var universitySearch: some View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(.white.opacity(0.5))
+                Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(UpdoTheme.filmy(0.5))
 
                 TextField(
                     tr("aio_uni_placeholder"),
@@ -234,7 +234,7 @@ struct AIOnboardingFlowView: View {
                     )
                 )
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .autocorrectionDisabled()
                 .focused($uniFieldFocused)
 
@@ -244,7 +244,7 @@ struct AIOnboardingFlowView: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.06))
+                .fill(UpdoTheme.filmy(0.06))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(UpdoTheme.cyan.opacity(uniFieldFocused ? 0.4 : 0.15), lineWidth: 1)))
             .onAppear { uniFieldFocused = true }
@@ -257,17 +257,17 @@ struct AIOnboardingFlowView: View {
                                 HStack(spacing: 10) {
                                     Text(university.name)
                                         .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(UpdoTheme.textPrimary)
                                         .multilineTextAlignment(.leading)
 
                                     Spacer(minLength: 6)
 
                                     Text(university.country_code.uppercased())
                                         .font(.system(size: 9, weight: .black, design: .monospaced))
-                                        .foregroundStyle(.white.opacity(0.35))
+                                        .foregroundStyle(UpdoTheme.filmy(0.35))
                                 }
                                 .padding(.horizontal, 14).padding(.vertical, 12)
-                                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.045)))
+                                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(UpdoTheme.filmy(0.045)))
                             }
                             .buttonStyle(.plain)
                         }
@@ -284,9 +284,9 @@ struct AIOnboardingFlowView: View {
         VStack(spacing: 10) {
             TextField(tr("aio_major_placeholder"), text: $majorInput)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .padding(.horizontal, 14).padding(.vertical, 13)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.06)))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(UpdoTheme.filmy(0.06)))
                 .submitLabel(.done)
                 .onSubmit { store.confirmMajor(majorInput) }
 
@@ -294,7 +294,7 @@ struct AIOnboardingFlowView: View {
                 Button { store.confirmMajor("") } label: {
                     Text(tr("aio_skip"))
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
                         .frame(height: 48)
                         .padding(.horizontal, 18)
                 }
@@ -315,7 +315,7 @@ struct AIOnboardingFlowView: View {
             Button { store.skipCourses() } label: {
                 Text(tr("aio_skip"))
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
                     .frame(height: 36)
             }
             .buttonStyle(.plain)
@@ -357,7 +357,7 @@ struct AIOnboardingFlowView: View {
                         Text(tr("aio_back"))
                             .font(.system(size: 13, weight: .bold))
                     }
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
                     .frame(height: 36)
                 }
                 .buttonStyle(.plain)
@@ -403,16 +403,16 @@ struct AIOnboardingFlowView: View {
                 Button { store.goBackInTour() } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .frame(width: 34, height: 34)
-                        .background(Circle().fill(Color.white.opacity(0.07)))
+                        .background(Circle().fill(UpdoTheme.filmy(0.07)))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tr("a11y_back"))
 
                 Text(AIOnboardingStore.weekdayFullNames[day])
                     .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Spacer()
 
@@ -425,10 +425,10 @@ struct AIOnboardingFlowView: View {
             if dayEntries.isEmpty {
                 Text(tr("aio_tour_empty"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(UpdoTheme.filmy(0.4))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.035)))
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(UpdoTheme.filmy(0.035)))
             } else {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 6) {
@@ -444,9 +444,9 @@ struct AIOnboardingFlowView: View {
             VStack(spacing: 8) {
                 TextField(tr("aio_tour_add_ph"), text: $tourName)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .padding(.horizontal, 13).padding(.vertical, 11)
-                    .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Color.white.opacity(0.06)))
+                    .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(UpdoTheme.filmy(0.06)))
 
                 HStack(spacing: 8) {
                     tourPicker(
@@ -467,11 +467,11 @@ struct AIOnboardingFlowView: View {
                     } label: {
                         Text(tr("aio_tour_add"))
                             .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(canAddTourEntry ? .black : .white.opacity(0.4))
+                            .foregroundStyle(canAddTourEntry ? .black : UpdoTheme.filmy(0.4))
                             .padding(.horizontal, 16)
                             .frame(height: 38)
                             .background(
-                                Capsule().fill(canAddTourEntry ? AnyShapeStyle(UpdoTheme.cyan) : AnyShapeStyle(Color.white.opacity(0.07)))
+                                Capsule().fill(canAddTourEntry ? AnyShapeStyle(UpdoTheme.cyan) : AnyShapeStyle(UpdoTheme.filmy(0.07)))
                             )
                     }
                     .buttonStyle(.plain)
@@ -479,7 +479,7 @@ struct AIOnboardingFlowView: View {
                 }
             }
             .padding(10)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.035)))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(UpdoTheme.filmy(0.035)))
 
             primaryButton(
                 day < 6 ? tr("common_continue") : tr("aio_tour_finish"),
@@ -500,16 +500,16 @@ struct AIOnboardingFlowView: View {
 
             Text(entry.name)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
 
             if !entry.room.isEmpty {
                 Text(entry.room)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.white.opacity(0.06)))
+                    .background(Capsule().fill(UpdoTheme.filmy(0.06)))
                     .lineLimit(1)
             }
 
@@ -524,23 +524,23 @@ struct AIOnboardingFlowView: View {
             } label: {
                 Image(systemName: "pencil")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
                     .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.white.opacity(0.06)))
+                    .background(Circle().fill(UpdoTheme.filmy(0.06)))
             }
             .buttonStyle(.plain)
 
             Button { store.removeTourEntry(entry.id) } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(UpdoTheme.filmy(0.4))
                     .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.white.opacity(0.06)))
+                    .background(Circle().fill(UpdoTheme.filmy(0.06)))
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 12).padding(.vertical, 9)
-        .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Color.white.opacity(0.045)))
+        .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(UpdoTheme.filmy(0.045)))
     }
 
     private func tourPicker<T: Hashable>(
@@ -561,10 +561,10 @@ struct AIOnboardingFlowView: View {
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 8, weight: .bold))
             }
-            .foregroundStyle(.white.opacity(0.85))
+            .foregroundStyle(UpdoTheme.filmy(0.85))
             .padding(.horizontal, 11)
             .frame(height: 38)
-            .background(Capsule().fill(Color.white.opacity(0.07)))
+            .background(Capsule().fill(UpdoTheme.filmy(0.07)))
         }
     }
 
@@ -575,7 +575,7 @@ struct AIOnboardingFlowView: View {
             HStack {
                 Text(tr("aio_goal_value", Int(store.dailyStudyGoalMinutes)))
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                 Spacer()
             }
             Slider(value: $store.dailyStudyGoalMinutes, in: 30...300, step: 15)
@@ -583,7 +583,7 @@ struct AIOnboardingFlowView: View {
             primaryButton(tr("aio_im_ready"), icon: "checkmark") { store.confirmGoal() }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(UpdoTheme.filmy(0.05)))
     }
 
     // MARK: - Reusable bits
@@ -594,11 +594,11 @@ struct AIOnboardingFlowView: View {
                 Image(systemName: icon).font(.system(size: 13, weight: .bold))
                 Text(title).font(.system(size: 14, weight: .bold))
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(UpdoTheme.textPrimary)
             .frame(maxWidth: .infinity)
             .frame(height: 48)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.06))
+                .fill(UpdoTheme.filmy(0.06))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(UpdoTheme.cyan.opacity(0.35), lineWidth: 1)))
         }
         .buttonStyle(.plain)
@@ -610,12 +610,12 @@ struct AIOnboardingFlowView: View {
                 Button { action(v) } label: {
                     Text(label(v))
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity).frame(height: 44)
                         .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
-                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.white.opacity(0.1), lineWidth: 1)))
+                            .fill(UpdoTheme.filmy(0.06))
+                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(UpdoTheme.filmy(0.1), lineWidth: 1)))
                 }
                 .buttonStyle(.plain)
             }
@@ -646,11 +646,11 @@ struct AIOnboardingFlowView: View {
     private func loadingRow(_ text: String) -> some View {
         HStack(spacing: 10) {
             ProgressView().tint(UpdoTheme.cyan)
-            Text(text).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.6))
+            Text(text).font(.system(size: 14, weight: .medium)).foregroundStyle(UpdoTheme.filmy(0.6))
             Spacer()
         }
         .padding(.horizontal, 14).padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(UpdoTheme.filmy(0.05)))
     }
 }
 

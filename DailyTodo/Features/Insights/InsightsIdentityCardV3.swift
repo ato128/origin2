@@ -71,7 +71,7 @@ struct InsightsIdentityCardV3: View {
 
                 Text(fullName)
                     .font(.system(size: 28, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
 
@@ -106,7 +106,7 @@ struct InsightsIdentityCardV3: View {
 
         return ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: 5)
+                .stroke(UpdoTheme.filmy(0.08), lineWidth: 5)
 
             Circle()
                 .trim(from: 0, to: barFilled ? progress : 0.02)
@@ -123,12 +123,12 @@ struct InsightsIdentityCardV3: View {
             VStack(spacing: 0) {
                 Text("\(snapshot.level)")
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .monospacedDigit()
 
                 Text(snapshot.percentText)
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
             }
         }
         .frame(width: 72, height: 72)
@@ -170,7 +170,7 @@ struct InsightsIdentityCardV3: View {
             } else {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(.white.opacity(0.32))
+                    .foregroundStyle(UpdoTheme.filmy(0.32))
             }
         }
     }
@@ -184,7 +184,7 @@ struct InsightsIdentityCardV3: View {
                     colors: [
                         primaryAccent.opacity(0.105),
                         secondaryAccent.opacity(0.058),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

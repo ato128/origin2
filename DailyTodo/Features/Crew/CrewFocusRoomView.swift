@@ -358,7 +358,7 @@ private extension CrewFocusRoomView {
             } label: {
                 Text(session.participantNames.contains(joinedName) ? "Joined" : "Join Session")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(

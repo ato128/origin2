@@ -113,12 +113,12 @@ extension CrewChatView {
         if message.messageStatus == "uploading" {
             ProgressView()
                 .scaleEffect(0.55)
-                .tint(.white.opacity(0.9))
+                .tint(UpdoTheme.filmy(0.9))
 
         } else if message.isPending {
             Image(systemName: "clock")
                 .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(message.isFromMe ? .white.opacity(0.55) : .white.opacity(0.36))
+                .foregroundStyle(message.isFromMe ? UpdoTheme.filmy(0.55) : UpdoTheme.filmy(0.36))
 
         } else if message.isFailed {
             // Insta DM mantığı: başarısız mesaj tek dokunuşla tekrar gönderilir
@@ -144,7 +144,7 @@ extension CrewChatView {
                 Image(systemName: "checkmark")
             }
             .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(seen ? Color(arenaHex: "#2DD4FF") : .white.opacity(0.72))
+            .foregroundStyle(seen ? Color(arenaHex: "#2DD4FF") : UpdoTheme.filmy(0.72))
         }
     }
 
@@ -182,7 +182,7 @@ extension CrewChatView {
 
                     Text(message.displayText)
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.84))
+                        .foregroundStyle(UpdoTheme.filmy(0.84))
                         .multilineTextAlignment(.center)
                         .lineLimit(3)
                 }
@@ -195,7 +195,7 @@ extension CrewChatView {
                                 colors: [
                                     Color(arenaHex: "#A3E635").opacity(0.10),
                                     Color(arenaHex: "#1593FF").opacity(0.060),
-                                    Color.white.opacity(0.045)
+                                    UpdoTheme.filmy(0.045)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -203,7 +203,7 @@ extension CrewChatView {
                         )
                         .overlay(
                             Capsule()
-                                .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.09), lineWidth: 1)
                         )
                 )
 
@@ -252,7 +252,7 @@ extension CrewChatView {
                         } else {
                             Text(message.displayText)
                                 .font(.system(size: 17, weight: .medium))
-                                .foregroundStyle(isFromMe ? .white : .white.opacity(0.96))
+                                .foregroundStyle(isFromMe ? .white : UpdoTheme.filmy(0.96))
                                 .multilineTextAlignment(.leading)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -261,7 +261,7 @@ extension CrewChatView {
                             HStack(spacing: 5) {
                                 Text(message.createdAt, style: .time)
                                     .font(.system(size: 10, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.70))
+                                    .foregroundStyle(UpdoTheme.filmy(0.70))
 
                                 messageStatusView(for: message)
                             }
@@ -324,7 +324,7 @@ extension CrewChatView {
                         HStack(spacing: 6) {
                             Text(message.createdAt, style: .time)
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.36))
+                                .foregroundStyle(UpdoTheme.filmy(0.36))
 
                             messageStatusView(for: message)
                         }
@@ -349,11 +349,11 @@ extension CrewChatView {
                         switch phase {
                         case .empty:
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.white.opacity(0.08))
+                                .fill(UpdoTheme.filmy(0.08))
                                 .frame(width: 220, height: 260)
                                 .overlay {
                                     ProgressView()
-                                        .tint(.white.opacity(0.8))
+                                        .tint(UpdoTheme.filmy(0.8))
                                 }
 
                         case .success(let image):
@@ -373,7 +373,7 @@ extension CrewChatView {
                     }
                 } else {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
+                        .fill(UpdoTheme.filmy(0.08))
                         .frame(width: 220, height: 260)
                         .overlay {
                             if message.messageStatus == "uploading" || message.isPending {
@@ -383,7 +383,7 @@ extension CrewChatView {
 
                                     Text(tr("fc_photo_loading"))
                                         .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(UpdoTheme.textPrimary)
                                 }
                             } else if message.isFailed {
                                 Button {
@@ -410,7 +410,7 @@ extension CrewChatView {
                message.displayText != tr("fc_photo_emoji") {
                 Text(message.displayText)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                    .foregroundStyle(message.isFromMe ? .white : UpdoTheme.filmy(0.96))
                     .padding(.horizontal, 4)
                     .padding(.bottom, 2)
             }
@@ -419,7 +419,7 @@ extension CrewChatView {
 
     var imageFailurePlaceholder: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.08))
+            .fill(UpdoTheme.filmy(0.08))
             .frame(width: 220, height: 260)
             .overlay {
                 VStack(spacing: 8) {
@@ -429,7 +429,7 @@ extension CrewChatView {
                     Text(tr("fc_image_load_failed"))
                         .font(.system(size: 12, weight: .medium))
                 }
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(UpdoTheme.filmy(0.75))
             }
     }
 
@@ -438,7 +438,7 @@ extension CrewChatView {
             Rectangle()
                 .fill(
                     isFromMe
-                    ? Color.white.opacity(0.78)
+                    ? UpdoTheme.filmy(0.78)
                     : Color(arenaHex: "#2DD4FF").opacity(0.90)
                 )
                 .frame(width: 3, height: 26)
@@ -447,11 +447,11 @@ extension CrewChatView {
             VStack(alignment: .leading, spacing: 2) {
                 Text("crew_chat_reply_label")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(isFromMe ? .white.opacity(0.82) : Color(arenaHex: "#2DD4FF"))
+                    .foregroundStyle(isFromMe ? UpdoTheme.filmy(0.82) : Color(arenaHex: "#2DD4FF"))
 
                 Text(replyPreview)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isFromMe ? .white.opacity(0.78) : .white.opacity(0.52))
+                    .foregroundStyle(isFromMe ? UpdoTheme.filmy(0.78) : UpdoTheme.filmy(0.52))
                     .lineLimit(1)
             }
 
@@ -461,10 +461,10 @@ extension CrewChatView {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFromMe ? Color.white.opacity(0.12) : Color.white.opacity(0.050))
+                .fill(isFromMe ? UpdoTheme.filmy(0.12) : UpdoTheme.filmy(0.050))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.white.opacity(isFromMe ? 0.10 : 0.07), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(isFromMe ? 0.10 : 0.07), lineWidth: 1)
                 )
         )
     }
@@ -575,15 +575,15 @@ extension CrewChatView {
     func dateSeparator(for date: Date) -> some View {
         Text(relativeDateTitle(for: date))
             .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(.white.opacity(0.50))
+            .foregroundStyle(UpdoTheme.filmy(0.50))
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.060))
+                    .fill(UpdoTheme.filmy(0.060))
                     .overlay(
                         Capsule()
-                            .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.085), lineWidth: 1)
                     )
             )
     }

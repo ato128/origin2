@@ -191,7 +191,7 @@ struct WeekView: View {
 
                     Text(monthYearText)
                         .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(.white.opacity(0.78))
+                        .foregroundStyle(UpdoTheme.filmy(0.78))
                 }
 
                 Spacer(minLength: 8)
@@ -245,7 +245,7 @@ struct WeekView: View {
     private var taskAddIconButton: some View {
         Image(systemName: "checklist")
             .font(.system(size: 15, weight: .black))
-            .foregroundStyle(.white.opacity(0.9))
+            .foregroundStyle(UpdoTheme.filmy(0.9))
             .frame(width: 40, height: 40)
             .background(
                 Color.clear
@@ -272,10 +272,10 @@ struct WeekView: View {
         .padding(6)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.035))
+                .fill(UpdoTheme.filmy(0.035))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.06), lineWidth: 1)
                 )
         )
     }
@@ -298,12 +298,12 @@ struct WeekView: View {
             VStack(spacing: 4) {
                 Text(weekdayShortLetter(date))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .foregroundStyle(isSelected ? .white.opacity(0.85) : .white.opacity(0.38))
+                    .foregroundStyle(isSelected ? UpdoTheme.filmy(0.85) : UpdoTheme.filmy(0.38))
                     .lineLimit(1)
 
                 Text("\(dayNum)")
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(isSelected ? .white : (isPast && !isToday ? .white.opacity(0.42) : .white.opacity(0.82)))
+                    .foregroundStyle(isSelected ? .white : (isPast && !isToday ? UpdoTheme.filmy(0.42) : UpdoTheme.filmy(0.82)))
                     .monospacedDigit()
 
                 // Event indicator
@@ -358,14 +358,14 @@ struct WeekView: View {
     private func smallNavButton(systemName: String) -> some View {
         Image(systemName: systemName)
             .font(.system(size: 11, weight: .black))
-            .foregroundStyle(Color.white.opacity(0.65))
+            .foregroundStyle(UpdoTheme.filmy(0.65))
             .frame(width: 32, height: 32)
             .background(
                 Circle()
-                    .fill(Color.white.opacity(0.045))
+                    .fill(UpdoTheme.filmy(0.045))
                     .overlay(
                         Circle()
-                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
                     )
             )
     }
@@ -457,7 +457,7 @@ struct WeekView: View {
                 Text(compactDateText)
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(0.8)
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
                     .lineLimit(1)
             }
 
@@ -465,7 +465,7 @@ struct WeekView: View {
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(heroTitle)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
                     .layoutPriority(1)
@@ -493,7 +493,7 @@ struct WeekView: View {
                 // Boş gün için kompakt mesaj
                 Text(heroSubtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .padding(.top, 4)
                     .lineLimit(2)
             }
@@ -506,7 +506,7 @@ struct WeekView: View {
                         colors: [
                             cardAccent.opacity(0.085),
                             Color(arenaHex: AppArenaPalette.blue).opacity(0.040),
-                            Color.white.opacity(0.022)
+                            UpdoTheme.filmy(0.022)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -554,7 +554,7 @@ struct WeekView: View {
                 ForEach([6, 9, 12, 15, 18, 21, 24], id: \.self) { h in
                     Text(String(format: "%02d", h))
                         .font(.system(size: 8, weight: .black, design: .monospaced))
-                        .foregroundStyle(isCurrentHourMarker(h) ? Color(arenaHex: AppArenaPalette.coral) : Color.white.opacity(0.35))
+                        .foregroundStyle(isCurrentHourMarker(h) ? Color(arenaHex: AppArenaPalette.coral) : UpdoTheme.filmy(0.35))
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -563,7 +563,7 @@ struct WeekView: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.white.opacity(0.06))
+                        .fill(UpdoTheme.filmy(0.06))
 
                     // Event blokları
                     ForEach(eventsForCurrentDate, id: \.id) { ev in
@@ -582,7 +582,7 @@ struct WeekView: View {
                         Capsule()
                             .fill(Color.white)
                             .frame(width: 2, height: 14)
-                            .shadow(color: Color.white.opacity(0.65), radius: 4)
+                            .shadow(color: UpdoTheme.filmy(0.65), radius: 4)
                             .offset(x: nowFrac * geo.size.width - 1, y: 0)
                     }
                 }
@@ -594,7 +594,7 @@ struct WeekView: View {
             HStack(spacing: 6) {
                 Text(timelineSummary)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(UpdoTheme.filmy(0.55))
                     .lineLimit(1)
 
                 Spacer(minLength: 6)
@@ -709,11 +709,11 @@ struct WeekView: View {
                     Text(tr("wv_tasks_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.6)
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
 
                     Text("\(tasks.count)")
                         .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.32))
+                        .foregroundStyle(UpdoTheme.filmy(0.32))
                 }
                 .padding(.leading, 2)
 
@@ -743,14 +743,14 @@ struct WeekView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(task.isDone ? 0.4 : 0.92))
-                    .strikethrough(task.isDone, color: .white.opacity(0.4))
+                    .foregroundStyle(UpdoTheme.filmy(task.isDone ? 0.4 : 0.92))
+                    .strikethrough(task.isDone, color: UpdoTheme.filmy(0.4))
                     .lineLimit(1)
 
                 if !task.courseName.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text(task.courseName)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
                         .lineLimit(1)
                 }
             }
@@ -760,7 +760,7 @@ struct WeekView: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.03))
+                .fill(UpdoTheme.filmy(0.03))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(tint.opacity(0.16), lineWidth: 1)
@@ -830,21 +830,21 @@ struct WeekView: View {
                 VStack(alignment: .center, spacing: 2) {
                     Text(hm(startMin))
                         .font(.system(size: 13, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
 
                     Text("\(durationMin)\(appLanguageIsEnglish() ? "min" : "dk")")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.28))
+                        .foregroundStyle(UpdoTheme.filmy(0.28))
                 }
                 .frame(minWidth: 50)
 
                 RoundedRectangle(cornerRadius: 999, style: .continuous)
-                    .stroke(Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 2, dash: [2, 3]))
+                    .stroke(UpdoTheme.filmy(0.15), style: StrokeStyle(lineWidth: 2, dash: [2, 3]))
                     .frame(width: 3, height: 26)
 
                 Text("\(tr("wv_free_time")) · \(durationText(durationMin))")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
@@ -872,11 +872,11 @@ struct WeekView: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(0.015))
+                    .fill(UpdoTheme.filmy(0.015))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .strokeBorder(
-                                Color.white.opacity(0.08),
+                                UpdoTheme.filmy(0.08),
                                 style: StrokeStyle(lineWidth: 1, dash: [5, 4])
                             )
                     )
@@ -898,11 +898,11 @@ struct WeekView: View {
                 VStack(spacing: 4) {
                     Text(emptyTitle)
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(appLanguageIsEnglish() ? "Add a class or event" : "Yeni ders veya etkinlik ekle")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
                 }
 
                 HStack(spacing: 6) {
@@ -926,11 +926,11 @@ struct WeekView: View {
             .padding(.vertical, 26)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.025))
+                    .fill(UpdoTheme.filmy(0.025))
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .strokeBorder(
-                                Color.white.opacity(0.10),
+                                UpdoTheme.filmy(0.10),
                                 style: StrokeStyle(lineWidth: 1, dash: [6, 5])
                             )
                     )
@@ -965,11 +965,11 @@ struct WeekView: View {
                 VStack(alignment: .center, spacing: 2) {
                     Text(hm(event.startMinute))
                         .font(.system(size: 13, weight: .black, design: .monospaced))
-                        .foregroundStyle(isActive ? Color(arenaHex: AppArenaPalette.coral) : .white.opacity(isPast ? 0.55 : 0.92))
+                        .foregroundStyle(isActive ? Color(arenaHex: AppArenaPalette.coral) : UpdoTheme.filmy(isPast ? 0.55 : 0.92))
 
                     Text("\(event.durationMinute)\(appLanguageIsEnglish() ? "min" : "dk")")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(isPast ? 0.32 : 0.45))
+                        .foregroundStyle(UpdoTheme.filmy(isPast ? 0.32 : 0.45))
                 }
                 .frame(minWidth: 50)
 
@@ -986,7 +986,7 @@ struct WeekView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(event.title)
                         .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(.white.opacity(isPast ? 0.65 : 1))
+                        .foregroundStyle(UpdoTheme.filmy(isPast ? 0.65 : 1))
                         .strikethrough(isPast)
                         .lineLimit(1)
 
@@ -994,13 +994,13 @@ struct WeekView: View {
                         if let loc = event.location, !loc.isEmpty {
                             Text(loc)
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.42))
+                                .foregroundStyle(UpdoTheme.filmy(0.42))
                                 .lineLimit(1)
                         }
 
                         if isActive {
                             Text("·")
-                                .foregroundStyle(.white.opacity(0.32))
+                                .foregroundStyle(UpdoTheme.filmy(0.32))
 
                             Text(tr("rel_min_left", max(0, end - now)))
                                 .font(.system(size: 11, weight: .black))
@@ -1271,8 +1271,8 @@ private extension WeekView {
 
     var heroAccent: Color {
         if activeEventNow != nil { return Color(arenaHex: AppArenaPalette.coral) }
-        if isYesterday { return Color.white.opacity(0.4) }
-        if isPastDay { return Color.white.opacity(0.4) }
+        if isYesterday { return UpdoTheme.filmy(0.4) }
+        if isPastDay { return UpdoTheme.filmy(0.4) }
         if isTomorrow { return Color(arenaHex: AppArenaPalette.purple) }
         if isToday { return Color(arenaHex: AppArenaPalette.cyan) }
         return Color(arenaHex: AppArenaPalette.blue)
@@ -1599,12 +1599,12 @@ private struct CalendarSheet: View {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 36, height: 36)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.08))
-                            .overlay(Circle().stroke(Color.white.opacity(0.10), lineWidth: 1))
+                            .fill(UpdoTheme.filmy(0.08))
+                            .overlay(Circle().stroke(UpdoTheme.filmy(0.10), lineWidth: 1))
                     )
             }
             .buttonStyle(.plain)
@@ -1623,7 +1623,7 @@ private struct CalendarSheet: View {
                 } label: {
                     Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                         .font(.system(size: 11, weight: .black))
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(UpdoTheme.filmy(0.65))
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
@@ -1643,7 +1643,7 @@ private struct CalendarSheet: View {
                     HStack(spacing: 5) {
                         Text(monthName)
                             .font(.system(size: 17, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(yearText)
                             .font(.system(size: 16, weight: .regular, design: .serif))
@@ -1669,7 +1669,7 @@ private struct CalendarSheet: View {
                 } label: {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11, weight: .black))
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(UpdoTheme.filmy(0.65))
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
@@ -1710,7 +1710,7 @@ private struct CalendarSheet: View {
                 Text(sym)
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(0.8)
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
                     .frame(maxWidth: .infinity)
             }
         }
@@ -1750,7 +1750,7 @@ private struct CalendarSheet: View {
                     .foregroundStyle(
                         isToday
                             ? Color.white
-                            : (isPastDay ? Color.white.opacity(0.55) : Color.white)
+                            : (isPastDay ? UpdoTheme.filmy(0.55) : Color.white)
                     )
                     .monospacedDigit()
 
@@ -1788,14 +1788,14 @@ private struct CalendarSheet: View {
                             .shadow(color: Color(arenaHex: AppArenaPalette.blue).opacity(0.28), radius: 8, y: 4)
                     } else if isSelected {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.white.opacity(0.10))
+                            .fill(UpdoTheme.filmy(0.10))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.25), lineWidth: 1)
                             )
                     } else if !colors.isEmpty {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.white.opacity(0.025))
+                            .fill(UpdoTheme.filmy(0.025))
                     }
 
                     if hasSpecialEvent && !isToday {
@@ -1821,16 +1821,16 @@ private struct CalendarSheet: View {
 
             Text(tr("wv_tap_day"))
                 .font(.system(size: 9, weight: .black, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.32))
+                .foregroundStyle(UpdoTheme.filmy(0.32))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.030))
+                .fill(UpdoTheme.filmy(0.030))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.06), lineWidth: 1)
                 )
         )
     }
@@ -1843,7 +1843,7 @@ private struct CalendarSheet: View {
 
             Text(text)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white.opacity(0.65))
+                .foregroundStyle(UpdoTheme.filmy(0.65))
         }
     }
 
@@ -1861,13 +1861,13 @@ private struct CalendarSheet: View {
                 Text(tr("wv_month_tasks_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.4)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
             }
 
             if groups.isEmpty {
                 Text(tr("wv_no_month_tasks"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(UpdoTheme.filmy(0.4))
                     .padding(.vertical, 6)
             } else {
                 ForEach(groups, id: \.0) { day, tasks in
@@ -1888,12 +1888,12 @@ private struct CalendarSheet: View {
             VStack(spacing: 1) {
                 Text(dayNumberText(day))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .monospacedDigit()
 
                 Text(weekdayShortText(day))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
             }
             .frame(width: 38)
 
@@ -1908,8 +1908,8 @@ private struct CalendarSheet: View {
 
                         Text(task.title)
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(task.isDone ? 0.42 : 0.85))
-                            .strikethrough(task.isDone, color: .white.opacity(0.4))
+                            .foregroundStyle(UpdoTheme.filmy(task.isDone ? 0.42 : 0.85))
+                            .strikethrough(task.isDone, color: UpdoTheme.filmy(0.4))
                             .lineLimit(1)
                     }
                 }
@@ -1920,10 +1920,10 @@ private struct CalendarSheet: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.030))
+                .fill(UpdoTheme.filmy(0.030))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.06), lineWidth: 1)
                 )
         )
     }

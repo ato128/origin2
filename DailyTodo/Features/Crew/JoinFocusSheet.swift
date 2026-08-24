@@ -80,7 +80,7 @@ struct JoinFocusSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Color.accentColor)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -92,7 +92,7 @@ struct JoinFocusSheet: View {
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.white.opacity(0.06))
+                            .background(UpdoTheme.filmy(0.06))
                             .foregroundStyle(.primary)
                             .clipShape(Capsule())
                     }

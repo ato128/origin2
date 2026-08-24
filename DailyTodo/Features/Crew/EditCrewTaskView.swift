@@ -79,7 +79,7 @@ struct EditCrewTaskView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .tint(UpdoTheme.cyan)
     }
 
@@ -269,15 +269,15 @@ struct EditCrewTaskView: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(isSelected ? .black : .white.opacity(0.6))
+                .foregroundStyle(isSelected ? .black : UpdoTheme.filmy(0.6))
                 .frame(maxWidth: .infinity)
                 .frame(height: 42)
                 .background(
                     Capsule()
-                        .fill(isSelected ? tint : Color.white.opacity(0.05))
+                        .fill(isSelected ? tint : UpdoTheme.filmy(0.05))
                         .overlay(
                             Capsule()
-                                .stroke(isSelected ? Color.clear : Color.white.opacity(0.08), lineWidth: 1)
+                                .stroke(isSelected ? Color.clear : UpdoTheme.filmy(0.08), lineWidth: 1)
                         )
                 )
         }
@@ -305,19 +305,19 @@ struct EditCrewTaskView: View {
 
     private var fieldBackground: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white.opacity(0.045))
+            .fill(UpdoTheme.filmy(0.045))
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
             )
     }
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(Color.white.opacity(0.045))
+            .fill(UpdoTheme.filmy(0.045))
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
             )
     }
 

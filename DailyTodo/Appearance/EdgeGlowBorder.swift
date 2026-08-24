@@ -106,7 +106,7 @@ struct EdgeGlowBorder: View {
                 )
             Text("EdgeGlowBorder")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
         }
         EdgeGlowBorder()
     }

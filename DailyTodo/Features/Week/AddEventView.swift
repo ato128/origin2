@@ -78,7 +78,7 @@ struct AddEventView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .onAppear {
             applyDefaultDateIfNeeded()
             studentStore.reload()
@@ -136,7 +136,7 @@ struct AddEventView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(tr("common_new"))
                         .font(.system(size: 38, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("ae_lesson_lc"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
@@ -157,7 +157,7 @@ struct AddEventView: View {
 
                 Text(tr("ae_header_sub"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .lineLimit(2)
             }
 
@@ -168,15 +168,15 @@ struct AddEventView: View {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.095),
-                                        Color.white.opacity(0.045)
+                                        UpdoTheme.filmy(0.095),
+                                        UpdoTheme.filmy(0.045)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -184,7 +184,7 @@ struct AddEventView: View {
                             )
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                             )
                             .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
                     )
@@ -223,7 +223,7 @@ struct AddEventView: View {
 
                 Text(title.isEmpty ? tr("ae_pick_class") : title)
                     .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(2)
 
                 HStack(spacing: 8) {
@@ -351,7 +351,7 @@ struct AddEventView: View {
                     TextField("Not (opsiyonel)", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .tint(accent)
                         .padding(14)
                         .background(inputBackground)
@@ -392,7 +392,7 @@ struct AddEventView: View {
 
                 Image(systemName: "arrow.right")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 DatePicker("", selection: $endTime, displayedComponents: [.hourAndMinute])
                     .labelsHidden()
@@ -436,11 +436,11 @@ struct AddEventView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tr("ae_no_lessons"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("ae_add_class_hint"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .lineLimit(2)
             }
 
@@ -473,14 +473,14 @@ struct AddEventView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(course.name)
                             .font(.system(size: 17, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(2)
 
                         if !course.code.isEmpty {
                             Text(course.code.uppercased())
                                 .font(.system(size: 10, weight: .black, design: .monospaced))
                                 .tracking(0.7)
-                                .foregroundStyle(.white.opacity(0.44))
+                                .foregroundStyle(UpdoTheme.filmy(0.44))
                         }
                     }
 
@@ -488,7 +488,7 @@ struct AddEventView: View {
 
                     Image(systemName: isAdded ? "checkmark.circle.fill" : (isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle"))
                         .font(.system(size: 20, weight: .black))
-                        .foregroundStyle(isAdded ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.38))
+                        .foregroundStyle(isAdded ? Color(arenaHex: AppArenaPalette.green) : UpdoTheme.filmy(0.38))
                 }
             }
             .buttonStyle(.plain)
@@ -506,7 +506,7 @@ struct AddEventView: View {
 
                         Label(tr("ae_every_week"), systemImage: "repeat")
                             .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.44))
+                            .foregroundStyle(UpdoTheme.filmy(0.44))
                     }
 
                     courseColorPicker()
@@ -537,7 +537,7 @@ struct AddEventView: View {
                                 .fill(isAdded ? Color(arenaHex: AppArenaPalette.green).opacity(0.14) : tint)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .stroke(isAdded ? Color(arenaHex: AppArenaPalette.green).opacity(0.16) : Color.white.opacity(0.12), lineWidth: 1)
+                                        .stroke(isAdded ? Color(arenaHex: AppArenaPalette.green).opacity(0.16) : UpdoTheme.filmy(0.12), lineWidth: 1)
                                 )
                         )
                     }
@@ -591,7 +591,7 @@ struct AddEventView: View {
             Text(tr("common_color_caps"))
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(UpdoTheme.filmy(0.42))
 
             HStack(spacing: 12) {
                 ForEach(colors, id: \.self) { hex in
@@ -610,12 +610,12 @@ struct AddEventView: View {
                             if selected {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 11, weight: .black))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                             }
                         }
                         .overlay(
                             Circle()
-                                .stroke(.white.opacity(selected ? 0.85 : 0.0), lineWidth: 2)
+                                .stroke(UpdoTheme.filmy(selected ? 0.85 : 0.0), lineWidth: 2)
                         )
                     }
                     .buttonStyle(.plain)
@@ -641,7 +641,7 @@ struct AddEventView: View {
 
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -682,11 +682,11 @@ struct AddEventView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer()
@@ -708,7 +708,7 @@ struct AddEventView: View {
             .textInputAutocapitalization(capitalization)
             .autocorrectionDisabled()
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(UpdoTheme.textPrimary)
             .tint(accent)
             .padding(14)
             .background(inputBackground)
@@ -716,10 +716,10 @@ struct AddEventView: View {
 
     private var inputBackground: some View {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(Color.white.opacity(0.060))
+            .fill(UpdoTheme.filmy(0.060))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
     }
 
@@ -767,7 +767,7 @@ struct AddEventView: View {
                     colors: [
                         tint.opacity(0.070 + strength * 0.035),
                         Color(arenaHex: AppArenaPalette.purple).opacity(0.038),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

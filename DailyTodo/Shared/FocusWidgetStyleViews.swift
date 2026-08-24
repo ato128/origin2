@@ -404,20 +404,20 @@ struct UpdoWidgetStyleContent: View {
         VStack(spacing: 5) {
             Text(todayLabel)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(Color.white.opacity(0.8))
 
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 serifNumber(todayText, size: isSmall ? 40 : 46)
                 Text(dkLabel)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(Color.white.opacity(0.5))
             }
 
             HStack(spacing: 10) {
                 statPair(icon: "flame.fill", text: "\(state.streak)", tint: LiveStyleTokens.gold,
-                         textColor: .white.opacity(0.85))
+                         textColor: Color.white.opacity(0.85))
                 statPair(icon: "chevron.up.circle.fill", text: "Lv \(state.level)",
-                         tint: .white.opacity(0.5), textColor: .white.opacity(0.85))
+                         tint: Color.white.opacity(0.5), textColor: Color.white.opacity(0.85))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -466,7 +466,7 @@ struct UpdoWidgetStyleContent: View {
                 Text("STREAK \(state.streak) · LV \(state.level)")
                     .font(.system(size: 9, weight: .heavy))
                     .italic()
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(Color.white.opacity(0.5))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             } else {
@@ -474,7 +474,7 @@ struct UpdoWidgetStyleContent: View {
                     Text("STREAK \(state.streak) · LV \(state.level)")
                         .font(.system(size: 10, weight: .heavy))
                         .italic()
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(Color.white.opacity(0.5))
 
                     weekChart(accent: raceRed, trackOpacity: 0.07, height: 22)
                         .frame(width: 110)

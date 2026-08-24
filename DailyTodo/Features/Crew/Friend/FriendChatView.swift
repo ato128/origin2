@@ -63,18 +63,18 @@ private struct FriendReplyPreviewChip: View {
     var body: some View {
         HStack(spacing: 8) {
             Rectangle()
-                .fill(isFromMe ? Color.white.opacity(0.8) : Color(arenaHex: "#2DD4FF").opacity(0.9))
+                .fill(isFromMe ? UpdoTheme.filmy(0.8) : Color(arenaHex: "#2DD4FF").opacity(0.9))
                 .frame(width: 3, height: 26)
                 .clipShape(Capsule())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(tr("chat_action_reply"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(isFromMe ? .white.opacity(0.82) : Color(arenaHex: "#2DD4FF"))
+                    .foregroundStyle(isFromMe ? UpdoTheme.filmy(0.82) : Color(arenaHex: "#2DD4FF"))
 
                 Text(preview)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(isFromMe ? .white.opacity(0.8) : .white.opacity(0.55))
+                    .foregroundStyle(isFromMe ? UpdoTheme.filmy(0.8) : UpdoTheme.filmy(0.55))
                     .lineLimit(1)
             }
 
@@ -84,7 +84,7 @@ private struct FriendReplyPreviewChip: View {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFromMe ? Color.white.opacity(0.14) : Color.white.opacity(0.06))
+                .fill(isFromMe ? UpdoTheme.filmy(0.14) : UpdoTheme.filmy(0.06))
         )
     }
 }
@@ -435,7 +435,7 @@ private extension FriendChatView {
                 } label: {
                     Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                         .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .frame(width: 46, height: 46)
                         .liquidGlass(in: Circle())
                         .contentShape(Rectangle())
@@ -467,7 +467,7 @@ private extension FriendChatView {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(friend.name)
                                 .font(.system(size: 15, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                                 .lineLimit(1)
 
                             if isTypingNow {
@@ -482,7 +482,7 @@ private extension FriendChatView {
                             } else {
                                 Text(headerStatusText)
                                     .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.58))
+                                    .foregroundStyle(UpdoTheme.filmy(0.58))
                                     .lineLimit(1)
                             }
                         }
@@ -603,7 +603,7 @@ private extension FriendChatView {
 
             Text(tr("fc_loading_messages"))
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(UpdoTheme.filmy(0.45))
 
             Spacer()
         }
@@ -621,17 +621,17 @@ private extension FriendChatView {
                 .overlay(
                     Image(systemName: "wifi.exclamationmark")
                         .font(.system(size: 30, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 )
 
             VStack(spacing: 7) {
                 Text(tr("fc_conn_problem"))
                     .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("fc_load_failed"))
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .multilineTextAlignment(.center)
             }
 
@@ -642,7 +642,7 @@ private extension FriendChatView {
             } label: {
                 Text(tr("common_retry"))
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .padding(.horizontal, 22)
                     .padding(.vertical, 11)
                     .background(
@@ -669,17 +669,17 @@ private extension FriendChatView {
                 .overlay(
                     Image(systemName: "message.fill")
                         .font(.system(size: 30, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 )
 
             VStack(spacing: 7) {
                 Text(tr("chat_no_messages_yet"))
                     .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("chat_start_conversation_format", friend.name))
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .multilineTextAlignment(.center)
             }
 
@@ -704,7 +704,7 @@ private extension FriendChatView {
                                             
                                             if isLoadingOlderMessages {
                                                 ProgressView()
-                                                    .tint(.white.opacity(0.6))
+                                                    .tint(UpdoTheme.filmy(0.6))
                                                     .padding(.vertical, 12)
                                             } else {
                                                 Color.clear
@@ -762,10 +762,10 @@ private extension FriendChatView {
                             .padding(.vertical, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(Color.white.opacity(0.055))
+                                    .fill(UpdoTheme.filmy(0.055))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                            .stroke(UpdoTheme.filmy(0.08), lineWidth: 1)
                                     )
                             )
 
@@ -820,7 +820,7 @@ private extension FriendChatView {
             HStack(spacing: 4) {
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
-                        .fill(Color.white.opacity(tick == i ? 0.95 : 0.35))
+                        .fill(UpdoTheme.filmy(tick == i ? 0.95 : 0.35))
                         .frame(width: 6, height: 6)
                         .scaleEffect(tick == i ? 1.0 : 0.78)
                         .animation(.easeInOut(duration: 0.18), value: tick)
@@ -894,7 +894,7 @@ private extension FriendChatView {
 
                 Text(target.displayText.replacingOccurrences(of: "\n", with: " "))
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
                     .lineLimit(1)
             }
 
@@ -905,7 +905,7 @@ private extension FriendChatView {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 20))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(UpdoTheme.filmy(0.4))
             }
             .buttonStyle(.plain)
         }
@@ -920,7 +920,7 @@ private extension FriendChatView {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
                 )
         )
     }
@@ -946,12 +946,12 @@ private extension FriendChatView {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(tr("fc_voice_recording"))
                             .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         HStack(spacing: 3) {
                             ForEach(0..<18, id: \.self) { index in
                                 Capsule()
-                                    .fill(Color.white.opacity(0.75))
+                                    .fill(UpdoTheme.filmy(0.75))
                                     .frame(width: 3, height: barHeight(for: index))
                             }
                         }
@@ -961,7 +961,7 @@ private extension FriendChatView {
 
                     Text(audioRecorder.durationText())
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(UpdoTheme.filmy(0.9))
 
                     Button(tr("common_cancel")) {
                         audioRecorder.cancelRecording()
@@ -973,10 +973,10 @@ private extension FriendChatView {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.065))
+                        .fill(UpdoTheme.filmy(0.065))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.09), lineWidth: 1)
                         )
                 )
                 .padding(.horizontal, 16)
@@ -1006,7 +1006,7 @@ private extension FriendChatView {
                 } label: {
                     Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                         .font(.system(size: 20, weight: .black))
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(UpdoTheme.filmy(0.95))
                         .frame(width: 42, height: 42)
                         .liquidGlass(in: Circle())
                 }
@@ -1016,7 +1016,7 @@ private extension FriendChatView {
                         .focused($isComposerFocused)
                         .textFieldStyle(.plain)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .tint(FriendChatArenaPalette.cyan)
                         .submitLabel(.send)
                         .onSubmit {
@@ -1087,7 +1087,7 @@ private extension FriendChatView {
                         .foregroundStyle(
                             hasSendableContent
                             ? FriendChatArenaPalette.cyan
-                            : (audioRecorder.isRecording ? Color.red : Color.white.opacity(0.78))
+                            : (audioRecorder.isRecording ? Color.red : UpdoTheme.filmy(0.78))
                         )
                     }
                     .buttonStyle(.plain)
@@ -2011,11 +2011,11 @@ private extension FriendChatView {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(tr("fc_photo_ready"))
                                 .font(.system(size: 14, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                             
                             Text(tr("fc_add_caption"))
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.48))
+                                .foregroundStyle(UpdoTheme.filmy(0.48))
                                 .lineLimit(2)
                         }
                         
@@ -2025,7 +2025,7 @@ private extension FriendChatView {
                         HStack(spacing: 12) {
                             ZStack(alignment: .topTrailing) {
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.white.opacity(0.06))
+                                    .fill(UpdoTheme.filmy(0.06))
                                     .frame(width: 64, height: 64)
                                     .overlay(
                                         Image(systemName: "doc.fill")
@@ -2040,12 +2040,12 @@ private extension FriendChatView {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(url.lastPathComponent)
                                     .font(.system(size: 14, weight: .black))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                                     .lineLimit(2)
                                 
                                 Text(tr("fc_file_ready"))
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.48))
+                                    .foregroundStyle(UpdoTheme.filmy(0.48))
                             }
                             
                             Spacer()
@@ -2060,7 +2060,7 @@ private extension FriendChatView {
                                 colors: [
                                     FriendChatArenaPalette.blue.opacity(0.055),
                                     FriendChatArenaPalette.purple.opacity(0.045),
-                                    Color.white.opacity(0.040)
+                                    UpdoTheme.filmy(0.040)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -2068,7 +2068,7 @@ private extension FriendChatView {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.09), lineWidth: 1)
                         )
                         .shadow(color: Color.black.opacity(0.20), radius: 12, y: 7)
                 )
@@ -2152,7 +2152,7 @@ private extension FriendChatView {
                     
                     Text(label)
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
                         .padding(.horizontal, 10)
                     
                     line
@@ -2161,7 +2161,7 @@ private extension FriendChatView {
             
             private var line: some View {
                 Rectangle()
-                    .fill(Color.white.opacity(0.10))
+                    .fill(UpdoTheme.filmy(0.10))
                     .frame(height: 0.5)
             }
         }
@@ -2254,7 +2254,7 @@ private extension FriendChatView {
                             if showTime {
                                 Text(timeText)
                                     .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.45))
+                                    .foregroundStyle(UpdoTheme.filmy(0.45))
                                     .padding(.horizontal, 4)
                                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
                             }
@@ -2358,7 +2358,7 @@ private extension FriendChatView {
                         HStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.white.opacity(message.isFromMe ? 0.18 : 0.08))
+                                    .fill(UpdoTheme.filmy(message.isFromMe ? 0.18 : 0.08))
                                     .frame(width: 40, height: 40)
                                 
                                 if message.messageStatus == "uploading" || message.isPending {
@@ -2376,7 +2376,7 @@ private extension FriendChatView {
                                 HStack(spacing: 3) {
                                     ForEach(0..<20, id: \.self) { i in
                                         Capsule()
-                                            .fill((message.isFromMe ? Color.white : Color.white.opacity(0.9)).opacity(
+                                            .fill((message.isFromMe ? Color.white : UpdoTheme.filmy(0.9)).opacity(
                                                 isPlaying ? (i % 2 == 0 ? 0.95 : 0.45) : (i % 3 == 0 ? 0.95 : 0.5)
                                             ))
                                             .frame(width: 3, height: CGFloat(8 + (i % 6) * 3))
@@ -2387,7 +2387,7 @@ private extension FriendChatView {
                                 
                                 Text(message.text.isEmpty ? tr("fc_voice_message") : message.text)
                                     .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(message.isFromMe ? .white.opacity(0.88) : .white.opacity(0.72))
+                                    .foregroundStyle(message.isFromMe ? UpdoTheme.filmy(0.88) : UpdoTheme.filmy(0.72))
                             }
                             
                             Spacer(minLength: 0)
@@ -2398,7 +2398,7 @@ private extension FriendChatView {
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(message.isFromMe ? Color.white.opacity(0.08) : Color.white.opacity(0.08), lineWidth: 1)
+                                .stroke(message.isFromMe ? UpdoTheme.filmy(0.08) : UpdoTheme.filmy(0.08), lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
@@ -2462,7 +2462,7 @@ private extension FriendChatView {
 
                     Text(message.displayText)
                         .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                        .foregroundStyle(message.isFromMe ? .white : UpdoTheme.filmy(0.96))
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
@@ -2486,10 +2486,10 @@ private extension FriendChatView {
                                 case .empty:
                                     ZStack {
                                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                            .fill(Color.white.opacity(0.08))
+                                            .fill(UpdoTheme.filmy(0.08))
                                         
                                         ProgressView()
-                                            .tint(.white.opacity(0.8))
+                                            .tint(UpdoTheme.filmy(0.8))
                                     }
                                     .frame(width: 220, height: 260)
                                     
@@ -2503,7 +2503,7 @@ private extension FriendChatView {
                                 case .failure:
                                     ZStack {
                                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                            .fill(Color.white.opacity(0.08))
+                                            .fill(UpdoTheme.filmy(0.08))
                                         
                                         VStack(spacing: 8) {
                                             Image(systemName: "photo")
@@ -2512,7 +2512,7 @@ private extension FriendChatView {
                                             Text(tr("fc_image_load_failed"))
                                                 .font(.system(size: 12, weight: .medium))
                                         }
-                                        .foregroundStyle(.white.opacity(0.75))
+                                        .foregroundStyle(UpdoTheme.filmy(0.75))
                                     }
                                     .frame(width: 220, height: 260)
                                     
@@ -2523,7 +2523,7 @@ private extension FriendChatView {
                             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                         } else {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(Color.white.opacity(0.08))
+                                .fill(UpdoTheme.filmy(0.08))
                                 .frame(width: 220, height: 260)
                         }
                         
@@ -2538,7 +2538,7 @@ private extension FriendChatView {
                                         
                                         Text(message.messageStatus == "uploading" ? tr("fc_photo_loading") : tr("fc_preparing_short"))
                                             .font(.system(size: 12, weight: .semibold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(UpdoTheme.textPrimary)
                                     }
                                 }
                         }
@@ -2548,7 +2548,7 @@ private extension FriendChatView {
                        message.text != tr("fc_photo_emoji") {
                         Text(message.text)
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                            .foregroundStyle(message.isFromMe ? .white : UpdoTheme.filmy(0.96))
                             .padding(.horizontal, 4)
                             .padding(.bottom, 2)
                     }
@@ -2601,7 +2601,7 @@ private extension FriendChatView {
                     HStack(spacing: 12) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(message.isFromMe ? 0.16 : 0.08))
+                                .fill(UpdoTheme.filmy(message.isFromMe ? 0.16 : 0.08))
                                 .frame(width: 46, height: 46)
                             
                             Image(systemName: "doc.fill")
@@ -2612,7 +2612,7 @@ private extension FriendChatView {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(message.fileName ?? "Dosya")
                                 .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                                .foregroundStyle(message.isFromMe ? .white : UpdoTheme.filmy(0.96))
                                 .lineLimit(2)
                             
                             HStack(spacing: 6) {
@@ -2625,7 +2625,7 @@ private extension FriendChatView {
                                 }
                             }
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(message.isFromMe ? .white.opacity(0.78) : .white.opacity(0.58))
+                            .foregroundStyle(message.isFromMe ? UpdoTheme.filmy(0.78) : UpdoTheme.filmy(0.58))
                         }
                         
                         Spacer(minLength: 0)
@@ -2641,7 +2641,7 @@ private extension FriendChatView {
                             } else {
                                 Image(systemName: "arrow.down.circle")
                                     .font(.system(size: 18, weight: .medium))
-                                    .foregroundStyle(message.isFromMe ? .white.opacity(0.9) : .white.opacity(0.72))
+                                    .foregroundStyle(message.isFromMe ? UpdoTheme.filmy(0.9) : UpdoTheme.filmy(0.72))
                             }
                         }
                     }
@@ -2661,7 +2661,7 @@ private extension FriendChatView {
                 } else if message.messageStatus == "uploading" {
                     ProgressView()
                         .scaleEffect(0.55)
-                        .tint(.white.opacity(0.9))
+                        .tint(UpdoTheme.filmy(0.9))
                 } else if message.isPending {
                     Image(systemName: "clock")
                         .font(.system(size: 9, weight: .medium))
@@ -2692,11 +2692,11 @@ private extension FriendChatView {
                 }
                 
                 if message.messageStatus == "uploading" {
-                    return Color.white.opacity(0.78)
+                    return UpdoTheme.filmy(0.78)
                 }
                 
                 if message.isPending {
-                    return Color.white.opacity(0.42)
+                    return UpdoTheme.filmy(0.42)
                 }
                 
                 if message.seenAt != nil {
@@ -2704,10 +2704,10 @@ private extension FriendChatView {
                 }
                 
                 if message.deliveredAt != nil {
-                    return Color.white.opacity(0.72)
+                    return UpdoTheme.filmy(0.72)
                 }
                 
-                return Color.white.opacity(0.58)
+                return UpdoTheme.filmy(0.58)
             }
             
             @ViewBuilder
@@ -2817,7 +2817,7 @@ private extension FriendChatView {
                                 )
                             Image(systemName: "person.3.fill")
                                 .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                         }
                         .frame(width: 40, height: 40)
 
@@ -2829,7 +2829,7 @@ private extension FriendChatView {
 
                             Text(invite.crewName.isEmpty ? "Crew" : invite.crewName)
                                 .font(.system(size: 16, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                                 .lineLimit(1)
                         }
                     }
@@ -2837,7 +2837,7 @@ private extension FriendChatView {
                     if isFromMe {
                         Text(tr("ci_sent"))
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(UpdoTheme.filmy(0.55))
                     } else {
                         joinButton
 
@@ -2958,7 +2958,7 @@ private extension FriendChatView {
                                     Text(tr("fc_image_load_failed"))
                                         .font(.system(size: 15, weight: .medium))
                                 }
-                                .foregroundStyle(.white.opacity(0.8))
+                                .foregroundStyle(UpdoTheme.filmy(0.8))
                                 
                             @unknown default:
                                 EmptyView()
@@ -2973,7 +2973,7 @@ private extension FriendChatView {
                             } label: {
                                 Image(systemName: "square.and.arrow.down")
                                     .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                                     .frame(width: 42, height: 42)
                                     .background(.black.opacity(0.35), in: Circle())
                             }
@@ -2983,7 +2983,7 @@ private extension FriendChatView {
                             } label: {
                                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                                     .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                                     .frame(width: 42, height: 42)
                                     .background(.black.opacity(0.35), in: Circle())
                             }
@@ -3834,7 +3834,7 @@ private struct FriendFocusJoinSheet: View {
 
             Text(isEnglish ? "\(friendName) is focusing" : "\(friendName) odakta")
                 .font(.system(size: 20, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 16)
                 .padding(.horizontal, 20)
@@ -3843,7 +3843,7 @@ private struct FriendFocusJoinSheet: View {
                 Circle().fill(live).frame(width: 6, height: 6)
                 Text(isEnglish ? "1 person focusing right now" : "Şu an 1 kişi odakta")
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
             }
             .padding(.top, 6)
 
@@ -3869,7 +3869,7 @@ private struct FriendFocusJoinSheet: View {
             } label: {
                 Text(isEnglish ? "Not now" : "Şimdi değil")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
             }
             .buttonStyle(.plain)
             .padding(.top, 12)
@@ -3877,7 +3877,7 @@ private struct FriendFocusJoinSheet: View {
         }
         .frame(maxWidth: .infinity)
         .background(Color(arenaHex: "#0E1420").ignoresSafeArea())
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .onAppear {
             withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
                 pulse = true

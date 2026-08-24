@@ -21,7 +21,7 @@ struct FocusQuickControlsV6: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(tr("fqc_quick_settings"))
                 .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.94))
+                .foregroundStyle(UpdoTheme.filmy(0.94))
 
             HStack(spacing: 10) {
                 presetChip(.short, label: "15 dk")
@@ -58,7 +58,7 @@ struct FocusQuickControlsV6: View {
         } label: {
             Text(label)
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(selectedPreset == preset ? .white : Color.white.opacity(0.76))
+                .foregroundStyle(selectedPreset == preset ? .white : UpdoTheme.filmy(0.76))
                 .frame(maxWidth: .infinity)
                 .frame(height: 38)
                 .background(
@@ -68,15 +68,15 @@ struct FocusQuickControlsV6: View {
                             ? LinearGradient(
                                 colors: [
                                     accent.opacity(0.28),
-                                    Color.white.opacity(0.10)
+                                    UpdoTheme.filmy(0.10)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                             : LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.05),
-                                    Color.white.opacity(0.025)
+                                    UpdoTheme.filmy(0.05),
+                                    UpdoTheme.filmy(0.025)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -84,7 +84,7 @@ struct FocusQuickControlsV6: View {
                         )
                         .overlay(
                             Capsule(style: .continuous)
-                                .stroke(Color.white.opacity(selectedPreset == preset ? 0.11 : 0.05), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(selectedPreset == preset ? 0.11 : 0.05), lineWidth: 1)
                         )
                 )
                 .shadow(color: selectedPreset == preset ? accent.opacity(0.18) : .clear, radius: 12, x: 0, y: 6)
@@ -96,7 +96,7 @@ struct FocusQuickControlsV6: View {
         Button(action: onTapCustom) {
             Text(selectedPreset == .custom ? "\(customMinutes) dk" : tr("wv_custom"))
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(selectedPreset == .custom ? .white : Color.white.opacity(0.76))
+                .foregroundStyle(selectedPreset == .custom ? .white : UpdoTheme.filmy(0.76))
                 .frame(maxWidth: .infinity)
                 .frame(height: 38)
                 .background(
@@ -106,15 +106,15 @@ struct FocusQuickControlsV6: View {
                             ? LinearGradient(
                                 colors: [
                                     accent.opacity(0.28),
-                                    Color.white.opacity(0.10)
+                                    UpdoTheme.filmy(0.10)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                             : LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.05),
-                                    Color.white.opacity(0.025)
+                                    UpdoTheme.filmy(0.05),
+                                    UpdoTheme.filmy(0.025)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -122,7 +122,7 @@ struct FocusQuickControlsV6: View {
                         )
                         .overlay(
                             Capsule(style: .continuous)
-                                .stroke(Color.white.opacity(selectedPreset == .custom ? 0.11 : 0.05), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(selectedPreset == .custom ? 0.11 : 0.05), lineWidth: 1)
                         )
                 )
                 .shadow(color: selectedPreset == .custom ? accent.opacity(0.18) : .clear, radius: 12, x: 0, y: 6)
@@ -141,10 +141,10 @@ struct FocusQuickControlsV6: View {
         Button(action: action) {
             ZStack {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.03))
+                    .fill(UpdoTheme.filmy(0.03))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
                     )
 
                 Circle()
@@ -156,27 +156,27 @@ struct FocusQuickControlsV6: View {
                 HStack(spacing: 12) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
+                            .fill(UpdoTheme.filmy(0.08))
 
                         Image(systemName: icon)
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.white.opacity(0.92))
+                            .foregroundStyle(UpdoTheme.filmy(0.92))
                     }
                     .frame(width: 34, height: 34)
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(title.uppercased())
                             .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.58))
+                            .foregroundStyle(UpdoTheme.filmy(0.58))
                             .tracking(1)
 
                         Text(value)
                             .font(.system(size: 16, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.96))
+                            .foregroundStyle(UpdoTheme.filmy(0.96))
 
                         Text(subtitle)
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.66))
+                            .foregroundStyle(UpdoTheme.filmy(0.66))
                             .lineLimit(1)
                     }
 
@@ -184,7 +184,7 @@ struct FocusQuickControlsV6: View {
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.40))
+                        .foregroundStyle(UpdoTheme.filmy(0.40))
                 }
                 .padding(.horizontal, 14)
             }

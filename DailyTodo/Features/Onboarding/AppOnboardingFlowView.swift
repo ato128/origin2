@@ -93,7 +93,7 @@ private enum OnboardingArenaPalette {
     static var cardGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color.white.opacity(0.055),
+                UpdoTheme.filmy(0.055),
                 Color(arenaHex: appBlue).opacity(0.040),
                 Color(arenaHex: appPurple).opacity(0.050)
             ],
@@ -308,7 +308,7 @@ private extension AppOnboardingFlowView {
                 HStack(alignment: .firstTextBaseline, spacing: 1) {
                     Text("Up")
                         .font(.system(size: 64, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                     Text("do")
                         .font(.system(size: 60, weight: .regular, design: .serif)).italic()
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.blue))
@@ -318,7 +318,7 @@ private extension AppOnboardingFlowView {
 
                 Text(tr("ob_sc_welcome_sub"))
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(UpdoTheme.filmy(0.56))
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
                     .padding(.horizontal, 44)
@@ -535,10 +535,10 @@ private struct OnboardingShell<Content: View>: View {
             .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.055))
+                    .fill(UpdoTheme.filmy(0.055))
                     .overlay(
                         Capsule()
-                            .stroke(Color.white.opacity(0.090), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.090), lineWidth: 1)
                     )
             )
 
@@ -553,7 +553,7 @@ private struct OnboardingShell<Content: View>: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 48, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .tracking(-1.25)
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
@@ -567,7 +567,7 @@ private struct OnboardingShell<Content: View>: View {
 
             Text(subtitle)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(UpdoTheme.filmy(0.58))
                 .lineLimit(2)
                 .minimumScaleFactor(0.84)
                 .padding(.top, 2)
@@ -597,7 +597,7 @@ private struct OnboardingShell<Content: View>: View {
                 Image(systemName: primaryIcon)
                     .font(.system(size: 16, weight: .heavy))
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(UpdoTheme.textPrimary)
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .background(
@@ -606,7 +606,7 @@ private struct OnboardingShell<Content: View>: View {
             )
             .overlay(
                 Capsule()
-                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.16), lineWidth: 1)
             )
             .shadow(
                 color: Color(arenaHex: OnboardingArenaPalette.appPurple).opacity(0.28),
@@ -657,11 +657,11 @@ private struct BrandOpeningHero: View {
             .scaleEffect(pulse ? 1.06 : 0.96)
 
             Circle()
-                .stroke(Color.white.opacity(0.060), lineWidth: 1)
+                .stroke(UpdoTheme.filmy(0.060), lineWidth: 1)
                 .frame(width: 265, height: 265)
 
             Circle()
-                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .stroke(UpdoTheme.filmy(0.045), lineWidth: 1)
                 .frame(width: 185, height: 185)
 
             Circle()
@@ -686,7 +686,7 @@ private struct BrandOpeningHero: View {
 
                 Image(systemName: "location.north.fill")
                     .font(.system(size: 40, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .offset(y: -2)
             }
             .scaleEffect(pulse ? 1.02 : 1.0)
@@ -785,7 +785,7 @@ private struct FocusExperienceHero: View {
                             .blur(radius: 7)
 
                         Circle()
-                            .stroke(Color.white.opacity(0.070), lineWidth: 11)
+                            .stroke(UpdoTheme.filmy(0.070), lineWidth: 11)
                             .frame(width: 160, height: 160)
 
                         Circle()
@@ -800,7 +800,7 @@ private struct FocusExperienceHero: View {
                         VStack(spacing: 2) {
                             Text("18:42")
                                 .font(.system(size: 40, weight: .heavy, design: .monospaced))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
 
                             Text("Deep Work")
                                 .font(.system(size: 13, weight: .semibold))
@@ -833,7 +833,7 @@ private struct LiveActivityPreview: View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .stroke(Color.white.opacity(0.11), lineWidth: 5)
+                    .stroke(UpdoTheme.filmy(0.11), lineWidth: 5)
                     .frame(width: 38, height: 38)
 
                 Circle()
@@ -849,11 +849,11 @@ private struct LiveActivityPreview: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(tr("ob_sc_study_focus"))
                     .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("ob_sc_live_on_lock"))
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer()
@@ -866,10 +866,10 @@ private struct LiveActivityPreview: View {
         .frame(height: 70)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.060))
+                .fill(UpdoTheme.filmy(0.060))
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.080), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.080), lineWidth: 1)
                 )
         )
     }
@@ -905,7 +905,7 @@ private struct CrewExperienceHero: View {
 
                     ZStack {
                         Circle()
-                            .stroke(Color.white.opacity(0.060), style: StrokeStyle(lineWidth: 1, dash: [4, 7]))
+                            .stroke(UpdoTheme.filmy(0.060), style: StrokeStyle(lineWidth: 1, dash: [4, 7]))
                             .frame(width: 178, height: 178)
 
                         Circle()
@@ -1004,11 +1004,11 @@ private struct CrewMessageStrip: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Burak")
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("ob_demo_msg"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .lineLimit(1)
             }
 
@@ -1016,16 +1016,16 @@ private struct CrewMessageStrip: View {
 
             Text("now")
                 .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.36))
+                .foregroundStyle(UpdoTheme.filmy(0.36))
         }
         .padding(.horizontal, 15)
         .frame(height: 68)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.055))
+                .fill(UpdoTheme.filmy(0.055))
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.080), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.080), lineWidth: 1)
                 )
         )
     }
@@ -1106,22 +1106,22 @@ private struct LeaderboardRow: View {
 
             Text(name)
                 .font(.system(size: 15, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Spacer()
 
             Text(value)
                 .font(.system(size: 13, weight: .heavy, design: .monospaced))
-                .foregroundStyle(isCurrent ? Color(arenaHex: OnboardingArenaPalette.coral) : .white.opacity(0.72))
+                .foregroundStyle(isCurrent ? Color(arenaHex: OnboardingArenaPalette.coral) : UpdoTheme.filmy(0.72))
         }
         .padding(.horizontal, 13)
         .frame(height: 54)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(isCurrent ? color.opacity(0.12) : Color.white.opacity(0.045))
+                .fill(isCurrent ? color.opacity(0.12) : UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(isCurrent ? color.opacity(0.24) : Color.white.opacity(0.060), lineWidth: 1)
+                        .stroke(isCurrent ? color.opacity(0.24) : UpdoTheme.filmy(0.060), lineWidth: 1)
                 )
         )
     }
@@ -1135,7 +1135,7 @@ private struct CommunityMiniStat: View {
         VStack(spacing: 3) {
             Text(value)
                 .font(.system(size: 14, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Text(title.uppercased())
                 .font(.system(size: 8, weight: .heavy, design: .monospaced))
@@ -1244,13 +1244,13 @@ private struct ReadyRow: View {
 
             Text(title)
                 .font(.system(size: 13, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(UpdoTheme.filmy(0.58))
 
             Spacer()
 
             Text(value)
                 .font(.system(size: 13, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
         }
@@ -1258,10 +1258,10 @@ private struct ReadyRow: View {
         .frame(height: 50)
         .background(
             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .stroke(Color.white.opacity(0.060), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.060), lineWidth: 1)
                 )
         )
     }
@@ -1278,7 +1278,7 @@ private struct StatusCard: View {
 
             Text(text)
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundStyle(UpdoTheme.filmy(0.82))
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer()
@@ -1313,7 +1313,7 @@ private struct ProductStageCard<Content: View>: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.065),
+                                UpdoTheme.filmy(0.065),
                                 Color(arenaHex: OnboardingArenaPalette.appBlue).opacity(0.040),
                                 Color(arenaHex: OnboardingArenaPalette.appPurple).opacity(0.050),
                                 Color.black.opacity(0.10)
@@ -1324,7 +1324,7 @@ private struct ProductStageCard<Content: View>: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .stroke(Color.white.opacity(0.080), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.080), lineWidth: 1)
                     )
                     .shadow(color: Color.black.opacity(0.20), radius: 18, y: 10)
             )
@@ -1352,11 +1352,11 @@ private struct MicroProductCard: View {
                 Text(title)
                     .font(.system(size: 8, weight: .heavy, design: .monospaced))
                     .tracking(1.1)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 Text(value)
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
             }
 
@@ -1367,7 +1367,7 @@ private struct MicroProductCard: View {
         .frame(height: 58)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(tint.opacity(0.13), lineWidth: 1)

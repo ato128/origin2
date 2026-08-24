@@ -265,7 +265,7 @@ private extension FriendChatInfoView {
             } label: {
                 Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(circleButtonBackground)
             }
@@ -281,7 +281,7 @@ private extension FriendChatInfoView {
 
                 Text("friend_info_title")
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -328,7 +328,7 @@ private extension FriendChatInfoView {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(friend.name)
                         .font(.system(size: 30, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.65)
 
@@ -345,12 +345,12 @@ private extension FriendChatInfoView {
 
                     Text(friendStatusText)
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(isFriendReallyOnline ? FriendChatInfoArenaPalette.green : .white.opacity(0.48))
+                        .foregroundStyle(isFriendReallyOnline ? FriendChatInfoArenaPalette.green : UpdoTheme.filmy(0.48))
                 }
 
                 Text(friend.subtitle)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .padding(.top, 2)
@@ -465,11 +465,11 @@ private extension FriendChatInfoView {
             VStack(alignment: .leading, spacing: 4) {
                 Text("friend_info_share_my_week")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text("friend_info_let_friend_view_week")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.44))
+                    .foregroundStyle(UpdoTheme.filmy(0.44))
                     .lineLimit(2)
             }
 
@@ -503,11 +503,11 @@ private extension FriendChatInfoView {
             VStack(alignment: .leading, spacing: 4) {
                 Text("friend_info_mute_notifications")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text("friend_info_stop_alerts_from_friend")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.44))
+                    .foregroundStyle(UpdoTheme.filmy(0.44))
                     .lineLimit(2)
             }
 
@@ -563,14 +563,14 @@ private extension FriendChatInfoView {
                          ? tr("fci_not_active")
                          : "This action is not active yet.")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.44))
+                        .foregroundStyle(UpdoTheme.filmy(0.44))
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.30))
+                    .foregroundStyle(UpdoTheme.filmy(0.30))
             }
             .padding(14)
             .background(detailSurface(cornerRadius: 22, tint: FriendChatInfoArenaPalette.coral))
@@ -633,7 +633,7 @@ private extension FriendChatInfoView {
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.44))
+                    .foregroundStyle(UpdoTheme.filmy(0.44))
                     .lineLimit(2)
             }
 
@@ -644,7 +644,7 @@ private extension FriendChatInfoView {
             } else {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.30))
+                    .foregroundStyle(UpdoTheme.filmy(0.30))
             }
         }
         .padding(14)
@@ -660,19 +660,19 @@ private extension FriendChatInfoView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -684,12 +684,12 @@ private extension FriendChatInfoView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.44))
+                    .foregroundStyle(UpdoTheme.filmy(0.44))
                     .lineLimit(2)
             }
 
@@ -697,7 +697,7 @@ private extension FriendChatInfoView {
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.30))
+                .foregroundStyle(UpdoTheme.filmy(0.30))
         }
         .padding(14)
         .background(detailSurface(cornerRadius: 22, tint: tint))
@@ -736,8 +736,8 @@ private extension FriendChatInfoView {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.090),
-                        Color.white.opacity(0.055)
+                        UpdoTheme.filmy(0.090),
+                        UpdoTheme.filmy(0.055)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -745,7 +745,7 @@ private extension FriendChatInfoView {
             )
             .overlay(
                 Circle()
-                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
     }
@@ -757,7 +757,7 @@ private extension FriendChatInfoView {
                     colors: [
                         tint.opacity(0.055),
                         FriendChatInfoArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -777,7 +777,7 @@ private extension FriendChatInfoView {
                     colors: [
                         FriendChatInfoArenaPalette.blue.opacity(0.035),
                         FriendChatInfoArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -785,7 +785,7 @@ private extension FriendChatInfoView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }

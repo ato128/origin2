@@ -30,12 +30,12 @@ struct EmailVerificationView: View {
                     VStack(spacing: 12) {
                         Text("Emailini onayla")
                             .font(.system(size: 34, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .multilineTextAlignment(.center)
 
                         Text(tr("ev_subtitle"))
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.62))
+                            .foregroundStyle(UpdoTheme.filmy(0.62))
                             .multilineTextAlignment(.center)
                             .lineSpacing(3)
                             .padding(.horizontal, 12)
@@ -88,7 +88,7 @@ struct EmailVerificationView: View {
                     } label: {
                         Text(tr("ev_different_account"))
                             .font(.system(size: 14, weight: .black, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.48))
+                            .foregroundStyle(UpdoTheme.filmy(0.48))
                             .frame(height: 42)
                     }
                     .buttonStyle(.plain)
@@ -117,7 +117,7 @@ struct EmailVerificationView: View {
                         colors: [
                             Color(arenaHex: "#1593FF").opacity(0.30),
                             Color(arenaHex: "#7C3AED").opacity(0.24),
-                            Color.white.opacity(0.06)
+                            UpdoTheme.filmy(0.06)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -126,7 +126,7 @@ struct EmailVerificationView: View {
                 .frame(width: 118, height: 118)
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
                 )
                 .shadow(color: Color(arenaHex: "#7C3AED").opacity(0.24), radius: 24, y: 12)
 
@@ -153,18 +153,18 @@ struct EmailVerificationView: View {
                 .frame(width: 42, height: 42)
                 .background(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(Color.white.opacity(0.075))
+                        .fill(UpdoTheme.filmy(0.075))
                 )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(appLanguageIsEnglish() ? "EMAIL PENDING CONFIRMATION" : "ONAY BEKLEYEN EMAIL")
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.4)
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
 
                 Text(emailText)
                     .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(UpdoTheme.filmy(0.92))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
             }
@@ -174,10 +174,10 @@ struct EmailVerificationView: View {
         .padding(15)
         .background(
             RoundedRectangle(cornerRadius: 23, style: .continuous)
-                .fill(Color.white.opacity(0.060))
+                .fill(UpdoTheme.filmy(0.060))
                 .overlay(
                     RoundedRectangle(cornerRadius: 23, style: .continuous)
-                        .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.085), lineWidth: 1)
                 )
         )
         .padding(.horizontal, 24)
@@ -191,7 +191,7 @@ struct EmailVerificationView: View {
 
             Text(text)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(UpdoTheme.filmy(0.78))
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
@@ -225,7 +225,7 @@ struct EmailVerificationView: View {
             Text(title)
                 .font(.system(size: 17, weight: .black, design: .rounded))
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(UpdoTheme.textPrimary)
         .frame(maxWidth: .infinity)
         .frame(height: 58)
         .background(
@@ -244,7 +244,7 @@ struct EmailVerificationView: View {
         )
         .overlay(
             Capsule()
-                .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                .stroke(UpdoTheme.filmy(0.14), lineWidth: 1)
         )
         .shadow(color: Color(arenaHex: "#7C3AED").opacity(0.26), radius: 18, y: 9)
     }
@@ -271,10 +271,10 @@ struct EmailVerificationView: View {
         .frame(height: 54)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.070))
+                .fill(UpdoTheme.filmy(0.070))
                 .overlay(
                     Capsule()
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                 )
         )
     }

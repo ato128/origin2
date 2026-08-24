@@ -26,7 +26,7 @@ struct SmartTaskSuggestionCard: View {
                 .fill(.ultraThinMaterial)
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.08), lineWidth: 1)
                 )
         )
     }

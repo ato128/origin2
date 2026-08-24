@@ -332,32 +332,32 @@ extension BackendCrewDetailView {
                     .overlay(
                         Image(systemName: "person.badge.plus")
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(spacing: 8) {
                     Text(tr("bcd_invite_code"))
                         .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("bcd_share_code"))
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(UpdoTheme.filmy(0.52))
                         .multilineTextAlignment(.center)
                 }
 
                 Text(inviteCode)
                     .font(.system(size: 42, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .textSelection(.enabled)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 16)
                     .background(
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
                             )
                     )
 
@@ -380,7 +380,7 @@ extension BackendCrewDetailView {
                 if inviteCopied {
                     Text(tr("backend_crew_code_copied_success"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(UpdoTheme.filmy(0.52))
                         .transition(.opacity)
                 }
 
@@ -416,13 +416,13 @@ extension BackendCrewDetailView {
             Text("— \(tr("bcd_invite_friends_caps")) —")
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(2.2)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if invitableFriends.isEmpty {
                 Text(tr("bcd_invite_no_friends"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 VStack(spacing: 10) {
@@ -449,7 +449,7 @@ extension BackendCrewDetailView {
 
             Text(friend.name)
                 .font(.system(size: 15, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
 
             Spacer(minLength: 8)
@@ -484,10 +484,10 @@ extension BackendCrewDetailView {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
     }
@@ -595,7 +595,7 @@ extension BackendCrewDetailView {
             Text(tr("bcd_subtitle"))
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .tracking(1.1)
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(UpdoTheme.filmy(0.42))
 
             Spacer()
         }
@@ -621,11 +621,11 @@ extension BackendCrewDetailView {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(tr("crew_goal_title"))
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("crew_goal_desc"))
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
                 }
 
                 Spacer()
@@ -688,14 +688,14 @@ extension BackendCrewDetailView {
                         .foregroundStyle(
                             reached
                             ? BackendCrewArenaPalette.green
-                            : .white.opacity(0.52)
+                            : UpdoTheme.filmy(0.52)
                         )
 
                         Spacer()
 
                         Text("\(Int(progress * 100))%")
                             .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.42))
+                            .foregroundStyle(UpdoTheme.filmy(0.42))
                     }
 
                     ProgressView(value: progress)
@@ -742,20 +742,20 @@ extension BackendCrewDetailView {
                 Text(tr("crew_goal_contrib_caps"))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.4)
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(UpdoTheme.filmy(0.38))
 
                 ForEach(contributions, id: \.name) { entry in
                     HStack(spacing: 10) {
                         Text(entry.name)
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.82))
+                            .foregroundStyle(UpdoTheme.filmy(0.82))
                             .lineLimit(1)
                             .frame(width: 92, alignment: .leading)
 
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 Capsule()
-                                    .fill(Color.white.opacity(0.06))
+                                    .fill(UpdoTheme.filmy(0.06))
                                     .frame(height: 4)
 
                                 Capsule()
@@ -770,7 +770,7 @@ extension BackendCrewDetailView {
 
                         Text(focusTimeText(entry.minutes))
                             .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(UpdoTheme.filmy(0.55))
                             .lineLimit(1)
                             .fixedSize()
                     }
@@ -810,12 +810,12 @@ extension BackendCrewDetailView {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(badgeTitle)
                             .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
 
                         Text(focusTimeText(minutes))
                             .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.52))
+                            .foregroundStyle(UpdoTheme.filmy(0.52))
                     }
 
                     if let nextTarget {
@@ -824,13 +824,13 @@ extension BackendCrewDetailView {
                                 Text(tr("bcd_next_badge_label"))
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .tracking(1.1)
-                                    .foregroundStyle(.white.opacity(0.38))
+                                    .foregroundStyle(UpdoTheme.filmy(0.38))
 
                                 Spacer()
 
                                 Text(focusTimeText(max(0, nextTarget - minutes)))
                                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                                    .foregroundStyle(.white.opacity(0.52))
+                                    .foregroundStyle(UpdoTheme.filmy(0.52))
                             }
 
                             ProgressView(value: CrewBadgeHelper.progress(for: minutes))
@@ -859,12 +859,12 @@ extension BackendCrewDetailView {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(tr("bcd_todays_leader"))
                             .font(.system(size: 17, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         if let topMember {
                             Text(topMember.name)
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.78))
+                                .foregroundStyle(UpdoTheme.filmy(0.78))
                                 .lineLimit(1)
 
                             Text(tr("bcd_min_focus", topMember.minutes))
@@ -873,7 +873,7 @@ extension BackendCrewDetailView {
                         } else {
                             Text(tr("bcd_no_focus"))
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.52))
+                                .foregroundStyle(UpdoTheme.filmy(0.52))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -884,18 +884,18 @@ extension BackendCrewDetailView {
                                 VStack(spacing: 4) {
                                     Text("#\(index + 1)")
                                         .font(.system(size: 9, weight: .black, design: .monospaced))
-                                        .foregroundStyle(index == 0 ? BackendCrewArenaPalette.gold : .white.opacity(0.42))
+                                        .foregroundStyle(index == 0 ? BackendCrewArenaPalette.gold : UpdoTheme.filmy(0.42))
 
                                     Text("\(entry.minutes)")
                                         .font(.system(size: 12, weight: .black, design: .monospaced))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(UpdoTheme.textPrimary)
                                         .monospacedDigit()
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                        .fill(Color.white.opacity(0.055))
+                                        .fill(UpdoTheme.filmy(0.055))
                                 )
                             }
                         }
@@ -1171,10 +1171,10 @@ extension BackendCrewDetailView {
 
                 Text("\(items.count)")
                     .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .padding(.horizontal, 10)
                     .frame(height: 34)
-                    .background(Capsule().fill(Color.white.opacity(0.075)))
+                    .background(Capsule().fill(UpdoTheme.filmy(0.075)))
             }
 
             if items.isEmpty {
@@ -1213,7 +1213,7 @@ extension BackendCrewDetailView {
 
                 if !isLast {
                     Rectangle()
-                        .fill(Color.white.opacity(0.08))
+                        .fill(UpdoTheme.filmy(0.08))
                         .frame(width: 2, height: 32)
                 }
             }
@@ -1221,17 +1221,17 @@ extension BackendCrewDetailView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
 
                 Text(subtitle)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .lineLimit(2)
 
                 Text(time)
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.32))
+                    .foregroundStyle(UpdoTheme.filmy(0.32))
             }
 
             Spacer()
@@ -1258,14 +1258,14 @@ extension BackendCrewDetailView {
             } label: {
                 Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -1275,7 +1275,7 @@ extension BackendCrewDetailView {
 
             Text(crew.name)
                 .font(.system(size: 20, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
@@ -1295,16 +1295,16 @@ extension BackendCrewDetailView {
                     } else {
                         Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
                             .font(.system(size: 19, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     }
                 }
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(Color.white.opacity(0.075))
+                        .fill(UpdoTheme.filmy(0.075))
                         .overlay(
                             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                         )
                 )
             }
@@ -1330,7 +1330,7 @@ extension BackendCrewDetailView {
 
                         Image(systemName: "camera.fill")
                             .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .frame(width: 22, height: 22)
                             .background(
                                 Circle().fill(accent)
@@ -1350,7 +1350,7 @@ extension BackendCrewDetailView {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(crew.name)
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)
 
@@ -1362,7 +1362,7 @@ extension BackendCrewDetailView {
 
                     Text(heroSubtitle(memberCount: memberCount, totalTasks: totalTasks))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                         .lineLimit(2)
                         .minimumScaleFactor(0.70)
                 }
@@ -1375,25 +1375,25 @@ extension BackendCrewDetailView {
                     Text(tr("ha_progress"))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .tracking(1.1)
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
 
                     Text(totalTasks == 0 ? tr("bcd_crew_ready") : tr("rel_done_of", completedTasksCount, totalTasks))
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 }
 
                 Spacer()
 
                 Text("%\(percent)")
                     .font(.system(size: 40, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .monospacedDigit()
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.white.opacity(0.09))
+                        .fill(UpdoTheme.filmy(0.09))
                         .frame(height: 7)
 
                     Capsule()
@@ -1530,13 +1530,13 @@ extension BackendCrewDetailView {
 
             Text(value)
                 .font(.system(size: 24, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .monospacedDigit()
 
             Text(title)
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(1)
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(UpdoTheme.filmy(0.42))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 96)
@@ -1554,7 +1554,7 @@ extension BackendCrewDetailView {
                     colors: [
                         tint.opacity(0.055),
                         BackendCrewArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1622,10 +1622,10 @@ extension BackendCrewDetailView {
 
                     Text("\(crewMembers.count)")
                         .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .padding(.horizontal, 10)
                         .frame(height: 36)
-                        .background(Capsule().fill(Color.white.opacity(0.075)))
+                        .background(Capsule().fill(UpdoTheme.filmy(0.075)))
                 }
             }
 
@@ -1660,12 +1660,12 @@ extension BackendCrewDetailView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(memberName(from: profile))
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
 
                 Text("@\(memberUsername(from: profile))")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(UpdoTheme.filmy(0.40))
                     .lineLimit(1)
 
                 memberStatLine(for: member)
@@ -1675,12 +1675,12 @@ extension BackendCrewDetailView {
 
             Text(localizedRole(member.role))
                 .font(.system(size: 11, weight: .black, design: .monospaced))
-                .foregroundStyle(isOwner ? BackendCrewArenaPalette.gold : .white.opacity(0.70))
+                .foregroundStyle(isOwner ? BackendCrewArenaPalette.gold : UpdoTheme.filmy(0.70))
                 .padding(.horizontal, 12)
                 .frame(height: 34)
                 .background(
                     Capsule()
-                        .fill(isOwner ? BackendCrewArenaPalette.gold.opacity(0.12) : Color.white.opacity(0.075))
+                        .fill(isOwner ? BackendCrewArenaPalette.gold.opacity(0.12) : UpdoTheme.filmy(0.075))
                 )
         }
         .padding(14)
@@ -1725,7 +1725,7 @@ extension BackendCrewDetailView {
 
                 Text("LV\(stat.level)")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
             }
         }
     }
@@ -1768,15 +1768,15 @@ extension BackendCrewDetailView {
                     } label: {
                         Text(filter.title)
                             .font(.system(size: 12, weight: .black))
-                            .foregroundStyle(isSelected ? .black : .white.opacity(0.46))
+                            .foregroundStyle(isSelected ? .black : UpdoTheme.filmy(0.46))
                             .padding(.horizontal, 14)
                             .frame(height: 36)
                             .background(
                                 Capsule()
-                                    .fill(isSelected ? BackendCrewArenaPalette.blue : Color.white.opacity(0.070))
+                                    .fill(isSelected ? BackendCrewArenaPalette.blue : UpdoTheme.filmy(0.070))
                                     .overlay(
                                         Capsule()
-                                            .stroke(Color.white.opacity(isSelected ? 0 : 0.08), lineWidth: 1)
+                                            .stroke(UpdoTheme.filmy(isSelected ? 0 : 0.08), lineWidth: 1)
                                     )
                             )
                     }
@@ -1847,7 +1847,7 @@ extension BackendCrewDetailView {
             } label: {
                 Image(systemName: task.is_done ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 25, weight: .black))
-                    .foregroundStyle(task.is_done ? BackendCrewArenaPalette.green : .white.opacity(0.28))
+                    .foregroundStyle(task.is_done ? BackendCrewArenaPalette.green : UpdoTheme.filmy(0.28))
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
@@ -1859,8 +1859,8 @@ extension BackendCrewDetailView {
             VStack(alignment: .leading, spacing: 8) {
                 Text(task.title)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
-                    .strikethrough(task.is_done, color: .white.opacity(0.45))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .strikethrough(task.is_done, color: UpdoTheme.filmy(0.45))
                     .opacity(task.is_done ? 0.62 : 1.0)
                     .lineLimit(2)
 
@@ -1868,7 +1868,7 @@ extension BackendCrewDetailView {
                    !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(details)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
                         .lineLimit(2)
                 }
 
@@ -1976,11 +1976,11 @@ extension BackendCrewDetailView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tr("bcd_focus_together"))
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("bcd_focus_ready", memberCount))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .lineLimit(2)
             }
 
@@ -2046,7 +2046,7 @@ extension BackendCrewDetailView {
 
             Text(text)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.50))
+                .foregroundStyle(UpdoTheme.filmy(0.50))
                 .lineLimit(2)
 
             Spacer()
@@ -2060,19 +2060,19 @@ extension BackendCrewDetailView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -2105,7 +2105,7 @@ extension BackendCrewDetailView {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.035),
+                                UpdoTheme.filmy(0.035),
                                 Color.clear,
                                 Color.black.opacity(0.05)
                             ],
@@ -2116,7 +2116,7 @@ extension BackendCrewDetailView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.06), lineWidth: 1)
             )
     }
 
@@ -2212,7 +2212,7 @@ extension BackendCrewDetailView {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.10),
+                                UpdoTheme.filmy(0.10),
                                 Color.clear,
                                 Color.clear
                             ],

@@ -50,7 +50,7 @@ struct UpdoMascotView: View {
             HStack(spacing: 0) {
                 Text("Updo")
                     .font(.system(size: size * 0.125, weight: .black))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(UpdoTheme.filmy(0.92))
 
                 Text(" AI")
                     .font(.system(size: size * 0.12, weight: .regular, design: .serif))

@@ -39,7 +39,7 @@ struct AvatarZoomViewer: View {
                 HStack {
                     Text(name)
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
 
                     Spacer()
@@ -49,10 +49,10 @@ struct AvatarZoomViewer: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 15, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .frame(width: 40, height: 40)
                             .background(
-                                Circle().fill(Color.white.opacity(0.12))
+                                Circle().fill(UpdoTheme.filmy(0.12))
                             )
                     }
                     .buttonStyle(.plain)

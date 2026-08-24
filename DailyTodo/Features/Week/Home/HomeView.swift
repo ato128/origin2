@@ -294,7 +294,7 @@ private extension HomeView {
 
             topBarIconButton(
                 icon: "bubble.left.and.bubble.right.fill",
-                tint: unreadMessageCount > 0 ? accentWarm : .white.opacity(0.88),
+                tint: unreadMessageCount > 0 ? accentWarm : UpdoTheme.filmy(0.88),
                 badge: unreadMessageCount > 0 ? "\(min(unreadMessageCount, 9))" : nil,
                 badgeColor: accentWarm
             ) {
@@ -409,7 +409,7 @@ private extension HomeView {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(state.title)
                     .font(.system(size: 32, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.58)
 
@@ -430,7 +430,7 @@ private extension HomeView {
             // Gerçek veriden durum cümlesi
             Text(aiHeroContextLine)
                 .font(.system(size: 13.5, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(UpdoTheme.filmy(0.55))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
@@ -440,7 +440,7 @@ private extension HomeView {
             HStack(spacing: 9) {
                 TextField(tr("hv_ai_bar_placeholder"), text: $aiQuickInput, axis: .vertical)
                     .font(.system(size: 15))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(accentCyan)
                     .lineLimit(1...3)
                     .focused($aiQuickFocused)
@@ -458,12 +458,12 @@ private extension HomeView {
                 } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(heroInputReady ? Color.black : .white.opacity(0.4))
+                        .foregroundStyle(heroInputReady ? Color.black : UpdoTheme.filmy(0.4))
                         .frame(width: 34, height: 34)
                         .background(
                             Circle().fill(heroInputReady
                                           ? AnyShapeStyle(accentCyan)
-                                          : AnyShapeStyle(Color.white.opacity(0.08)))
+                                          : AnyShapeStyle(UpdoTheme.filmy(0.08)))
                         )
                 }
                 .buttonStyle(.plain)
@@ -474,7 +474,7 @@ private extension HomeView {
             .padding(.vertical, 8)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(UpdoTheme.filmy(0.06))
                     .overlay(
                         Capsule(style: .continuous)
                             .stroke(
@@ -570,14 +570,14 @@ private extension HomeView {
 
                 Text(title)
                     .font(.system(size: 12.5, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(UpdoTheme.filmy(0.85))
             }
             .padding(.horizontal, 13)
             .frame(height: 36)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.055))
-                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
+                    .fill(UpdoTheme.filmy(0.055))
+                    .overlay(Capsule().strokeBorder(UpdoTheme.filmy(0.10), lineWidth: 1))
             )
         }
         .buttonStyle(.plain)
@@ -594,7 +594,7 @@ private extension HomeView {
             let remaining = credits.messagesRemainingToday ?? credits.creditsRemaining
             Text(credits.isPro ? tr("hv_ai_credit_n", remaining) : tr("hv_ai_msg_n", remaining))
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(remaining > 0 ? Color.white.opacity(0.38) : Color(arenaHex: "#FF5A44").opacity(0.8))
+                .foregroundStyle(remaining > 0 ? UpdoTheme.filmy(0.38) : Color(arenaHex: "#FF5A44").opacity(0.8))
         }
     }
 }
@@ -620,7 +620,7 @@ private extension HomeView {
             VStack(alignment: .leading, spacing: 2) {
                 Text(tr("hv_streak_broken_title", progression.brokenStreakValue))
                     .font(.system(size: 14.5, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
@@ -630,7 +630,7 @@ private extension HomeView {
                     : (subscription.isPro ? tr("ins_restore_exhausted") : tr("hv_streak_broken_sub_free"))
                 )
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(UpdoTheme.filmy(0.58))
                 .lineLimit(2)
             }
 
@@ -674,7 +674,7 @@ private extension HomeView {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [coral.opacity(0.10), Color.white.opacity(0.035)],
+                        colors: [coral.opacity(0.10), UpdoTheme.filmy(0.035)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -763,9 +763,9 @@ private extension HomeView {
                 } label: {
                     Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 10, weight: .black))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
                         .frame(width: 24, height: 24)
-                        .background(Circle().fill(Color.white.opacity(0.07)))
+                        .background(Circle().fill(UpdoTheme.filmy(0.07)))
                 }
                 .buttonStyle(.plain)
             }
@@ -773,7 +773,7 @@ private extension HomeView {
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(tr("hv_weekly_title"))
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("hv_weekly_title_italic"))
                     .font(.system(size: 19, weight: .regular, design: .serif))
@@ -820,7 +820,7 @@ private extension HomeView {
 
                     Text(tr("hv_weekly_streak_line", progression.currentStreak))
                         .font(.system(size: 12.5, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.66))
+                        .foregroundStyle(UpdoTheme.filmy(0.66))
                 }
             }
         }
@@ -831,7 +831,7 @@ private extension HomeView {
                     LinearGradient(
                         colors: [
                             accentGold.opacity(0.075),
-                            Color.white.opacity(0.035)
+                            UpdoTheme.filmy(0.035)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -854,24 +854,24 @@ private extension HomeView {
 
                 Text(value)
                     .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
 
             Text(label)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white.opacity(0.44))
+                .foregroundStyle(UpdoTheme.filmy(0.44))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 11)
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
     }
@@ -938,12 +938,12 @@ private extension HomeView {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(appLanguageIsEnglish() ? "Get started" : "Başlangıç")
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                     Text(appLanguageIsEnglish()
                          ? "Let's set you up · \(doneCount)/\(steps.count)"
                          : "Seni hazırlayalım · \(doneCount)/\(steps.count)")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
                 }
                 Spacer()
                 Button {
@@ -951,9 +951,9 @@ private extension HomeView {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
                         .frame(width: 28, height: 28)
-                        .background(Circle().fill(Color.white.opacity(0.06)))
+                        .background(Circle().fill(UpdoTheme.filmy(0.06)))
                 }
                 .buttonStyle(.plain)
             }
@@ -972,10 +972,10 @@ private extension HomeView {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.08), lineWidth: 1)
                 )
         )
         .transition(.opacity.combined(with: .move(edge: .top)))
@@ -986,27 +986,27 @@ private extension HomeView {
             ZStack {
                 Circle()
                     .fill(step.done ? Color.green.opacity(0.9)
-                          : (isNext ? Color(arenaHex: AppArenaPalette.cyan).opacity(0.18) : Color.white.opacity(0.06)))
+                          : (isNext ? Color(arenaHex: AppArenaPalette.cyan).opacity(0.18) : UpdoTheme.filmy(0.06)))
                     .frame(width: 36, height: 36)
                 Image(systemName: step.done ? "checkmark" : step.icon)
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(step.done ? .white
-                                     : (isNext ? Color(arenaHex: AppArenaPalette.cyan) : .white.opacity(0.6)))
+                                     : (isNext ? Color(arenaHex: AppArenaPalette.cyan) : UpdoTheme.filmy(0.6)))
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(step.title)
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(step.done ? .white.opacity(0.45) : .white)
-                    .strikethrough(step.done, color: .white.opacity(0.4))
+                    .foregroundStyle(step.done ? UpdoTheme.filmy(0.45) : .white)
+                    .strikethrough(step.done, color: UpdoTheme.filmy(0.4))
                 Text(step.sub)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(UpdoTheme.filmy(0.4))
             }
             Spacer(minLength: 6)
             if !step.done {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(isNext ? 0.6 : 0.3))
+                    .foregroundStyle(UpdoTheme.filmy(isNext ? 0.6 : 0.3))
             }
         }
         .padding(.vertical, 6)
@@ -1066,7 +1066,7 @@ private extension HomeView {
                 Text(activeFocusMetaText)
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(0.8)
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             HStack(alignment: .center, spacing: 12) {
@@ -1089,14 +1089,14 @@ private extension HomeView {
                     } label: {
                         Image(systemName: isPaused ? "play.fill" : "pause.fill")
                             .font(.system(size: 15, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .frame(width: 46, height: 46)
                             .background(
                                 Circle()
-                                    .fill(Color.white.opacity(0.10))
+                                    .fill(UpdoTheme.filmy(0.10))
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                                            .stroke(UpdoTheme.filmy(0.14), lineWidth: 1)
                                     )
                             )
                     }
@@ -1122,7 +1122,7 @@ private extension HomeView {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 999, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
+                        .fill(UpdoTheme.filmy(0.08))
 
                     RoundedRectangle(cornerRadius: 999, style: .continuous)
                         .fill(
@@ -1142,9 +1142,9 @@ private extension HomeView {
                             .fill(
                                 LinearGradient(
                                     stops: [
-                                        .init(color: .white.opacity(0), location: 0.0),
-                                        .init(color: .white.opacity(0.45), location: 0.5),
-                                        .init(color: .white.opacity(0), location: 1.0)
+                                        .init(color: UpdoTheme.filmy(0), location: 0.0),
+                                        .init(color: UpdoTheme.filmy(0.45), location: 0.5),
+                                        .init(color: UpdoTheme.filmy(0), location: 1.0)
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -1162,14 +1162,14 @@ private extension HomeView {
             HStack {
                 Text(isPaused ? tr("hv_paused") : "Odak devam ediyor")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
 
                 Spacer()
 
                 Text(elapsedText)
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(0.6)
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
             }
         }
         .padding(15)
@@ -1189,14 +1189,20 @@ private extension HomeView {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.078),
+                        UpdoTheme.filmy(0.078),
                         tint.opacity(0.072),
                         secondaryTint.opacity(0.062),
-                        Color.white.opacity(0.030)
+                        UpdoTheme.filmy(0.030)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
+            )
+            // Light mode: a solid raised card so it reads against the eggshell
+            // (the glassy tint gradient above stays for depth). Dark: unchanged.
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.adaptive(light: Color(arenaHex: "#FFFFFF").opacity(0.90), dark: .clear))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -1205,7 +1211,7 @@ private extension HomeView {
                             colors: [
                                 tint.opacity(0.18),
                                 secondaryTint.opacity(0.12),
-                                Color.white.opacity(0.06)
+                                UpdoTheme.filmy(0.06)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -1277,15 +1283,15 @@ private extension HomeView {
                 HStack(spacing: 6) {
                     Text("\(todayEvents.count)")
                         .font(.system(size: focusSession.isSessionActive ? 19 : 21, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(appLanguageIsEnglish() ? "events" : "etkinlik")
                         .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(.white.opacity(0.62))
+                        .foregroundStyle(UpdoTheme.filmy(0.62))
 
                     if pastEventsCount > 0 {
                         Text("·")
-                            .foregroundStyle(.white.opacity(0.28))
+                            .foregroundStyle(UpdoTheme.filmy(0.28))
 
                         Text(tr("rel_done_count", pastEventsCount))
                             .font(.system(size: 12, weight: .black))
@@ -1297,7 +1303,7 @@ private extension HomeView {
                     Text(timeRangeText)
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(0.7)
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(UpdoTheme.filmy(0.52))
                 }
 
                 CurvedTimelineView(
@@ -1335,11 +1341,11 @@ private extension HomeView {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tr("hv_day_is_yours"))
                         .font(.system(size: 18, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("hv_shape_schedule"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(UpdoTheme.filmy(0.52))
                         .lineLimit(2)
                 }
 
@@ -1374,15 +1380,15 @@ private extension HomeView {
                         Text(tr("hv_add_task"))
                             .font(.system(size: 12, weight: .black))
                     }
-                    .foregroundStyle(.white.opacity(0.86))
+                    .foregroundStyle(UpdoTheme.filmy(0.86))
                     .padding(.horizontal, 13)
                     .frame(height: 34)
                     .background(
                         Capsule()
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 Capsule()
-                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                             )
                     )
                 }
@@ -1835,8 +1841,8 @@ private struct PremiumCountdownView: View {
         }
         return LinearGradient(
             colors: [
-                Color.white.opacity(0.96),
-                Color.white.opacity(0.74),
+                UpdoTheme.filmy(0.96),
+                UpdoTheme.filmy(0.74),
                 Color(white: 0.44),
                 accent.opacity(0.45)
             ],
@@ -1976,9 +1982,9 @@ private struct CurvedTimelineView: View {
             .stroke(
                 LinearGradient(
                     stops: [
-                        .init(color: .white.opacity(0.0), location: max(0, shimmerPhase - 0.18)),
-                        .init(color: .white.opacity(0.55), location: shimmerPhase),
-                        .init(color: .white.opacity(0.0), location: min(1, shimmerPhase + 0.18))
+                        .init(color: UpdoTheme.filmy(0.0), location: max(0, shimmerPhase - 0.18)),
+                        .init(color: UpdoTheme.filmy(0.55), location: shimmerPhase),
+                        .init(color: UpdoTheme.filmy(0.0), location: min(1, shimmerPhase + 0.18))
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
@@ -2021,7 +2027,7 @@ private struct CurvedTimelineView: View {
                     .overlay(
                         Circle()
                             .stroke(
-                                Color.white.opacity(isActive ? 0.92 : 0.18),
+                                UpdoTheme.filmy(isActive ? 0.92 : 0.18),
                                 lineWidth: isActive ? 2 : 1
                             )
                     )
@@ -2095,7 +2101,7 @@ private struct CurvedTimelineView: View {
             .frame(width: 14, height: 14)
             .overlay(
                 Circle()
-                    .stroke(Color.white.opacity(0.96), lineWidth: 2)
+                    .stroke(UpdoTheme.filmy(0.96), lineWidth: 2)
             )
             .shadow(color: accentActive.opacity(0.55), radius: 10)
             .position(p)
@@ -2238,7 +2244,7 @@ private struct HomeMetricCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
                     .font(.system(size: 31, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
                     .contentTransition(.numericText())
@@ -2246,14 +2252,14 @@ private struct HomeMetricCard: View {
 
                 Text(unit)
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.44))
+                    .foregroundStyle(UpdoTheme.filmy(0.44))
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
             }
 
             Text(subtitle)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(isActive ? 0.52 : 0.38))
+                .foregroundStyle(UpdoTheme.filmy(isActive ? 0.52 : 0.38))
                 .lineLimit(2)
                 .minimumScaleFactor(0.74)
         }
@@ -2327,7 +2333,7 @@ private struct HomeMetricCard: View {
                             colors: [
                                 primaryTint.opacity(isActive ? 0.20 : 0.085),
                                 secondaryTint.opacity(isCompleted ? 0.22 : 0.075),
-                                Color.white.opacity(0.045)
+                                UpdoTheme.filmy(0.045)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -2343,7 +2349,7 @@ private struct HomeMetricCard: View {
             let level = max(0.0, min(progress, 1.0))
 
             return [
-                Color.white.opacity(0.052),
+                UpdoTheme.filmy(0.052),
                 primaryTint.opacity(0.035 + level * 0.065),
                 secondaryTint.opacity(0.030 + level * 0.050),
                 Color.black.opacity(0.020)
@@ -2352,7 +2358,7 @@ private struct HomeMetricCard: View {
         case .task:
             if isCompleted {
                 return [
-                    Color.white.opacity(0.052),
+                    UpdoTheme.filmy(0.052),
                     primaryTint.opacity(0.105),
                     Color.green.opacity(0.045),
                     Color.black.opacity(0.020)
@@ -2360,7 +2366,7 @@ private struct HomeMetricCard: View {
             }
 
             return [
-                Color.white.opacity(0.052),
+                UpdoTheme.filmy(0.052),
                 primaryTint.opacity(isActive ? 0.072 : 0.030),
                 secondaryTint.opacity(isActive ? 0.055 : 0.025),
                 Color.black.opacity(0.020)
@@ -2368,7 +2374,7 @@ private struct HomeMetricCard: View {
 
         case .streak:
             return [
-                Color.white.opacity(0.052),
+                UpdoTheme.filmy(0.052),
                 primaryTint.opacity(isActive ? 0.090 : 0.030),
                 Color.orange.opacity(isActive ? 0.050 : 0.018),
                 Color.black.opacity(0.020)
@@ -2462,7 +2468,7 @@ private struct TimelineDetailSheet: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(tr("hv_your_day"))
                     .font(.system(size: 38, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text("ritmi")
                     .font(.system(size: 34, weight: .regular, design: .serif))
@@ -2480,7 +2486,7 @@ private struct TimelineDetailSheet: View {
 
             Text("\(events.count) \(tr("import_events")) · \(pastEventsCount) \(tr("done_word")) · \(tr("now_label")) \(formatHHmm(currentMinute))")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.50))
+                .foregroundStyle(UpdoTheme.filmy(0.50))
         }
     }
 
@@ -2498,7 +2504,7 @@ private struct TimelineDetailSheet: View {
 
                 Text(timeRangeText)
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
             }
 
             CurvedTimelineView(
@@ -2519,10 +2525,10 @@ private struct TimelineDetailSheet: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.078),
+                            UpdoTheme.filmy(0.078),
                             accentCyan.opacity(0.072),
                             accentPrimary.opacity(0.062),
-                            Color.white.opacity(0.030)
+                            UpdoTheme.filmy(0.030)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -2575,11 +2581,11 @@ private struct TimelineDetailSheet: View {
 
             Text(title)
                 .font(.system(size: 22, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Text(subtitle)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(UpdoTheme.filmy(0.45))
                 .lineLimit(2)
         }
         .padding(14)
@@ -2589,7 +2595,7 @@ private struct TimelineDetailSheet: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.05),
+                            UpdoTheme.filmy(0.05),
                             tint.opacity(0.04),
                             Color.black.opacity(0.02)
                         ],
@@ -2618,7 +2624,7 @@ private struct TimelineDetailSheet: View {
 
                 Text(appLanguageIsEnglish() ? "\(events.count) total" : "\(events.count) toplam")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
             }
 
             VStack(spacing: 10) {
@@ -2657,11 +2663,11 @@ private struct TimelineDetailSheet: View {
             VStack(spacing: 2) {
                 Text(formatHHmm(event.startMinute))
                     .font(.system(size: 14, weight: .black, design: .monospaced))
-                    .foregroundStyle(isActive ? accentGreen : .white.opacity(0.85))
+                    .foregroundStyle(isActive ? accentGreen : UpdoTheme.filmy(0.85))
 
                 Text("\(event.durationMinute)dk")
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(UpdoTheme.filmy(0.40))
             }
             .frame(width: 56)
 
@@ -2677,7 +2683,7 @@ private struct TimelineDetailSheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(event.title)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(isPast ? .white.opacity(0.50) : .white)
+                    .foregroundStyle(isPast ? UpdoTheme.filmy(0.50) : .white)
                     .lineLimit(1)
 
                 if let loc = event.location?.trimmingCharacters(in: .whitespacesAndNewlines), !loc.isEmpty {
@@ -2689,7 +2695,7 @@ private struct TimelineDetailSheet: View {
                             .font(.system(size: 11, weight: .semibold))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
                 }
             }
 
@@ -2716,12 +2722,12 @@ private struct TimelineDetailSheet: View {
                 .fill(
                     isActive
                         ? accentGreen.opacity(0.08)
-                        : Color.white.opacity(0.035)
+                        : UpdoTheme.filmy(0.035)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(
-                            isActive ? accentGreen.opacity(0.30) : Color.white.opacity(0.07),
+                            isActive ? accentGreen.opacity(0.30) : UpdoTheme.filmy(0.07),
                             lineWidth: 1
                         )
                 )
@@ -2850,7 +2856,7 @@ struct StreakFlameBadge: View {
             Text("\(streak)")
                 .font(.system(size: 16, weight: .black, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(isLit ? .white : .white.opacity(0.55))
+                .foregroundStyle(isLit ? .white : UpdoTheme.filmy(0.55))
         }
         .padding(.horizontal, 11)
         .frame(height: 48)
@@ -2900,7 +2906,7 @@ struct StreakFlameBadge: View {
 
     private var flameGradient: LinearGradient {
         if !isLit {
-            return LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.22)],
+            return LinearGradient(colors: [UpdoTheme.filmy(0.35), UpdoTheme.filmy(0.22)],
                                   startPoint: .top, endPoint: .bottom)
         }
         // Cooler (gold) at low streak → hotter (red) at high streak.
@@ -2988,7 +2994,7 @@ struct StreakBubble: View {
 
                     Text(titleText)
                         .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Spacer(minLength: 0)
 
@@ -2998,9 +3004,9 @@ struct StreakBubble: View {
                         } label: {
                             Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                                 .font(.system(size: 10, weight: .black))
-                                .foregroundStyle(.white.opacity(0.55))
+                                .foregroundStyle(UpdoTheme.filmy(0.55))
                                 .frame(width: 22, height: 22)
-                                .background(Circle().fill(Color.white.opacity(0.08)))
+                                .background(Circle().fill(UpdoTheme.filmy(0.08)))
                         }
                         .buttonStyle(.plain)
                     }
@@ -3008,7 +3014,7 @@ struct StreakBubble: View {
 
                 Text(bodyText)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(UpdoTheme.filmy(0.72))
                     .fixedSize(horizontal: false, vertical: true)
 
                 todayStatusRow
@@ -3040,7 +3046,7 @@ struct StreakBubble: View {
         HStack(spacing: 8) {
             Text(tr("home_streak_today_label"))
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(UpdoTheme.filmy(0.45))
 
             statusChip(done: todayTaskDone, label: tr("home_streak_chip_task"))
             statusChip(done: todayFocusDone, label: tr("home_streak_chip_focus"))
@@ -3053,20 +3059,20 @@ struct StreakBubble: View {
         HStack(spacing: 5) {
             Image(systemName: done ? "checkmark.circle.fill" : "circle.dashed")
                 .font(.system(size: 12, weight: .black))
-                .foregroundStyle(done ? Color(arenaHex: "#34D399") : .white.opacity(0.38))
+                .foregroundStyle(done ? Color(arenaHex: "#34D399") : UpdoTheme.filmy(0.38))
 
             Text(label)
                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(done ? .white.opacity(0.9) : .white.opacity(0.5))
+                .foregroundStyle(done ? UpdoTheme.filmy(0.9) : UpdoTheme.filmy(0.5))
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
         .background(
             Capsule()
-                .fill(done ? Color(arenaHex: "#34D399").opacity(0.13) : Color.white.opacity(0.05))
+                .fill(done ? Color(arenaHex: "#34D399").opacity(0.13) : UpdoTheme.filmy(0.05))
                 .overlay(
                     Capsule()
-                        .stroke(done ? Color(arenaHex: "#34D399").opacity(0.32) : Color.white.opacity(0.10),
+                        .stroke(done ? Color(arenaHex: "#34D399").opacity(0.32) : UpdoTheme.filmy(0.10),
                                 lineWidth: 1)
                 )
         )

@@ -94,7 +94,7 @@ struct CreateCrewView: View {
                 Text(errorText)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .tint(UpdoTheme.cyan)
     }
 
@@ -145,10 +145,10 @@ struct CreateCrewView: View {
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.045))
+                        .fill(UpdoTheme.filmy(0.045))
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
                         )
                 )
         }
@@ -170,16 +170,16 @@ struct CreateCrewView: View {
                     } label: {
                         Image(systemName: icon)
                             .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(isSelected ? Color(arenaHex: selectedColorHex) : .white.opacity(0.55))
+                            .foregroundStyle(isSelected ? Color(arenaHex: selectedColorHex) : UpdoTheme.filmy(0.55))
                             .frame(maxWidth: .infinity)
                             .frame(height: 60)
                             .background(
                                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(Color.white.opacity(0.045))
+                                    .fill(UpdoTheme.filmy(0.045))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                                             .strokeBorder(
-                                                isSelected ? Color(arenaHex: selectedColorHex) : Color.white.opacity(0.08),
+                                                isSelected ? Color(arenaHex: selectedColorHex) : UpdoTheme.filmy(0.08),
                                                 lineWidth: isSelected ? 1.5 : 1
                                             )
                                     )
@@ -212,7 +212,7 @@ struct CreateCrewView: View {
 
                             if isSelected {
                                 Circle()
-                                    .stroke(Color.white.opacity(0.95), lineWidth: 2.2)
+                                    .stroke(UpdoTheme.filmy(0.95), lineWidth: 2.2)
                                     .frame(width: 40, height: 40)
 
                                 Circle()

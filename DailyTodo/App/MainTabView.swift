@@ -419,7 +419,7 @@ private extension MainTabView {
 
                 Text(text)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
                     .padding(.top, 8)
             }
         }
@@ -539,15 +539,18 @@ struct HomeTabBar: View {
     private var barBackground: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 33, style: .continuous)
-                .fill(Color(arenaHex: "#050611").opacity(0.96))
+                .fill(Color.adaptive(
+                    light: Color(arenaHex: "#FFFFFF").opacity(0.88),
+                    dark: Color(arenaHex: "#050611").opacity(0.96)
+                ))
 
             RoundedRectangle(cornerRadius: 33, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.075),
-                            Color.white.opacity(0.030),
-                            Color.black.opacity(0.28)
+                            UpdoTheme.filmy(0.075),
+                            UpdoTheme.filmy(0.030),
+                            Color.adaptive(light: Color.white.opacity(0.40), dark: Color.black.opacity(0.28))
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -569,7 +572,7 @@ struct HomeTabBar: View {
                 )
 
             RoundedRectangle(cornerRadius: 33, style: .continuous)
-                .stroke(Color.black.opacity(0.44), lineWidth: 1.2)
+                .stroke(Color.adaptive(light: Color.black.opacity(0.10), dark: Color.black.opacity(0.44)), lineWidth: 1.2)
                 .blur(radius: 0.2)
         }
     }
@@ -579,8 +582,8 @@ struct HomeTabBar: View {
             .stroke(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.135),
-                        Color.white.opacity(0.050),
+                        UpdoTheme.filmy(0.135),
+                        UpdoTheme.filmy(0.050),
                         blue.opacity(0.075)
                     ],
                     startPoint: .topLeading,
@@ -623,7 +626,7 @@ struct HomeTabBar: View {
                         .foregroundStyle(
                             isSelected
                             ? AnyShapeStyle(activeIconGradient)
-                            : AnyShapeStyle(Color.white.opacity(0.40))
+                            : AnyShapeStyle(UpdoTheme.filmy(0.40))
                         )
                         .scaleEffect(isSelected ? 1.04 : 1.0)
                         .animation(.spring(response: 0.34, dampingFraction: 0.78), value: isSelected)
@@ -661,9 +664,9 @@ struct HomeTabBar: View {
                                 .stroke(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.16),
+                                            UpdoTheme.filmy(0.16),
                                             cyan.opacity(0.08),
-                                            Color.white.opacity(0.05)
+                                            UpdoTheme.filmy(0.05)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -698,7 +701,7 @@ struct HomeTabBar: View {
     private var activeTextGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color.white.opacity(0.98),
+                UpdoTheme.filmy(0.98),
                 cyan.opacity(0.94),
                 blue.opacity(0.82)
             ],

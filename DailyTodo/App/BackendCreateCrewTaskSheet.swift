@@ -154,14 +154,14 @@ private extension BackendCreateCrewTaskSheet {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -177,7 +177,7 @@ private extension BackendCreateCrewTaskSheet {
 
                 Text(crew.name)
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
@@ -202,7 +202,7 @@ private extension BackendCreateCrewTaskSheet {
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(canSave ? BackendCreateTaskArenaPalette.green : Color.white.opacity(0.12))
+                        .fill(canSave ? BackendCreateTaskArenaPalette.green : UpdoTheme.filmy(0.12))
                 )
             }
             .buttonStyle(.plain)
@@ -220,7 +220,7 @@ private extension BackendCreateCrewTaskSheet {
                     .overlay(
                         Image(systemName: "checklist")
                             .font(.system(size: 27, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -232,7 +232,7 @@ private extension BackendCreateCrewTaskSheet {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(tr("common_new"))
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(tr("task_lc"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
@@ -242,7 +242,7 @@ private extension BackendCreateCrewTaskSheet {
 
                     Text(tr("bct_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(2)
                 }
 
@@ -287,7 +287,7 @@ private extension BackendCreateCrewTaskSheet {
                 ) {
                     TextField(tr("ct_task_title_ph"), text: $title)
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .submitLabel(.done)
                 }
 
@@ -298,7 +298,7 @@ private extension BackendCreateCrewTaskSheet {
                 ) {
                     TextField(tr("bct_add_desc"), text: $details, axis: .vertical)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(3...6)
                 }
             }
@@ -381,7 +381,7 @@ private extension BackendCreateCrewTaskSheet {
                         displayedComponents: [.date, .hourAndMinute]
                     )
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(BackendCreateTaskArenaPalette.green)
 
                     Stepper(
@@ -391,14 +391,14 @@ private extension BackendCreateCrewTaskSheet {
                         step: 15
                     )
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                 }
                 .padding(14)
                 .background(detailSurface(cornerRadius: 22, tint: BackendCreateTaskArenaPalette.green))
             } else {
                 Text(tr("bct_crew_only"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(detailSurface(cornerRadius: 22, tint: BackendCreateTaskArenaPalette.green))
@@ -431,7 +431,7 @@ private extension BackendCreateCrewTaskSheet {
             .frame(height: 54)
             .background(
                 Capsule()
-                    .fill(canSave ? BackendCreateTaskArenaPalette.green : Color.white.opacity(0.12))
+                    .fill(canSave ? BackendCreateTaskArenaPalette.green : UpdoTheme.filmy(0.12))
             )
         }
         .buttonStyle(.plain)
@@ -448,19 +448,19 @@ private extension BackendCreateCrewTaskSheet {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -485,7 +485,7 @@ private extension BackendCreateCrewTaskSheet {
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 content()
                     .textInputAutocapitalization(.sentences)
@@ -510,11 +510,11 @@ private extension BackendCreateCrewTaskSheet {
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 Text(value)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
             }
 
@@ -522,7 +522,7 @@ private extension BackendCreateCrewTaskSheet {
 
             Image(systemName: "chevron.up.chevron.down")
                 .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
         }
         .padding(14)
         .background(detailSurface(cornerRadius: 22, tint: tint))
@@ -539,7 +539,7 @@ private extension BackendCreateCrewTaskSheet {
             Text(title)
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(1.4)
-                .foregroundStyle(.white.opacity(0.36))
+                .foregroundStyle(UpdoTheme.filmy(0.36))
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 ForEach(options, id: \.self) { option in
@@ -579,7 +579,7 @@ private extension BackendCreateCrewTaskSheet {
 
             Text(text)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.74))
+                .foregroundStyle(UpdoTheme.filmy(0.74))
                 .lineLimit(3)
 
             Spacer()
@@ -595,7 +595,7 @@ private extension BackendCreateCrewTaskSheet {
                     colors: [
                         tint.opacity(0.055),
                         BackendCreateTaskArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -615,7 +615,7 @@ private extension BackendCreateCrewTaskSheet {
                     colors: [
                         BackendCreateTaskArenaPalette.blue.opacity(0.035),
                         BackendCreateTaskArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -623,7 +623,7 @@ private extension BackendCreateCrewTaskSheet {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }

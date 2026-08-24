@@ -67,9 +67,9 @@ struct OnboardingWidgetPromoView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.92))
+                            .foregroundStyle(UpdoTheme.filmy(0.92))
                             .frame(width: 34, height: 34)
-                            .background(Circle().fill(Color.white.opacity(0.14)))
+                            .background(Circle().fill(UpdoTheme.filmy(0.14)))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -80,12 +80,12 @@ struct OnboardingWidgetPromoView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(tr("ob_widget_title"))
                         .font(.system(size: 36, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Text(tr("ob_widget_sub"))
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(UpdoTheme.filmy(0.6))
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
 

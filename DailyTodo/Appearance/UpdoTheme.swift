@@ -12,32 +12,60 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Adaptive Color Bridge
+
+extension Color {
+    /// Resolves to `light` in light appearance and `dark` in dark appearance,
+    /// following the active `UITraitCollection`. This single primitive powers the
+    /// whole adaptive palette — every token below flips automatically with the
+    /// system (or in-app) color scheme, with NO change to existing call sites.
+    static func adaptive(light: Color, dark: Color) -> Color {
+        Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
+        })
+    }
+}
+
 // MARK: - Color Tokens
 
 enum UpdoTheme {
 
-    // Backgrounds & surfaces
-    static let background   = Color(arenaHex: "#080C18")
-    static let surface      = Color(arenaHex: "#0E1420")
-    static let surfaceHigh  = Color(arenaHex: "#1C1C2E")
+    // Backgrounds & surfaces — dark unchanged; light = warm "kırık beyaz" eggshell
+    static let background   = Color.adaptive(light: Color(arenaHex: "#F4EEE1"), dark: Color(arenaHex: "#080C18"))
+    static let surface      = Color.adaptive(light: Color(arenaHex: "#FCFAF4"), dark: Color(arenaHex: "#0E1420"))
+    static let surfaceHigh  = Color.adaptive(light: Color(arenaHex: "#FFFFFF"), dark: Color(arenaHex: "#1C1C2E"))
 
-    // Accents
-    static let cyan         = Color(arenaHex: "#2DD4FF")   // primary actions, AI, highlights
-    static let purple       = Color(arenaHex: "#7C3AED")   // crew, social, premium
-    static let orange       = Color(arenaHex: "#F97316")   // focus, energy, streak
-    static let lime         = Color(arenaHex: "#A3E635")   // completion, success
+    // Accents — deepened in light for legible contrast on cream
+    static let cyan         = Color.adaptive(light: Color(arenaHex: "#0C93C0"), dark: Color(arenaHex: "#2DD4FF"))   // primary actions, AI, highlights
+    static let purple       = Color.adaptive(light: Color(arenaHex: "#6D28D9"), dark: Color(arenaHex: "#7C3AED"))   // crew, social, premium
+    static let orange       = Color.adaptive(light: Color(arenaHex: "#E4610A"), dark: Color(arenaHex: "#F97316"))   // focus, energy, streak
+    static let lime         = Color.adaptive(light: Color(arenaHex: "#568A0A"), dark: Color(arenaHex: "#A3E635"))   // completion, success
 
-    // Text
-    static let textPrimary  = Color(arenaHex: "#EEF4FF")
-    static let textMuted    = Color(arenaHex: "#64748B")
+    // Text — near-white on dark, warm ink on cream
+    static let textPrimary  = Color.adaptive(light: Color(arenaHex: "#1A1712"), dark: Color(arenaHex: "#EEF4FF"))
+    static let textMuted    = Color.adaptive(light: Color(arenaHex: "#6B655C"), dark: Color(arenaHex: "#64748B"))
 
-    // Border
-    static let border       = Color.white.opacity(0.08)
+    // Border / hairline
+    static let border       = Color.adaptive(light: Color.black.opacity(0.12), dark: Color.white.opacity(0.08))
+
+    /// Always-white label for text/icons sitting on a saturated accent fill
+    /// (gradient / cyan / purple / orange buttons). Stays white in BOTH modes.
+    static let onAccent     = Color.white
+
+    /// Adaptive low-opacity film: white on dark, warm ink on cream. Drop-in for the
+    /// old `Color.white.opacity(x)` fills, strokes, dividers and muted text so they
+    /// stay visible on the eggshell background. Dark branch is byte-identical.
+    static func filmy(_ opacity: Double) -> Color {
+        Color.adaptive(
+            light: Color(arenaHex: "#1A1712").opacity(opacity),
+            dark: Color.white.opacity(opacity)
+        )
+    }
 
     // iMessage-style chat bubbles
-    static let bubbleSentTop     = Color(arenaHex: "#0A84FF")   // sent (top)
+    static let bubbleSentTop     = Color(arenaHex: "#0A84FF")   // sent (top) — blue in both modes
     static let bubbleSentBottom  = Color(arenaHex: "#0A6AF5")   // sent (bottom)
-    static let bubbleReceived    = Color(arenaHex: "#2A2A2D")   // received (dark gray)
+    static let bubbleReceived    = Color.adaptive(light: Color(arenaHex: "#E9E9EB"), dark: Color(arenaHex: "#2A2A2D"))   // received (light/dark gray)
     static let bubbleSentGradient = LinearGradient(
         colors: [bubbleSentTop, bubbleSentBottom],
         startPoint: .top,
@@ -66,6 +94,51 @@ enum UpdoTheme {
     // Card geometry
     static let cardRadius: CGFloat = 20
     static let innerRadius: CGFloat = 14
+}
+
+// MARK: - Appearance Mode (System / Light / Dark)
+
+/// User-selectable appearance for the authenticated app. `system` follows the
+/// phone (`.preferredColorScheme(nil)`); `light`/`dark` pin it. Persisted in
+/// `@AppStorage("updoAppearanceMode")`, applied via `.updoColorScheme()`.
+enum UpdoAppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light:  return .light
+        case .dark:   return .dark
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .system: return "iphone"
+        case .light:  return "sun.max.fill"
+        case .dark:   return "moon.fill"
+        }
+    }
+}
+
+private struct UpdoColorSchemeModifier: ViewModifier {
+    @AppStorage("updoAppearanceMode") private var raw = UpdoAppearanceMode.system.rawValue
+
+    func body(content: Content) -> some View {
+        content.preferredColorScheme(
+            (UpdoAppearanceMode(rawValue: raw) ?? .system).colorScheme
+        )
+    }
+}
+
+extension View {
+    /// Applies the user's chosen appearance (System/Light/Dark). Use on the app
+    /// root and on any modally-presented main-app screen that should follow it.
+    func updoColorScheme() -> some View { modifier(UpdoColorSchemeModifier()) }
 }
 
 // MARK: - Section Header
@@ -108,15 +181,15 @@ struct SkeletonView: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(Color.white.opacity(0.06))
+            .fill(UpdoTheme.filmy(0.06))
             .frame(width: width, height: height)
             .overlay {
                 GeometryReader { geo in
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.0),
-                            Color.white.opacity(0.07),
-                            Color.white.opacity(0.0)
+                            UpdoTheme.filmy(0.0),
+                            UpdoTheme.filmy(0.07),
+                            UpdoTheme.filmy(0.0)
                         ],
                         startPoint: .leading,
                         endPoint: .trailing

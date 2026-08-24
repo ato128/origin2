@@ -74,19 +74,19 @@ struct UpdoProfileEditSheet: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
-            .preferredColorScheme(.dark)
+            .updoColorScheme()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(tr("pe_title"))
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 }
 
                 ToolbarItem(placement: .topBarLeading) {
                     Button(tr("common_cancel")) { dismiss() }
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(UpdoTheme.filmy(0.6))
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -98,7 +98,7 @@ struct UpdoProfileEditSheet: View {
                         } else {
                             Text(tr("pe_save"))
                                 .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(canSave ? accent : .white.opacity(0.3))
+                                .foregroundStyle(canSave ? accent : UpdoTheme.filmy(0.3))
                         }
                     }
                     .disabled(!canSave)
@@ -152,13 +152,13 @@ struct UpdoProfileEditSheet: View {
                 } label: {
                     Text(tr("pe_photo_remove"))
                         .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
                 }
                 .buttonStyle(.plain)
             } else {
                 Text(tr("pe_photo_hint"))
                     .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(UpdoTheme.filmy(0.35))
             }
         }
     }
@@ -175,30 +175,30 @@ struct UpdoProfileEditSheet: View {
             Text(label)
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(1.6)
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
 
             HStack(spacing: 6) {
                 if let prefix {
                     Text(prefix)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.35))
+                        .foregroundStyle(UpdoTheme.filmy(0.35))
                 }
 
                 TextField("", text: text)
                     .textInputAutocapitalization(capitalization)
                     .autocorrectionDisabled()
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(accent)
             }
             .padding(.horizontal, 15)
             .frame(height: 48)
             .background(
                 RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(UpdoTheme.filmy(0.05))
                     .overlay(
                         RoundedRectangle(cornerRadius: 15, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+                            .strokeBorder(UpdoTheme.filmy(0.09), lineWidth: 1)
                     )
             )
         }
@@ -222,11 +222,11 @@ struct UpdoProfileEditSheet: View {
                     Text(tr("pe_school_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.6)
-                        .foregroundStyle(.white.opacity(0.38))
+                        .foregroundStyle(UpdoTheme.filmy(0.38))
 
                     Text(ProfileSchoolLine.text(for: studentStore.profile) ?? tr("pe_school_empty"))
                         .font(.system(size: 14.5, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(UpdoTheme.filmy(0.85))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
@@ -235,16 +235,16 @@ struct UpdoProfileEditSheet: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .foregroundStyle(UpdoTheme.filmy(0.3))
             }
             .padding(.horizontal, 15)
             .frame(height: 62)
             .background(
                 RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(UpdoTheme.filmy(0.05))
                     .overlay(
                         RoundedRectangle(cornerRadius: 15, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+                            .strokeBorder(UpdoTheme.filmy(0.09), lineWidth: 1)
                     )
             )
         }
@@ -308,7 +308,7 @@ struct ProfileAvatarCircle: View {
                     .clipShape(Circle())
             } else {
                 Circle()
-                    .fill(Color.white.opacity(0.055))
+                    .fill(UpdoTheme.filmy(0.055))
                     .frame(width: size, height: size)
 
                 Text(initials)
@@ -323,7 +323,7 @@ struct ProfileAvatarCircle: View {
                     )
             }
         }
-        .overlay(Circle().strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
+        .overlay(Circle().strokeBorder(UpdoTheme.filmy(0.10), lineWidth: 1))
     }
 }
 

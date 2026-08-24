@@ -201,14 +201,14 @@ private extension BackendEditCrewTaskView {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -224,7 +224,7 @@ private extension BackendEditCrewTaskView {
 
                 Text(crew.name)
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
@@ -249,7 +249,7 @@ private extension BackendEditCrewTaskView {
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(canSave ? BackendEditTaskArenaPalette.green : Color.white.opacity(0.12))
+                        .fill(canSave ? BackendEditTaskArenaPalette.green : UpdoTheme.filmy(0.12))
                 )
             }
             .buttonStyle(.plain)
@@ -279,7 +279,7 @@ private extension BackendEditCrewTaskView {
                     .overlay(
                         Image(systemName: isDone ? "checkmark.circle.fill" : "pencil.and.list.clipboard")
                             .font(.system(size: 27, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -297,7 +297,7 @@ private extension BackendEditCrewTaskView {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(tr("bce_edit_w1"))
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(tr("bce_edit_w2"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
@@ -307,7 +307,7 @@ private extension BackendEditCrewTaskView {
 
                     Text(tr("bce_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(2)
                 }
 
@@ -322,7 +322,7 @@ private extension BackendEditCrewTaskView {
 
                     Text(tr("bce_unsaved"))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.62))
+                        .foregroundStyle(UpdoTheme.filmy(0.62))
                 }
             }
         }
@@ -364,7 +364,7 @@ private extension BackendEditCrewTaskView {
                 ) {
                     TextField(String(localized: "backend_edit_task_title_placeholder"), text: $title)
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .submitLabel(.done)
                 }
 
@@ -375,7 +375,7 @@ private extension BackendEditCrewTaskView {
                 ) {
                     TextField(String(localized: "backend_edit_task_details_placeholder"), text: $details, axis: .vertical)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(3...6)
                 }
             }
@@ -444,7 +444,7 @@ private extension BackendEditCrewTaskView {
         HStack(spacing: 13) {
             Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 22, weight: .black))
-                .foregroundStyle(isDone ? BackendEditTaskArenaPalette.green : .white.opacity(0.34))
+                .foregroundStyle(isDone ? BackendEditTaskArenaPalette.green : UpdoTheme.filmy(0.34))
                 .frame(width: 42, height: 42)
                 .background(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
@@ -454,11 +454,11 @@ private extension BackendEditCrewTaskView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(String(localized: "backend_edit_task_completed"))
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(isDone ? tr("bce_task_done") : tr("bce_task_open"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.44))
+                    .foregroundStyle(UpdoTheme.filmy(0.44))
             }
 
             Spacer()
@@ -498,7 +498,7 @@ private extension BackendEditCrewTaskView {
                         displayedComponents: [.date, .hourAndMinute]
                     )
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(BackendEditTaskArenaPalette.green)
 
                     Stepper(
@@ -508,14 +508,14 @@ private extension BackendEditCrewTaskView {
                         step: 15
                     )
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                 }
                 .padding(14)
                 .background(detailSurface(cornerRadius: 22, tint: BackendEditTaskArenaPalette.green))
             } else {
                 Text(tr("bce_week_hint"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(detailSurface(cornerRadius: 22, tint: BackendEditTaskArenaPalette.green))
@@ -548,7 +548,7 @@ private extension BackendEditCrewTaskView {
             .frame(height: 54)
             .background(
                 Capsule()
-                    .fill(canSave ? BackendEditTaskArenaPalette.green : Color.white.opacity(0.12))
+                    .fill(canSave ? BackendEditTaskArenaPalette.green : UpdoTheme.filmy(0.12))
             )
         }
         .buttonStyle(.plain)
@@ -565,19 +565,19 @@ private extension BackendEditCrewTaskView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -602,7 +602,7 @@ private extension BackendEditCrewTaskView {
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 content()
                     .textInputAutocapitalization(.sentences)
@@ -627,11 +627,11 @@ private extension BackendEditCrewTaskView {
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 Text(value)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
             }
 
@@ -639,7 +639,7 @@ private extension BackendEditCrewTaskView {
 
             Image(systemName: "chevron.up.chevron.down")
                 .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
         }
         .padding(14)
         .background(detailSurface(cornerRadius: 22, tint: tint))
@@ -656,7 +656,7 @@ private extension BackendEditCrewTaskView {
             Text(title)
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(1.4)
-                .foregroundStyle(.white.opacity(0.36))
+                .foregroundStyle(UpdoTheme.filmy(0.36))
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 ForEach(options, id: \.self) { option in
@@ -704,7 +704,7 @@ private extension BackendEditCrewTaskView {
 
             Text(text)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.74))
+                .foregroundStyle(UpdoTheme.filmy(0.74))
                 .lineLimit(3)
 
             Spacer()
@@ -720,7 +720,7 @@ private extension BackendEditCrewTaskView {
                     colors: [
                         tint.opacity(0.055),
                         BackendEditTaskArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -740,7 +740,7 @@ private extension BackendEditCrewTaskView {
                     colors: [
                         BackendEditTaskArenaPalette.blue.opacity(0.035),
                         BackendEditTaskArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -748,7 +748,7 @@ private extension BackendEditCrewTaskView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }

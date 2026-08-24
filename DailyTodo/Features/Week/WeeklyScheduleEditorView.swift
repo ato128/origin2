@@ -89,7 +89,7 @@ struct WeeklyScheduleEditorView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .tint(UpdoTheme.cyan)
         .sheet(isPresented: $showingAdd) {
             NavigationStack {
@@ -223,13 +223,13 @@ struct WeeklyScheduleEditorView: View {
                     UpdoAIOrb(size: 20)
                     Text(appLanguageIsEnglish() ? "Plan exams with Updo AI" : "Updo AI ile sınav planı")
                         .font(.system(size: 14, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(UpdoTheme.filmy(0.06))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(UpdoTheme.cyan.opacity(0.28), lineWidth: 1)
@@ -240,7 +240,7 @@ struct WeeklyScheduleEditorView: View {
 
             Text(tr("wk_sched_scan_sub"))
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(UpdoTheme.filmy(0.5))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -384,7 +384,7 @@ struct WeeklyScheduleEditorView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(coral.opacity(0.9))
                     .frame(width: 34, height: 34)
-                    .background(Circle().fill(Color.white.opacity(0.05)))
+                    .background(Circle().fill(UpdoTheme.filmy(0.05)))
             }
             .buttonStyle(.plain)
         }
@@ -416,10 +416,10 @@ struct WeeklyScheduleEditorView: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.045))
+            .fill(UpdoTheme.filmy(0.045))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
             )
     }
 
@@ -595,7 +595,7 @@ private struct ExamDateSheet: View {
                             .foregroundStyle(Color(arenaHex: colorHex))
                         Text(courseName)
                             .font(.system(size: 22, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                         Spacer()
                     }
@@ -635,7 +635,7 @@ private struct ExamDateSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .presentationDetents([.large])
     }
 }

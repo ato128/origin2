@@ -715,7 +715,7 @@ private struct CrewRedesignLoadingView: View {
 
                 Text(text)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 24)
             }

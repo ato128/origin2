@@ -142,14 +142,14 @@ private extension JoinCrewSheet {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -166,7 +166,7 @@ private extension JoinCrewSheet {
 
                 Text(tr("jc_join_crew"))
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -189,7 +189,7 @@ private extension JoinCrewSheet {
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(canJoin ? JoinCrewArenaPalette.green : Color.white.opacity(0.12))
+                        .fill(canJoin ? JoinCrewArenaPalette.green : UpdoTheme.filmy(0.12))
                 )
             }
             .buttonStyle(.plain)
@@ -211,7 +211,7 @@ private extension JoinCrewSheet {
                     .overlay(
                         Image(systemName: "person.3.fill")
                             .font(.system(size: 29, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -223,7 +223,7 @@ private extension JoinCrewSheet {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("Crew")
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(tr("jc_join_space"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
@@ -235,7 +235,7 @@ private extension JoinCrewSheet {
 
                     Text(tr("jc_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(2)
                 }
 
@@ -289,7 +289,7 @@ private extension JoinCrewSheet {
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .font(.system(size: 24, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tracking(2)
                     .submitLabel(.join)
                     .onSubmit {
@@ -310,7 +310,7 @@ private extension JoinCrewSheet {
 
                 Text(tr("jc_code_hint"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(UpdoTheme.filmy(0.38))
             }
 
             HStack(spacing: 10) {
@@ -371,11 +371,11 @@ private extension JoinCrewSheet {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(tr("jc_step1"))
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("jc_step2"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -411,7 +411,7 @@ private extension JoinCrewSheet {
             .frame(height: 54)
             .background(
                 Capsule()
-                    .fill(canJoin ? JoinCrewArenaPalette.green : Color.white.opacity(0.12))
+                    .fill(canJoin ? JoinCrewArenaPalette.green : UpdoTheme.filmy(0.12))
             )
         }
         .buttonStyle(.plain)
@@ -428,19 +428,19 @@ private extension JoinCrewSheet {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -465,7 +465,7 @@ private extension JoinCrewSheet {
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 content()
             }
@@ -521,7 +521,7 @@ private extension JoinCrewSheet {
 
             Text(message)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.74))
+                .foregroundStyle(UpdoTheme.filmy(0.74))
                 .lineLimit(3)
 
             Spacer()
@@ -537,7 +537,7 @@ private extension JoinCrewSheet {
                     colors: [
                         tint.opacity(0.055),
                         JoinCrewArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -557,7 +557,7 @@ private extension JoinCrewSheet {
                     colors: [
                         JoinCrewArenaPalette.blue.opacity(0.035),
                         JoinCrewArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -565,7 +565,7 @@ private extension JoinCrewSheet {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }

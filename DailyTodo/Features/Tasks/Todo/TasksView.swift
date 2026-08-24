@@ -191,7 +191,7 @@ struct TasksView: View {
                 .padding(.bottom, 30)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAddTask) {
@@ -251,9 +251,9 @@ private extension TasksView {
             } label: {
                 Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
-                    .background(arenaCircleBackground(tint: .white.opacity(0.50)))
+                    .background(arenaCircleBackground(tint: UpdoTheme.filmy(0.50)))
             }
             .buttonStyle(.plain)
 
@@ -273,7 +273,7 @@ private extension TasksView {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(tr("at_kind_task"))
                         .font(.system(size: 38, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("tv_flow_word"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
@@ -294,7 +294,7 @@ private extension TasksView {
 
                 Text(tr("tv_header_sub"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .lineLimit(2)
             }
 
@@ -334,13 +334,13 @@ private extension TasksView {
 
                     Text(summaryTitle)
                         .font(.system(size: 30, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.76)
 
                     Text(summarySubtitle)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(2)
                 }
 
@@ -405,16 +405,16 @@ private extension TasksView {
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
                     }
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.48))
+                    .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.48))
                     .frame(maxWidth: .infinity)
                     .frame(height: 58)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(isSelected ? tint.opacity(0.16) : Color.white.opacity(0.035))
+                            .fill(isSelected ? tint.opacity(0.16) : UpdoTheme.filmy(0.035))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(isSelected ? tint.opacity(0.24) : Color.white.opacity(0.065), lineWidth: 1)
+                            .stroke(isSelected ? tint.opacity(0.24) : UpdoTheme.filmy(0.065), lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -426,8 +426,8 @@ private extension TasksView {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.045),
-                            Color.white.opacity(0.020),
+                            UpdoTheme.filmy(0.045),
+                            UpdoTheme.filmy(0.020),
                             Color.black.opacity(0.12)
                         ],
                         startPoint: .topLeading,
@@ -436,7 +436,7 @@ private extension TasksView {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
                 )
         )
     }
@@ -477,8 +477,8 @@ private extension TasksView {
                         HStack(spacing: 7) {
                             Text(task.title)
                                 .font(.system(size: 17, weight: .black))
-                                .foregroundStyle(task.isDone ? .white.opacity(0.42) : .white.opacity(0.96))
-                                .strikethrough(task.isDone, color: .white.opacity(0.42))
+                                .foregroundStyle(task.isDone ? UpdoTheme.filmy(0.42) : UpdoTheme.filmy(0.96))
+                                .strikethrough(task.isDone, color: UpdoTheme.filmy(0.42))
                                 .lineLimit(1)
 
                             if isTopPriority && !task.isDone {
@@ -488,7 +488,7 @@ private extension TasksView {
 
                         Text(taskSubtitle(for: task))
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.46))
+                            .foregroundStyle(UpdoTheme.filmy(0.46))
                             .lineLimit(1)
 
                         HStack(spacing: 8) {
@@ -523,7 +523,7 @@ private extension TasksView {
                                     colors: [
                                         accent.opacity(isTopPriority && !task.isDone ? 0.090 : 0.060),
                                         secondaryAccent.opacity(0.032),
-                                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                                        AppArenaPalette.surfaceColor.opacity(0.94)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -553,7 +553,7 @@ private extension TasksView {
                             .stroke(
                                 isRecentlyCompleted
                                 ? Color(arenaHex: AppArenaPalette.green).opacity(0.34)
-                                : (isTopPriority && !task.isDone ? accent.opacity(0.26) : Color.white.opacity(0.075)),
+                                : (isTopPriority && !task.isDone ? accent.opacity(0.26) : UpdoTheme.filmy(0.075)),
                                 lineWidth: 1
                             )
                     }
@@ -665,7 +665,7 @@ private extension TasksView {
                 HStack(spacing: 6) {
                     Text(first.courseName)
                         .font(.system(size: 18, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
 
                     Text(first.examType.title.uppercased())
@@ -696,7 +696,7 @@ private extension TasksView {
                 Text(tr("tv_prep_caps"))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(0.7)
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(UpdoTheme.filmy(0.40))
             }
         }
         .padding(15)
@@ -721,11 +721,11 @@ private extension TasksView {
 
             Text(emptyTitle)
                 .font(.system(size: 22, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Text(emptySubtitle)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(UpdoTheme.filmy(0.52))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 18)
         }
@@ -773,11 +773,11 @@ private extension TasksView {
 
             Text(emptyTitle)
                 .font(.title3.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Text(emptySubtitle)
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(UpdoTheme.filmy(0.52))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -809,7 +809,7 @@ private extension TasksView {
                         HStack(spacing: 6) {
                             Text(exam.title)
                                 .font(.system(size: 18, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                                 .lineLimit(1)
 
                             smallTag(exam.examType, tint: accent)
@@ -817,7 +817,7 @@ private extension TasksView {
 
                         Text(examReadinessText(for: exam))
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.48))
+                            .foregroundStyle(UpdoTheme.filmy(0.48))
                             .lineLimit(1)
 
                         HStack(spacing: 8) {
@@ -837,7 +837,7 @@ private extension TasksView {
 
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(.system(size: 12, weight: .black))
-                            .foregroundStyle(.white.opacity(0.42))
+                            .foregroundStyle(UpdoTheme.filmy(0.42))
                     }
                 }
                 .padding(16)
@@ -875,13 +875,13 @@ private extension TasksView {
 
                             Text(tr("tv_min_progress", completedLinkedMinutes(for: exam), exam.targetStudyMinutes))
                                 .font(.system(size: 11, weight: .black, design: .monospaced))
-                                .foregroundStyle(.white.opacity(0.46))
+                                .foregroundStyle(UpdoTheme.filmy(0.46))
                         }
 
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 Capsule()
-                                    .fill(Color.white.opacity(0.08))
+                                    .fill(UpdoTheme.filmy(0.08))
 
                                 Capsule()
                                     .fill(accent)
@@ -899,7 +899,7 @@ private extension TasksView {
 
                             Text(tr("tv_no_steps"))
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.50))
+                                .foregroundStyle(UpdoTheme.filmy(0.50))
 
                             Spacer()
                         }
@@ -907,7 +907,7 @@ private extension TasksView {
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.04))
+                                .fill(UpdoTheme.filmy(0.04))
                         )
                     } else {
                         VStack(spacing: 8) {
@@ -937,14 +937,14 @@ private extension TasksView {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(task.title)
                         .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(task.isDone ? .white.opacity(0.40) : .white.opacity(0.92))
-                        .strikethrough(task.isDone, color: .white.opacity(0.40))
+                        .foregroundStyle(task.isDone ? UpdoTheme.filmy(0.40) : UpdoTheme.filmy(0.92))
+                        .strikethrough(task.isDone, color: UpdoTheme.filmy(0.40))
                         .lineLimit(1)
 
                     if !task.studyTopic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text(task.studyTopic)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(task.isDone ? 0.34 : 0.48))
+                            .foregroundStyle(UpdoTheme.filmy(task.isDone ? 0.34 : 0.48))
                             .lineLimit(1)
                     }
                 }
@@ -954,19 +954,19 @@ private extension TasksView {
                 if let mins = task.workoutDurationMinutes {
                     Text(tr("rel_min_short_n", mins))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .foregroundStyle(task.isDone ? .white.opacity(0.40) : Color(arenaHex: AppArenaPalette.gold))
+                        .foregroundStyle(task.isDone ? UpdoTheme.filmy(0.40) : Color(arenaHex: AppArenaPalette.gold))
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 11)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(task.isDone ? Color.white.opacity(0.025) : Color.white.opacity(0.05))
+                    .fill(task.isDone ? UpdoTheme.filmy(0.025) : UpdoTheme.filmy(0.05))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(
-                        task.isDone ? Color.white.opacity(0.03) : accent.opacity(0.08),
+                        task.isDone ? UpdoTheme.filmy(0.03) : accent.opacity(0.08),
                         lineWidth: 1
                     )
             )
@@ -1003,7 +1003,7 @@ private extension TasksView {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(title)
                         .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(italic)
                         .font(.system(size: 23, weight: .regular, design: .serif))
@@ -1013,7 +1013,7 @@ private extension TasksView {
 
                 Text(subtitle)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
             }
 
             Spacer()
@@ -1038,9 +1038,9 @@ private extension TasksView {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.100),
+                        UpdoTheme.filmy(0.100),
                         Color.black.opacity(0.26),
-                        Color.white.opacity(0.050)
+                        UpdoTheme.filmy(0.050)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1048,7 +1048,7 @@ private extension TasksView {
             )
             .overlay(
                 Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
     }
@@ -1060,7 +1060,7 @@ private extension TasksView {
                     colors: [
                         tint.opacity(0.070 + strength * 0.035),
                         secondaryAccent.opacity(0.040),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1094,7 +1094,7 @@ private extension TasksView {
                     colors: [
                         tint.opacity(0.075),
                         secondaryAccent.opacity(0.032),
-                        Color.white.opacity(0.036)
+                        UpdoTheme.filmy(0.036)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

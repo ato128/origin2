@@ -355,7 +355,7 @@ private extension MessagesView {
             // Tek, temiz büyük başlık (Apple Messages gibi) — eyebrow/"merkezi" kaldırıldı
             Text(tr("mv_title"))
                 .font(.system(size: 44, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
@@ -390,7 +390,7 @@ private extension MessagesView {
         Button(action: action) {
             Image(systemName: system)
                 .font(.system(size: 17, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .frame(width: 46, height: 46)
                 .liquidGlass(in: Circle())
         }
@@ -431,7 +431,7 @@ private extension MessagesView {
 
             TextField(tr("mv_search_ph"), text: $searchText)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .tint(Color(arenaHex: AppArenaPalette.cyan))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -444,7 +444,7 @@ private extension MessagesView {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white.opacity(0.40))
+                        .foregroundStyle(UpdoTheme.filmy(0.40))
                 }
                 .buttonStyle(.plain)
             }
@@ -534,7 +534,7 @@ private extension MessagesView {
                         if index < filteredConversationItems.count - 1 {
                             // iMessage tarzı hairline ayraç — avatardan sonra başlar
                             Rectangle()
-                                .fill(Color.white.opacity(0.06))
+                                .fill(UpdoTheme.filmy(0.06))
                                 .frame(height: 0.5)
                                 .padding(.leading, 64)
                         }
@@ -559,12 +559,12 @@ private extension MessagesView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(2.2)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
@@ -578,14 +578,14 @@ private extension MessagesView {
         VStack(spacing: 4) {
             Text(value)
                 .font(.system(size: 22, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .monospacedDigit()
                 .lineLimit(1)
 
             Text(title)
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
                 .lineLimit(1)
                 .minimumScaleFactor(0.70)
         }
@@ -611,14 +611,14 @@ private extension MessagesView {
                     .frame(width: 15, height: 15)
                     .overlay(
                         Circle()
-                            .stroke(Color(arenaHex: AppArenaPalette.surface), lineWidth: 3)
+                            .stroke(AppArenaPalette.surfaceColor, lineWidth: 3)
                     )
                     .shadow(color: Color(arenaHex: AppArenaPalette.green).opacity(0.34), radius: 8)
             }
 
             Text(item.shortTitle)
                 .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.86))
+                .foregroundStyle(UpdoTheme.filmy(0.86))
                 .lineLimit(1)
                 .minimumScaleFactor(0.76)
 
@@ -648,7 +648,7 @@ private extension MessagesView {
                     LinearGradient(
                         colors: [
                             item.tint.opacity(0.075),
-                            Color.white.opacity(0.035)
+                            UpdoTheme.filmy(0.035)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -672,7 +672,7 @@ private extension MessagesView {
                         .frame(width: 13, height: 13)
                         .overlay(
                             Circle()
-                                .stroke(Color(arenaHex: AppArenaPalette.surface), lineWidth: 2.5)
+                                .stroke(AppArenaPalette.surfaceColor, lineWidth: 2.5)
                         )
                 }
             }
@@ -681,7 +681,7 @@ private extension MessagesView {
                 HStack(spacing: 5) {
                     Text(item.title)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
 
                     if item.isPinned {
@@ -693,7 +693,7 @@ private extension MessagesView {
                     if item.isMuted {
                         Image(systemName: "bell.slash.fill")
                             .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(.white.opacity(0.3))
+                            .foregroundStyle(UpdoTheme.filmy(0.3))
                     }
 
                     if item.kind == .crew {
@@ -709,7 +709,7 @@ private extension MessagesView {
 
                 Text(item.preview)
                     .font(.system(size: 15))
-                    .foregroundStyle(item.unreadCount > 0 ? .white.opacity(0.72) : .white.opacity(0.46))
+                    .foregroundStyle(item.unreadCount > 0 ? UpdoTheme.filmy(0.72) : UpdoTheme.filmy(0.46))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -723,13 +723,13 @@ private extension MessagesView {
                         .foregroundStyle(
                             item.unreadCount > 0
                             ? Color(arenaHex: AppArenaPalette.cyan)
-                            : .white.opacity(0.40)
+                            : UpdoTheme.filmy(0.40)
                         )
                 }
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.25))
+                    .foregroundStyle(UpdoTheme.filmy(0.25))
             }
         }
         .padding(.trailing, 4)
@@ -900,11 +900,11 @@ private extension MessagesView {
 
             Text(title)
                 .font(.system(size: 20, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Text(subtitle)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(UpdoTheme.filmy(0.52))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -916,7 +916,7 @@ private extension MessagesView {
                     LinearGradient(
                         colors: [
                             Color(arenaHex: AppArenaPalette.blue).opacity(0.060),
-                            Color.white.opacity(0.035)
+                            UpdoTheme.filmy(0.035)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -924,7 +924,7 @@ private extension MessagesView {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
                 )
         )
     }
@@ -970,7 +970,7 @@ private extension MessagesView {
                         colors: [
                             tint.opacity(0.24),
                             Color(arenaHex: AppArenaPalette.purple).opacity(0.15),
-                            Color.white.opacity(0.040)
+                            UpdoTheme.filmy(0.040)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -984,7 +984,7 @@ private extension MessagesView {
 
             Image(systemName: symbol)
                 .font(.system(size: size * 0.28, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
         }
     }
 

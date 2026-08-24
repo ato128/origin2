@@ -299,7 +299,7 @@ struct UpdoAIView: View {
                                 .foregroundStyle(
                                     BYOKeyStore.shared.hasKey
                                     ? Color(arenaHex: "#34D44A")
-                                    : .white.opacity(0.7)
+                                    : UpdoTheme.filmy(0.7)
                                 )
                                 .frame(width: 34, height: 34)
                                 .liquidGlass(in: Circle())
@@ -315,7 +315,7 @@ struct UpdoAIView: View {
             // Floating chrome: content flows behind; each element carries its own material
             .toolbarBackground(.hidden, for: .navigationBar)
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .alert(tr("ai_clear_title"), isPresented: $showClearAlert) {
             Button(tr("ai_clear"), role: .destructive) {
                 chatStore.clearHistory()
@@ -367,7 +367,7 @@ struct UpdoAIView: View {
         Button { dismiss() } label: {
             Image(systemName: "chevron.down")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(UpdoTheme.filmy(0.75))
                 .frame(width: 32, height: 32)
                 .liquidGlass(in: Circle())
                 .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
@@ -378,7 +378,7 @@ struct UpdoAIView: View {
         Button { showClearAlert = true } label: {
             Image(systemName: "trash")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(UpdoTheme.filmy(0.55))
                 .frame(width: 32, height: 32)
                 .liquidGlass(in: Circle())
                 .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
@@ -393,7 +393,7 @@ struct UpdoAIView: View {
 
             Text("Updo")
                 .font(.system(size: 14, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
             +
             Text(" AI")
                 .font(.system(size: 14, weight: .semibold, design: .serif))
@@ -617,7 +617,7 @@ struct UpdoAIView: View {
                     HStack(spacing: 0) {
                         Text("Updo")
                             .font(.system(size: 27, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(" AI")
                             .font(.system(size: 26, weight: .regular, design: .serif))
@@ -659,7 +659,7 @@ struct UpdoAIView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(s.title)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                                 Text(s.subtitle)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -845,7 +845,7 @@ struct UpdoAIView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(tr("ai_plan_ready"))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                 Text(tr("rel_task_count", items.count))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -870,7 +870,7 @@ struct UpdoAIView: View {
                 } label: {
                     Text(tr("common_add"))
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .padding(.horizontal, 14)
                         .frame(height: 32)
                         .background(Capsule().fill(Color.green))
@@ -894,7 +894,7 @@ struct UpdoAIView: View {
                 .foregroundStyle(.green)
             Text(toastText)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
@@ -1428,7 +1428,7 @@ private struct FocusHistorySheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
     }
 
     private func statCell(value: String, label: String) -> some View {

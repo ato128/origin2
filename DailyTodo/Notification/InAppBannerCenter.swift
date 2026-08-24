@@ -161,8 +161,8 @@ private struct PremiumInAppBannerCard: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.18),
-                                    Color.white.opacity(0.08)
+                                    UpdoTheme.filmy(0.18),
+                                    UpdoTheme.filmy(0.08)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -172,18 +172,18 @@ private struct PremiumInAppBannerCard: View {
 
                     Image(systemName: "message.fill")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
 
                     Text(message)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.82))
+                        .foregroundStyle(UpdoTheme.filmy(0.82))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                 }
@@ -193,9 +193,9 @@ private struct PremiumInAppBannerCard: View {
                 Button(action: onClose) {
                     Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.82))
+                        .foregroundStyle(UpdoTheme.filmy(0.82))
                         .frame(width: 28, height: 28)
-                        .background(Color.white.opacity(0.08), in: Circle())
+                        .background(UpdoTheme.filmy(0.08), in: Circle())
                 }
                 .buttonStyle(.plain)
             }
@@ -226,8 +226,8 @@ private struct PremiumInAppBannerCard: View {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.18),
-                                Color.white.opacity(0.06)
+                                UpdoTheme.filmy(0.18),
+                                UpdoTheme.filmy(0.06)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing

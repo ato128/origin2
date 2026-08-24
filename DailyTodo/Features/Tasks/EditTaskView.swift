@@ -151,10 +151,10 @@ struct EditTaskView: View {
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.045))
+                        .fill(UpdoTheme.filmy(0.045))
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
                         )
                 )
         }
@@ -211,13 +211,13 @@ struct EditTaskView: View {
                         .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
                         .background(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.white.opacity(0.045))
+                                .fill(UpdoTheme.filmy(0.045))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                                         .stroke(
                                             isSelected
                                             ? typeColor.opacity(0.34)
-                                            : Color.white.opacity(0.05),
+                                            : UpdoTheme.filmy(0.05),
                                             lineWidth: 1
                                         )
                                 )
@@ -261,10 +261,10 @@ struct EditTaskView: View {
                         .padding(.vertical, 14)
                         .background(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.white.opacity(0.05))
+                                .fill(UpdoTheme.filmy(0.05))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                                        .stroke(UpdoTheme.filmy(0.04), lineWidth: 1)
                                 )
                         )
                 }
@@ -286,7 +286,7 @@ struct EditTaskView: View {
 
                                     if selectedColor == item {
                                         Circle()
-                                            .stroke(Color.white.opacity(0.95), lineWidth: 2.2)
+                                            .stroke(UpdoTheme.filmy(0.95), lineWidth: 2.2)
                                             .frame(width: 36, height: 36)
 
                                         Circle()
@@ -338,10 +338,10 @@ struct EditTaskView: View {
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.045))
+                    .fill(UpdoTheme.filmy(0.045))
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
                     )
             )
         }
@@ -391,10 +391,10 @@ struct EditTaskView: View {
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.045))
+                    .fill(UpdoTheme.filmy(0.045))
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
                     )
             )
         }
@@ -434,10 +434,10 @@ struct EditTaskView: View {
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.045))
+                    .fill(UpdoTheme.filmy(0.045))
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
                     )
             )
         }
@@ -589,10 +589,10 @@ struct EditTaskView: View {
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.05))
+                        .fill(UpdoTheme.filmy(0.05))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.04), lineWidth: 1)
                         )
                 )
         }
@@ -609,7 +609,7 @@ struct EditTaskView: View {
                 .padding(.vertical, 8)
                 .background(
                     Capsule()
-                        .fill(estimatedStudyMinutes == minutes ? selectedColor.color : Color.white.opacity(0.05))
+                        .fill(estimatedStudyMinutes == minutes ? selectedColor.color : UpdoTheme.filmy(0.05))
                 )
         }
         .buttonStyle(.plain)
@@ -624,7 +624,7 @@ struct EditTaskView: View {
                 .padding(.vertical, 9)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.05))
+                        .fill(UpdoTheme.filmy(0.05))
                 )
         }
         .buttonStyle(.plain)

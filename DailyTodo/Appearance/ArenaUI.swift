@@ -28,6 +28,10 @@ enum AppArenaPalette {
     static let surfaceSoft = "#161821"
     static let border = "#FFFFFF"
 
+    // Adaptive card surfaces: warm off-white on light, original dark on dark.
+    static let surfaceColor     = Color.adaptive(light: Color(arenaHex: "#FCFAF4"), dark: Color(arenaHex: surface))
+    static let surfaceSoftColor = Color.adaptive(light: Color(arenaHex: "#F4EEE2"), dark: Color(arenaHex: surfaceSoft))
+
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
@@ -83,7 +87,18 @@ struct ArenaBackground: View {
     var warmGlow: Color = Color(arenaHex: AppArenaPalette.coral)
     var intensity: Double = 1.0
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        if colorScheme == .light {
+            lightBody
+        } else {
+            darkBody
+        }
+    }
+
+    // Dark: the original deep-space field (unchanged).
+    private var darkBody: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
@@ -128,6 +143,54 @@ struct ArenaBackground: View {
             .ignoresSafeArea()
         }
     }
+
+    // Light: calm warm "kırık beyaz" eggshell with faint accent blooms.
+    private var lightBody: some View {
+        ZStack {
+            UpdoTheme.background.ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    Color(arenaHex: "#FBF6EC"),
+                    Color(arenaHex: "#F4EEE1"),
+                    Color(arenaHex: "#EFE7D6")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(primaryGlow.opacity(0.07 * intensity))
+                .frame(width: 300, height: 300)
+                .blur(radius: 120)
+                .offset(x: 175, y: -255)
+
+            Circle()
+                .fill(secondaryGlow.opacity(0.08 * intensity))
+                .frame(width: 340, height: 340)
+                .blur(radius: 130)
+                .offset(x: -195, y: 520)
+
+            Circle()
+                .fill(warmGlow.opacity(0.06 * intensity))
+                .frame(width: 300, height: 300)
+                .blur(radius: 120)
+                .offset(x: 185, y: 350)
+
+            // Soft top light + gentle bottom warmth for depth (no black scrim).
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.30),
+                    Color.clear,
+                    Color(arenaHex: "#B8A47E").opacity(0.10)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+    }
 }
 
 // MARK: - Header / Title
@@ -158,7 +221,7 @@ struct ArenaLargeTitle: View {
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(title)
                     .font(.system(size: 39, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 if let accent {
                     Text(accent)
@@ -185,7 +248,7 @@ struct ArenaSectionTitle: View {
                 Text("— \(eyebrow) —")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(2.4)
-                    .foregroundStyle(.white.opacity(0.34))
+                    .foregroundStyle(UpdoTheme.filmy(0.34))
                     .lineLimit(1)
                     .minimumScaleFactor(0.60)
             }
@@ -193,7 +256,7 @@ struct ArenaSectionTitle: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 if let italic {
                     Text(italic)
@@ -250,8 +313,8 @@ struct ArenaIconButton: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.090),
-                            Color.white.opacity(0.055)
+                            UpdoTheme.filmy(0.090),
+                            UpdoTheme.filmy(0.055)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -259,7 +322,7 @@ struct ArenaIconButton: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
         }
@@ -272,15 +335,23 @@ struct ArenaHeaderScrim: View {
     var height: CGFloat = 168
     var materialHeight: CGFloat = 96
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Fades content toward the page background under the floating header:
+    /// black on dark, warm eggshell on light (never a black scrim on cream).
+    private var scrimBase: Color {
+        colorScheme == .light ? Color(arenaHex: "#F4EEE1") : .black
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             LinearGradient(
                 stops: [
-                    .init(color: Color.black.opacity(0.94), location: 0.00),
-                    .init(color: Color.black.opacity(0.86), location: 0.24),
-                    .init(color: Color.black.opacity(0.62), location: 0.50),
-                    .init(color: Color.black.opacity(0.30), location: 0.74),
-                    .init(color: Color.black.opacity(0.10), location: 0.90),
+                    .init(color: scrimBase.opacity(0.94), location: 0.00),
+                    .init(color: scrimBase.opacity(0.86), location: 0.24),
+                    .init(color: scrimBase.opacity(0.62), location: 0.50),
+                    .init(color: scrimBase.opacity(0.30), location: 0.74),
+                    .init(color: scrimBase.opacity(0.10), location: 0.90),
                     .init(color: Color.clear, location: 1.00)
                 ],
                 startPoint: .top,
@@ -289,7 +360,7 @@ struct ArenaHeaderScrim: View {
             .frame(height: height)
             .overlay(alignment: .bottom) {
                 Rectangle()
-                    .fill(Color.black.opacity(0.10))
+                    .fill(scrimBase.opacity(0.10))
                     .frame(height: 34)
                     .blur(radius: 18)
                     .offset(y: 12)

@@ -37,6 +37,12 @@ private enum CrewArenaPalette {
 
     static let mutedText = "#8C8C98"
 
+    // Adaptive surfaces/text: warm off-white cards on light, original dark on dark.
+    static let surfaceColor   = Color.adaptive(light: Color(arenaHex: "#FCFAF4"), dark: Color(arenaHex: surface))
+    static let surface2Color  = Color.adaptive(light: Color(arenaHex: "#F4EEE2"), dark: Color(arenaHex: surface2))
+    static let surface3Color  = Color.adaptive(light: Color(arenaHex: "#ECE5D6"), dark: Color(arenaHex: surface3))
+    static let mutedTextColor = Color.adaptive(light: Color(arenaHex: "#6B655C"), dark: Color(arenaHex: mutedText))
+
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
@@ -53,7 +59,7 @@ private enum CrewArenaPalette {
             colors: [
                 Color(arenaHex: appBlue).opacity(0.14),
                 Color(arenaHex: appPurple).opacity(0.14),
-                Color.white.opacity(0.035)
+                UpdoTheme.filmy(0.035)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -254,51 +260,55 @@ struct CrewHomeView: View {
 // MARK: - Background
 
 private struct CrewArenaBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var isLight: Bool { colorScheme == .light }
+
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            (isLight ? Color(arenaHex: "#F4EEE1") : Color.black).ignoresSafeArea()
 
             LinearGradient(
-                colors: [
-                    Color(arenaHex: CrewArenaPalette.backgroundTop),
-                    Color(arenaHex: CrewArenaPalette.backgroundMid),
-                    Color(arenaHex: CrewArenaPalette.backgroundBottom)
-                ],
+                colors: isLight
+                    ? [Color(arenaHex: "#FBF6EC"), Color(arenaHex: "#F4EEE1"), Color(arenaHex: "#EFE7D6")]
+                    : [
+                        Color(arenaHex: CrewArenaPalette.backgroundTop),
+                        Color(arenaHex: CrewArenaPalette.backgroundMid),
+                        Color(arenaHex: CrewArenaPalette.backgroundBottom)
+                    ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.10))
+                .fill(Color(arenaHex: CrewArenaPalette.appBlue).opacity(isLight ? 0.07 : 0.10))
                 .frame(width: 260, height: 260)
                 .blur(radius: 96)
                 .offset(x: 165, y: -245)
 
             Circle()
-                .fill(Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.18))
+                .fill(Color(arenaHex: CrewArenaPalette.appPurple).opacity(isLight ? 0.09 : 0.18))
                 .frame(width: 320, height: 320)
                 .blur(radius: 110)
                 .offset(x: -175, y: 500)
 
             Circle()
-                .fill(Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.08))
+                .fill(Color(arenaHex: CrewArenaPalette.crewCoral).opacity(isLight ? 0.05 : 0.08))
                 .frame(width: 270, height: 270)
                 .blur(radius: 100)
                 .offset(x: 170, y: 280)
 
             Circle()
-                .fill(Color(arenaHex: CrewArenaPalette.gold).opacity(0.055))
+                .fill(Color(arenaHex: CrewArenaPalette.gold).opacity(isLight ? 0.05 : 0.055))
                 .frame(width: 240, height: 240)
                 .blur(radius: 95)
                 .offset(x: -160, y: -170)
 
             LinearGradient(
-                colors: [
-                    Color.black.opacity(0.16),
-                    Color.black.opacity(0.00),
-                    Color.black.opacity(0.42)
-                ],
+                colors: isLight
+                    ? [Color.white.opacity(0.28), Color.clear, Color(arenaHex: "#B8A47E").opacity(0.10)]
+                    : [Color.black.opacity(0.16), Color.black.opacity(0.00), Color.black.opacity(0.42)],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -399,7 +409,7 @@ private struct CrewArenaHeader: View {
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
                         Text(titleFirst)
                             .font(.system(size: 39, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .id("title-first-\(titleFirst)")
                             .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .move(edge: .leading)),
@@ -481,7 +491,7 @@ private struct CrewHeaderIconButton: View {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: systemName)
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(emphasized ? .black : .white.opacity(0.82))
+                    .foregroundStyle(emphasized ? .black : UpdoTheme.filmy(0.82))
                     .frame(width: 44, height: 44)
                     .background {
                         if emphasized {
@@ -490,7 +500,7 @@ private struct CrewHeaderIconButton: View {
                                 .fill(Color(arenaHex: CrewArenaPalette.appBlue))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(.white.opacity(0.10), lineWidth: 1)
+                                        .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                                 )
                         } else {
                             // İkincil chrome → Liquid Glass.
@@ -597,7 +607,7 @@ private struct CrewModeSwitch: View {
                             .font(.system(size: 13, weight: .black))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(selectedMode == mode ? .white : .white.opacity(0.38))
+                    .foregroundStyle(selectedMode == mode ? .white : UpdoTheme.filmy(0.38))
                     .frame(maxWidth: .infinity)
                     .frame(height: 38)
                     .background {
@@ -626,10 +636,10 @@ private struct CrewModeSwitch: View {
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(Color.white.opacity(0.055))
+                .fill(UpdoTheme.filmy(0.055))
                 .overlay(
                     RoundedRectangle(cornerRadius: 19, style: .continuous)
-                        .stroke(.white.opacity(0.075), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
                 )
         )
     }
@@ -708,10 +718,10 @@ private struct CrewSocialContent: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                         }
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.38))
+                        .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.38))
 
                         ZStack {
-                            Capsule().fill(Color.white.opacity(0.05)).frame(height: 2.5)
+                            Capsule().fill(UpdoTheme.filmy(0.05)).frame(height: 2.5)
                             if isSelected {
                                 Capsule()
                                     .fill(
@@ -759,11 +769,11 @@ private struct CrewSocialContent: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(tr("crew_see_friends_close"))
                         .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("crew_friends_locked_sub"))
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(UpdoTheme.filmy(0.6))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -772,7 +782,7 @@ private struct CrewSocialContent: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
             }
             .padding(14)
             .background(
@@ -794,18 +804,18 @@ private struct CrewSocialContent: View {
                 .font(.system(size: 14, weight: .black))
                 .foregroundStyle(progression.statsSharingEnabled
                                  ? Color(arenaHex: CrewArenaPalette.liveGreen)
-                                 : .white.opacity(0.5))
+                                 : UpdoTheme.filmy(0.5))
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(tr("crew_share_my_stats"))
                     .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(progression.statsSharingEnabled
                      ? tr("crew_stats_shared_on")
                      : tr("crew_stats_shared_off"))
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
                     .lineLimit(1)
             }
 
@@ -822,10 +832,10 @@ private struct CrewSocialContent: View {
         .padding(.vertical, 11)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.035))
+                .fill(UpdoTheme.filmy(0.035))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
     }
@@ -854,7 +864,7 @@ private struct CrewSocialHero: View {
 
                 Image(systemName: "person.3.fill")
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             VStack(alignment: .leading, spacing: 7) {
@@ -872,7 +882,7 @@ private struct CrewSocialHero: View {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text("\(summary.crewCount)")
                         .font(.system(size: 28, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text("crew")
                         .font(.system(size: 24, weight: .regular, design: .serif))
@@ -890,16 +900,16 @@ private struct CrewSocialHero: View {
 
                     Text("·")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.24))
+                        .foregroundStyle(UpdoTheme.filmy(0.24))
 
                     Text("\(summary.friendCount)")
                         .font(.system(size: 28, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("ch_friend_word"))
                         .font(.system(size: 24, weight: .regular, design: .serif))
                         .italic()
-                        .foregroundStyle(.white.opacity(0.84))
+                        .foregroundStyle(UpdoTheme.filmy(0.84))
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
@@ -928,12 +938,12 @@ private struct CrewSocialHero: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text("\(summary.liveCount)")
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text("LIVE")
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.1)
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(UpdoTheme.filmy(0.38))
             }
         }
         .padding(15)
@@ -944,8 +954,8 @@ private struct CrewSocialHero: View {
                         colors: [
                             Color(arenaHex: CrewArenaPalette.appCyan).opacity(0.070),
                             Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.055),
-                            Color(arenaHex: CrewArenaPalette.surface).opacity(0.94),
-                            Color.white.opacity(0.025)
+                            CrewArenaPalette.surfaceColor.opacity(0.94),
+                            UpdoTheme.filmy(0.025)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -953,7 +963,7 @@ private struct CrewSocialHero: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(.white.opacity(0.075), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
                 )
         )
     }
@@ -976,14 +986,14 @@ private struct CrewCompactHeroMetric: View {
 
             Text(value)
                 .font(.system(size: 22, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
 
             Text(title)
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
         }
@@ -1011,14 +1021,14 @@ private struct CrewHeroMetric: View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.system(size: 19, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
 
             Text(title)
                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
                 .tracking(1.1)
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
         }
@@ -1074,15 +1084,15 @@ private struct CrewSocialTabBar: View {
 
                         Text("\(count(for: tab))")
                             .font(.system(size: 10, weight: .black, design: .rounded))
-                            .foregroundStyle(selectedTab == tab ? .black : .white.opacity(0.45))
+                            .foregroundStyle(selectedTab == tab ? .black : UpdoTheme.filmy(0.45))
                             .padding(.horizontal, 7)
                             .padding(.vertical, 4)
                             .background(
                                 Capsule()
-                                    .fill(selectedTab == tab ? .white.opacity(0.92) : .white.opacity(0.07))
+                                    .fill(selectedTab == tab ? UpdoTheme.filmy(0.92) : UpdoTheme.filmy(0.07))
                             )
                     }
-                    .foregroundStyle(selectedTab == tab ? .white : .white.opacity(0.36))
+                    .foregroundStyle(selectedTab == tab ? .white : UpdoTheme.filmy(0.36))
                     .frame(maxWidth: .infinity)
                     .frame(height: 42)
                     .background {
@@ -1102,10 +1112,10 @@ private struct CrewSocialTabBar: View {
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(.white.opacity(0.07), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
     }
@@ -1171,7 +1181,7 @@ private struct CrewSocialCrewCard: View {
                 HStack(spacing: 6) {
                     Text(crew.name)
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
 
@@ -1184,13 +1194,13 @@ private struct CrewSocialCrewCard: View {
 
                 Text(crewSubtitle)
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(UpdoTheme.filmy(0.4))
                     .lineLimit(1)
 
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(.white.opacity(0.08))
+                            .fill(UpdoTheme.filmy(0.08))
                             .frame(height: 4)
 
                         Capsule()
@@ -1232,7 +1242,7 @@ private struct CrewSocialCrewCard: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.25))
+                    .foregroundStyle(UpdoTheme.filmy(0.25))
             }
         }
         .padding(14)
@@ -1256,7 +1266,7 @@ private struct CrewSocialCrewCard: View {
                 Text(tr("crew_goal_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.4)
-                    .foregroundStyle(.white.opacity(0.34))
+                    .foregroundStyle(UpdoTheme.filmy(0.34))
 
                 Spacer()
 
@@ -1271,14 +1281,14 @@ private struct CrewSocialCrewCard: View {
                 } else {
                     Text(crew.goalProgressText)
                         .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(UpdoTheme.filmy(0.52))
                 }
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(.white.opacity(0.075))
+                        .fill(UpdoTheme.filmy(0.075))
                         .frame(height: 5)
 
                     Capsule()
@@ -1332,12 +1342,12 @@ private struct CrewMiniAvatarStack: View {
                     .frame(width: 27, height: 27)
                     .overlay(
                         Circle()
-                            .stroke(Color(arenaHex: CrewArenaPalette.surface2), lineWidth: 2)
+                            .stroke(CrewArenaPalette.surface2Color, lineWidth: 2)
                     )
                     .overlay(
                         Text(String(["A", "M", "B", "C"][index]))
                             .font(.system(size: 10, weight: .black))
-                            .foregroundStyle(.white.opacity(0.92))
+                            .foregroundStyle(UpdoTheme.filmy(0.92))
                     )
             }
         }
@@ -1394,7 +1404,7 @@ private struct CrewPresenceDot: View {
         Circle()
             .fill(isLive ? Color(arenaHex: CrewArenaPalette.liveGreen) : Color.gray.opacity(0.55))
             .frame(width: 12, height: 12)
-            .overlay(Circle().stroke(Color(arenaHex: CrewArenaPalette.surface), lineWidth: 2))
+            .overlay(Circle().stroke(CrewArenaPalette.surfaceColor, lineWidth: 2))
             .opacity(isLive ? (glow ? 1.0 : 0.6) : 1.0)
             .onAppear {
                 guard isLive else { return }
@@ -1432,7 +1442,7 @@ private struct CrewFriendRow: View {
                 HStack(spacing: 5) {
                     Text(friend.displayName)
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
 
                     if friend.isOnline {
@@ -1445,7 +1455,7 @@ private struct CrewFriendRow: View {
                 Text(friend.subtitle)
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .tracking(0.8)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
                     .lineLimit(1)
 
                 if showStats {
@@ -1475,7 +1485,7 @@ private struct CrewFriendRow: View {
                         if let level = friend.level {
                             Text("LV\(level)")
                                 .font(.system(size: 10, weight: .black, design: .monospaced))
-                                .foregroundStyle(.white.opacity(0.55))
+                                .foregroundStyle(UpdoTheme.filmy(0.55))
                         }
                     }
                 } else {
@@ -1522,11 +1532,11 @@ private struct CrewRequestsSheet: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(tr("ch_requests"))
                             .font(.system(size: 31, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(tr("ch_requests_sub"))
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.48))
+                            .foregroundStyle(UpdoTheme.filmy(0.48))
                     }
                     .padding(.top, 18)
 
@@ -1648,12 +1658,12 @@ private struct CrewRequestRow: View {
 
                 Text(request.title)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
 
                 Text("@\(request.username) · \(request.subtitle)")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
                     .lineLimit(1)
             }
 
@@ -1844,7 +1854,7 @@ private struct CrewCommunityHero: View {
                         Text(summary.italicTitle)
                             .font(.system(size: 22, weight: .regular, design: .serif))
                             .italic()
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.70)
                     }
@@ -1893,7 +1903,7 @@ private struct CrewCommunityHero: View {
                         colors: [
                             Color(arenaHex: CrewArenaPalette.gold).opacity(0.11),
                             Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.07),
-                            Color(arenaHex: CrewArenaPalette.surface).opacity(0.98)
+                            CrewArenaPalette.surfaceColor.opacity(0.98)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -1915,14 +1925,14 @@ private struct CrewCommunityMetric: View {
         VStack(spacing: 4) {
             Text(metric.value)
                 .font(.system(size: 17, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
 
             Text(metric.title)
                 .font(.system(size: 8, weight: .bold, design: .monospaced))
                 .tracking(0.9)
-                .foregroundStyle(.white.opacity(0.35))
+                .foregroundStyle(UpdoTheme.filmy(0.35))
                 .lineLimit(1)
                 .minimumScaleFactor(0.50)
         }
@@ -1930,7 +1940,7 @@ private struct CrewCommunityMetric: View {
         .frame(height: 58)
         .background(
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
                         .stroke(Color(arenaHex: metric.accentHex).opacity(0.13), lineWidth: 1)
@@ -1951,7 +1961,7 @@ private struct CrewWeeklyBattleCard: View {
                     .overlay(
                         Image(systemName: "bolt.shield.fill")
                             .font(.system(size: 21, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -1977,19 +1987,19 @@ private struct CrewWeeklyBattleCard: View {
                         Text(challenge.title)
                             .font(.system(size: 19, weight: .regular, design: .serif))
                             .italic()
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text("· \(challenge.italicTitle)")
                             .font(.system(size: 19, weight: .regular, design: .serif))
                             .italic()
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     }
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
 
                     Text("\(challenge.timeLeftText) · \(challenge.participantText)")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.62))
+                        .foregroundStyle(UpdoTheme.filmy(0.62))
                         .lineLimit(1)
                         .minimumScaleFactor(0.65)
                 }
@@ -2000,7 +2010,7 @@ private struct CrewWeeklyBattleCard: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(.white.opacity(0.08))
+                        .fill(UpdoTheme.filmy(0.08))
                         .frame(height: 6)
 
                     Capsule()
@@ -2023,7 +2033,7 @@ private struct CrewWeeklyBattleCard: View {
                 Text(tr("crew_reward"))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.2)
-                    .foregroundStyle(.white.opacity(0.34))
+                    .foregroundStyle(UpdoTheme.filmy(0.34))
 
                 Spacer()
 
@@ -2042,7 +2052,7 @@ private struct CrewWeeklyBattleCard: View {
                         colors: [
                             Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.14),
                             Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.08),
-                            Color(arenaHex: CrewArenaPalette.surface).opacity(0.98)
+                            CrewArenaPalette.surfaceColor.opacity(0.98)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -2074,7 +2084,7 @@ private struct CrewPodiumCard: View {
             HStack {
                 Text("Top 3")
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text("LIVE RANK")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
@@ -2120,7 +2130,7 @@ private struct CrewPodiumPerson: View {
 
                 Text("\(entry.rank)")
                     .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 21, height: 21)
                     .background(Circle().fill(Color.black.opacity(0.84)))
                     .offset(x: 4, y: 4)
@@ -2128,18 +2138,18 @@ private struct CrewPodiumPerson: View {
 
             Text(entry.displayName)
                 .font(.system(size: 14, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.70)
 
             Text(entry.universityShort)
                 .font(.system(size: 10, weight: .semibold, design: .monospaced))
                 .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.32))
+                .foregroundStyle(UpdoTheme.filmy(0.32))
 
             Text(entry.focusTimeText)
                 .font(.system(size: 13, weight: .black, design: .monospaced))
-                .foregroundStyle(entry.rank == 1 ? Color(arenaHex: CrewArenaPalette.gold) : .white.opacity(0.82))
+                .foregroundStyle(entry.rank == 1 ? Color(arenaHex: CrewArenaPalette.gold) : UpdoTheme.filmy(0.82))
                 .lineLimit(1)
                 .minimumScaleFactor(0.62)
         }
@@ -2165,7 +2175,7 @@ private struct CrewYourRankStrip: View {
 
                 Text("\(entry.displayName) · \(entry.universityShort)")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
             }
@@ -2307,7 +2317,7 @@ private struct CrewCommunityLeaderboardRow: View {
                         .frame(width: 11, height: 11)
                         .overlay(
                             Circle()
-                                .stroke(Color(arenaHex: CrewArenaPalette.surface), lineWidth: 2)
+                                .stroke(CrewArenaPalette.surfaceColor, lineWidth: 2)
                         )
                         .offset(x: 2, y: 2)
                 }
@@ -2317,7 +2327,7 @@ private struct CrewCommunityLeaderboardRow: View {
                 HStack(spacing: 6) {
                     Text(crew.name)
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
 
                     if !crew.badges.isEmpty {
@@ -2337,17 +2347,17 @@ private struct CrewCommunityLeaderboardRow: View {
                         .foregroundStyle(
                             crew.focusMinutes > 0
                             ? Color(arenaHex: CrewArenaPalette.crewCoral)
-                            : .white.opacity(0.38)
+                            : UpdoTheme.filmy(0.38)
                         )
                         .lineLimit(1)
 
                     Text("·")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.24))
+                        .foregroundStyle(UpdoTheme.filmy(0.24))
 
                     Text("\(crew.universityShort) · \(memberLabel)")
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
                         .lineLimit(1)
                         .minimumScaleFactor(0.70)
                 }
@@ -2365,7 +2375,7 @@ private struct CrewCommunityLeaderboardRow: View {
                         .fill(
                             crew.joinState == .join
                             ? Color(arenaHex: CrewArenaPalette.crewCoral)
-                            : Color.white.opacity(0.07)
+                            : UpdoTheme.filmy(0.07)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 13, style: .continuous)
@@ -2392,7 +2402,7 @@ private struct CrewSectionTitle: View {
                 Text("— \(eyebrow) —")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .tracking(2.6)
-                    .foregroundStyle(.white.opacity(0.33))
+                    .foregroundStyle(UpdoTheme.filmy(0.33))
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
 
@@ -2401,19 +2411,19 @@ private struct CrewSectionTitle: View {
                 if let trailing {
                     Text(trailing)
                         .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.38))
+                        .foregroundStyle(UpdoTheme.filmy(0.38))
                 }
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(titleFirst)
                     .font(.system(size: 25, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(titleItalic)
                     .font(.system(size: 24, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -2433,7 +2443,7 @@ private struct CrewRangePicker: View {
                     Text(range.title.uppercased())
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1)
-                        .foregroundStyle(selectedRange == range ? .white : .white.opacity(0.35))
+                        .foregroundStyle(selectedRange == range ? .white : UpdoTheme.filmy(0.35))
                         .padding(.horizontal, 12)
                         .frame(height: 34)
                         .background {
@@ -2449,10 +2459,10 @@ private struct CrewRangePicker: View {
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.white.opacity(0.08))
+                .fill(UpdoTheme.filmy(0.08))
                 .overlay(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .stroke(.white.opacity(0.10), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                 )
         )
     }
@@ -2476,11 +2486,11 @@ private struct CrewArenaPreparingCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.46))
+                    .foregroundStyle(UpdoTheme.filmy(0.46))
                     .lineLimit(2)
             }
 
@@ -2518,11 +2528,11 @@ private struct CrewArenaEmptyLeaderboardCard: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(tr("crew_be_first"))
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(tr("crew_be_first_sub"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(2)
                 }
 
@@ -2577,11 +2587,11 @@ private struct CrewEmptyStateCard: View {
             VStack(spacing: 6) {
                 Text(title)
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(subtitle)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
                     .multilineTextAlignment(.center)
             }
 
@@ -2602,10 +2612,10 @@ private struct CrewEmptyStateCard: View {
                     Button(action: onSecondary) {
                         Text(secondaryTitle)
                             .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(.white.opacity(0.82))
+                            .foregroundStyle(UpdoTheme.filmy(0.82))
                             .padding(.horizontal, 16)
                             .frame(height: 42)
-                            .background(Capsule().fill(Color.white.opacity(0.09)))
+                            .background(Capsule().fill(UpdoTheme.filmy(0.09)))
                     }
                     .buttonStyle(.plain)
                 }
@@ -2627,7 +2637,7 @@ private struct CrewSurface: View {
                     colors: [
                         Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.035),
                         Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -2635,7 +2645,7 @@ private struct CrewSurface: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
@@ -2653,7 +2663,7 @@ private struct DottedPattern: View {
 
                 while x < size.width {
                     let rect = CGRect(x: x, y: y, width: radius * 2, height: radius * 2)
-                    context.fill(Path(ellipseIn: rect), with: .color(.white.opacity(0.36)))
+                    context.fill(Path(ellipseIn: rect), with: .color(UpdoTheme.filmy(0.36)))
                     x += spacing
                 }
 
@@ -2689,7 +2699,7 @@ private func crewBadgeTint(_ badge: String) -> Color {
     case "💎":             return Color(arenaHex: CrewArenaPalette.appCyan)
     case "⚡️", "⚡":       return Color(arenaHex: CrewArenaPalette.appCyan)
     case "🔥":             return Color(arenaHex: CrewArenaPalette.crewCoral)
-    case "🥈":             return Color.white.opacity(0.7)
+    case "🥈":             return UpdoTheme.filmy(0.7)
     case "🥉":             return Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.8)
     default:               return Color(arenaHex: CrewArenaPalette.gold)
     }

@@ -163,7 +163,7 @@ private extension AuthView {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text("Up")
                         .font(.system(size: 50, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text("do")
                         .font(.system(size: 48, weight: .regular, design: .serif))
@@ -183,7 +183,7 @@ private extension AuthView {
 
                 Text(tr("av_subtitle"))
                     .font(.system(size: 15.5, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.6))
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)
                     .padding(.horizontal, 6)
@@ -225,12 +225,12 @@ private extension AuthView {
 
             // Divider
             HStack(spacing: 12) {
-                Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                Rectangle().fill(UpdoTheme.filmy(0.12)).frame(height: 1)
                 Text(tr("av_or_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.6)
-                    .foregroundStyle(.white.opacity(0.35))
-                Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                    .foregroundStyle(UpdoTheme.filmy(0.35))
+                Rectangle().fill(UpdoTheme.filmy(0.12)).frame(height: 1)
             }
             .padding(.vertical, 4)
 
@@ -245,13 +245,13 @@ private extension AuthView {
                     Text(tr("av_continue_email"))
                         .font(.system(size: 16, weight: .bold))
                 }
-                .foregroundStyle(.white.opacity(0.92))
+                .foregroundStyle(UpdoTheme.filmy(0.92))
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.06))
-                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
+                        .fill(UpdoTheme.filmy(0.06))
+                        .overlay(Capsule().strokeBorder(UpdoTheme.filmy(0.14), lineWidth: 1))
                 )
             }
             .buttonStyle(AuthPressButtonStyle())
@@ -262,7 +262,7 @@ private extension AuthView {
             } label: {
                 HStack(spacing: 5) {
                     Text(tr("av_no_account"))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
                     Text(tr("auth_signup"))
                         .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
                 }
@@ -273,7 +273,7 @@ private extension AuthView {
 
             Text(tr("av_terms_note"))
                 .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.32))
+                .foregroundStyle(UpdoTheme.filmy(0.32))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 14)
                 .padding(.top, 8)
@@ -322,7 +322,7 @@ private enum AuthArenaPalette {
             colors: [
                 Color(arenaHex: appBlue).opacity(0.14),
                 Color(arenaHex: appPurple).opacity(0.12),
-                Color.white.opacity(0.045)
+                UpdoTheme.filmy(0.045)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -332,9 +332,9 @@ private enum AuthArenaPalette {
     static var surfaceGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color.white.opacity(0.075),
-                Color.white.opacity(0.045),
-                Color.white.opacity(0.030)
+                UpdoTheme.filmy(0.075),
+                UpdoTheme.filmy(0.045),
+                UpdoTheme.filmy(0.030)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -666,7 +666,7 @@ private extension ProfileSetupView {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(isEnglish ? "Pick a" : "Kullanıcı")
                         .font(.system(size: 34, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(isEnglish ? "handle" : "adını")
                         .font(.system(size: 32, weight: .regular, design: .serif))
@@ -689,7 +689,7 @@ private extension ProfileSetupView {
                      ? "Friends will find and add you by this username. You can change it later in your profile."
                      : "Arkadaşların seni bu kullanıcı adıyla bulup ekleyecek. İstersen sonra profilinden değiştirebilirsin.")
                     .font(.system(size: 14.5, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.6))
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)
                     .padding(.horizontal, 8)
@@ -711,7 +711,7 @@ private extension ProfileSetupView {
                     .submitLabel(.done)
                     .focused($fieldFocused)
                     .font(.system(size: 19, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(Color(arenaHex: AuthArenaPalette.appCyan))
                     .onChange(of: username) { _, newValue in
                         let normalized = String(SessionStore.normalizedUsername(newValue).prefix(20))
@@ -740,7 +740,7 @@ private extension ProfileSetupView {
         case .checking:
             ProgressView()
                 .controlSize(.small)
-                .tint(Color.white.opacity(0.6))
+                .tint(UpdoTheme.filmy(0.6))
         case .available:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 20, weight: .bold))
@@ -803,18 +803,18 @@ private extension ProfileSetupView {
                             .font(.system(size: 15, weight: .black))
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 58)
                 .background(
                     Capsule().fill(
                         canContinue
                         ? AnyShapeStyle(AuthArenaPalette.appGradient)
-                        : AnyShapeStyle(Color.white.opacity(0.10))
+                        : AnyShapeStyle(UpdoTheme.filmy(0.10))
                     )
                 )
                 .overlay(
-                    Capsule().stroke(Color.white.opacity(canContinue ? 0.16 : 0.06), lineWidth: 1)
+                    Capsule().stroke(UpdoTheme.filmy(canContinue ? 0.16 : 0.06), lineWidth: 1)
                 )
                 .shadow(
                     color: canContinue ? Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.26) : .clear,
@@ -830,7 +830,7 @@ private extension ProfileSetupView {
             } label: {
                 Text(isEnglish ? "Sign out" : "Oturumu kapat")
                     .font(.system(size: 13.5, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
             }
             .buttonStyle(.plain)
         }
@@ -838,7 +838,7 @@ private extension ProfileSetupView {
 
     var fieldSurface: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white.opacity(0.07))
+            .fill(UpdoTheme.filmy(0.07))
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(
@@ -846,7 +846,7 @@ private extension ProfileSetupView {
                         ? Color(arenaHex: AuthArenaPalette.appCyan).opacity(0.5)
                         : (availability == .taken
                            ? Color(arenaHex: AuthArenaPalette.coral).opacity(0.5)
-                           : Color.white.opacity(0.09)),
+                           : UpdoTheme.filmy(0.09)),
                         lineWidth: 1
                     )
             )
@@ -940,7 +940,7 @@ private extension ProfileSetupView {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(isEnglish ? "Add a" : "Profil")
                     .font(.system(size: 34, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(isEnglish ? "photo" : "fotoğrafın")
                     .font(.system(size: 32, weight: .regular, design: .serif))
@@ -963,7 +963,7 @@ private extension ProfileSetupView {
                  ? "Friends recognize you faster with a photo. It's optional — you can add it now or later."
                  : "Fotoğrafla arkadaşların seni daha kolay tanır. İsteğe bağlı — şimdi ya da sonra ekleyebilirsin.")
                 .font(.system(size: 14.5, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.6))
+                .foregroundStyle(UpdoTheme.filmy(0.6))
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
                 .padding(.horizontal, 8)
@@ -980,7 +980,7 @@ private extension ProfileSetupView {
                     size: 168
                 )
                 .overlay(
-                    Circle().stroke(Color.white.opacity(0.14), lineWidth: 1)
+                    Circle().stroke(UpdoTheme.filmy(0.14), lineWidth: 1)
                 )
                 .shadow(color: Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.28), radius: 22, y: 10)
 
@@ -990,7 +990,7 @@ private extension ProfileSetupView {
                     .overlay(
                         Image(systemName: "camera.fill")
                             .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
                     .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 3))
                     .offset(x: 4, y: 4)
@@ -1020,18 +1020,18 @@ private extension ProfileSetupView {
                             .font(.system(size: 15, weight: .black))
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 58)
                 .background(
                     Capsule().fill(
                         avatarStore.image == nil
-                        ? AnyShapeStyle(Color.white.opacity(0.10))
+                        ? AnyShapeStyle(UpdoTheme.filmy(0.10))
                         : AnyShapeStyle(AuthArenaPalette.appGradient)
                     )
                 )
                 .overlay(
-                    Capsule().stroke(Color.white.opacity(avatarStore.image == nil ? 0.10 : 0.16), lineWidth: 1)
+                    Capsule().stroke(UpdoTheme.filmy(avatarStore.image == nil ? 0.10 : 0.16), lineWidth: 1)
                 )
                 .shadow(
                     color: avatarStore.image == nil ? .clear : Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.26),
@@ -1045,7 +1045,7 @@ private extension ProfileSetupView {
                  ? "You can always change it in your profile."
                  : "İstediğin zaman profilinden değiştirebilirsin.")
                 .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.4))
+                .foregroundStyle(UpdoTheme.filmy(0.4))
                 .multilineTextAlignment(.center)
         }
     }

@@ -214,7 +214,7 @@ struct CrewFocusInviteSheet: View {
                 Button(action: onDismiss) {
                     Text(tr("cfi_not_now"))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(UpdoTheme.filmy(0.55))
                 }
                 .buttonStyle(.plain)
                 .padding(.bottom, 18)
@@ -238,14 +238,14 @@ struct CrewFocusInviteSheet: View {
             Button(action: onDismiss) {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(UpdoTheme.filmy(0.85))
                     .frame(width: 38, height: 38)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.08))
+                            .fill(UpdoTheme.filmy(0.08))
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.1), lineWidth: 1)
                             )
                     )
             }
@@ -299,19 +299,19 @@ struct CrewFocusInviteSheet: View {
                     .frame(width: 80, height: 80)
                     .overlay(
                         Circle()
-                            .stroke(Color.white.opacity(0.18), lineWidth: 2)
+                            .stroke(UpdoTheme.filmy(0.18), lineWidth: 2)
                     )
                     .shadow(color: accent.opacity(0.4), radius: 18, y: 8)
 
                 Text(String(payload.crewName.prefix(1)).uppercased())
                     .font(.system(size: 32, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
             .scaleEffect(appeared ? 1.0 : 0.7)
 
             Text(payload.crewName)
                 .font(.system(size: 24, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
@@ -332,7 +332,7 @@ struct CrewFocusInviteSheet: View {
 
             Text(appLanguageIsEnglish() ? "\(payload.hostName) is inviting\nyou to focus" : "\(payload.hostName) seni focusa\ndavet ediyor")
                 .font(.system(size: 22, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.96))
+                .foregroundStyle(UpdoTheme.filmy(0.96))
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .minimumScaleFactor(0.85)
@@ -356,11 +356,11 @@ struct CrewFocusInviteSheet: View {
                 Text(tr("ct_task_caps"))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.4)
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(UpdoTheme.filmy(0.42))
 
                 Text(title)
                     .font(.system(size: 15, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.95))
+                    .foregroundStyle(UpdoTheme.filmy(0.95))
                     .lineLimit(2)
             }
 
@@ -369,10 +369,10 @@ struct CrewFocusInviteSheet: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.08), lineWidth: 1)
                 )
         )
     }
@@ -435,14 +435,14 @@ struct CrewFocusInviteSheet: View {
 
             Text(value)
                 .font(.system(size: 22, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             if let subtitle {
                 Text(subtitle)
                     .font(.system(size: 11, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(UpdoTheme.filmy(0.55))
                     .lineLimit(1)
             } else {
                 Spacer().frame(height: 14)
@@ -452,7 +452,7 @@ struct CrewFocusInviteSheet: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(accent.opacity(0.18), lineWidth: 1)
@@ -465,7 +465,7 @@ struct CrewFocusInviteSheet: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
+                        .fill(UpdoTheme.filmy(0.08))
                         .frame(height: 6)
 
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -484,19 +484,19 @@ struct CrewFocusInviteSheet: View {
             HStack {
                 Text(appLanguageIsEnglish() ? "0 min" : "0 dk")
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(UpdoTheme.filmy(0.40))
 
                 Spacer()
 
                 Text(tr("cfi_percent_done", Int(progress * 100)))
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(UpdoTheme.filmy(0.62))
 
                 Spacer()
 
                 Text("\(payload.durationMinutes) \(appLanguageIsEnglish() ? "min" : "dk")")
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.40))
+                    .foregroundStyle(UpdoTheme.filmy(0.40))
             }
         }
         .padding(.horizontal, 4)
@@ -536,10 +536,10 @@ struct CrewFocusInviteSheet: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(UpdoTheme.filmy(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
                 )
         )
     }
@@ -559,7 +559,7 @@ struct CrewFocusInviteSheet: View {
 
             Text(name)
                 .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white.opacity(0.92))
+                .foregroundStyle(UpdoTheme.filmy(0.92))
                 .lineLimit(1)
 
             Spacer()

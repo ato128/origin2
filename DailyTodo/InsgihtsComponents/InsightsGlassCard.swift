@@ -39,7 +39,7 @@ struct InsightsGlassCard<Content: View>: View {
                     LinearGradient(
                         colors: [
                             tint.opacity(fillOpacity * 0.95),
-                            Color.white.opacity(0.028),
+                            UpdoTheme.filmy(0.028),
                             Color.black.opacity(0.18)
                         ],
                         startPoint: .topLeading,
@@ -48,16 +48,16 @@ struct InsightsGlassCard<Content: View>: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Color.white.opacity(0.025))
+                        .fill(UpdoTheme.filmy(0.025))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(strokeOpacity + 0.02),
+                                    UpdoTheme.filmy(strokeOpacity + 0.02),
                                     tint.opacity(strokeOpacity * 0.55),
-                                    Color.white.opacity(0.025)
+                                    UpdoTheme.filmy(0.025)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing

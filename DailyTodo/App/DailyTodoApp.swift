@@ -249,8 +249,12 @@ struct DailyTodoApp: App {
                 await crewStore.loadHomeCacheForAllCrews()
             }
         }
+        // Drives the whole app's Light/Dark/System appearance from the in-app
+        // setting (System = follow the phone). Pre-login/onboarding screens pin
+        // themselves to dark via their own .preferredColorScheme(.dark).
+        .updoColorScheme()
     }
-    
+
     private var resolvedCurrentDisplayName: String {
         if let user = session.currentUser {
             if !user.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

@@ -106,7 +106,7 @@ struct ExamPlannerSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
     }
 
     private var background: some View {
@@ -128,7 +128,7 @@ struct ExamPlannerSheet: View {
 
                 Text(tr("ep_exam_plan"))
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -138,15 +138,15 @@ struct ExamPlannerSheet: View {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 42, height: 42)
                     .background(
                         Circle()
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.095),
-                                        Color.white.opacity(0.045)
+                                        UpdoTheme.filmy(0.095),
+                                        UpdoTheme.filmy(0.045)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -154,7 +154,7 @@ struct ExamPlannerSheet: View {
                             )
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                             )
                             .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
                     )
@@ -188,7 +188,7 @@ struct ExamPlannerSheet: View {
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
                         Text(tr("at_kind_exam"))
                             .font(.system(size: 34, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(tr("ep_plan_w"))
                             .font(.system(size: 31, weight: .regular, design: .serif))
@@ -206,7 +206,7 @@ struct ExamPlannerSheet: View {
 
                     Text(heroTitle)
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white.opacity(0.72))
+                        .foregroundStyle(UpdoTheme.filmy(0.72))
                         .lineLimit(2)
                 }
 
@@ -264,11 +264,11 @@ struct ExamPlannerSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(showNewExamForm ? "Formu kapat" : tr("ha_add_new_exam"))
                         .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(showNewExamForm ? tr("ep_back_calendar") : tr("ep_pick_sub"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                 }
 
                 Spacer()
@@ -306,7 +306,7 @@ struct ExamPlannerSheet: View {
             HStack {
                 Label(tr("eps_date"), systemImage: "calendar")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white.opacity(0.82))
+                    .foregroundStyle(UpdoTheme.filmy(0.82))
 
                 Spacer()
 
@@ -329,15 +329,15 @@ struct ExamPlannerSheet: View {
                 TextField(tr("ep_topics_ph"), text: $examTopics)
                     .textFieldStyle(.plain)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(accent)
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.white.opacity(0.065))
+                            .fill(UpdoTheme.filmy(0.065))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -349,12 +349,12 @@ struct ExamPlannerSheet: View {
                         .foregroundStyle(accent)
                     Text(tr("ep_daily_hours"))
                         .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(.white.opacity(0.82))
+                        .foregroundStyle(UpdoTheme.filmy(0.82))
                 }
                 Spacer()
                 Stepper("\(dailyStudyHours) saat", value: $dailyStudyHours, in: 1...12)
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             if let err = aiPlanError {
@@ -363,7 +363,7 @@ struct ExamPlannerSheet: View {
                         .foregroundStyle(.orange)
                     Text(err)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.82))
+                        .foregroundStyle(UpdoTheme.filmy(0.82))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(12)
@@ -424,15 +424,15 @@ struct ExamPlannerSheet: View {
                 }
                 .font(.system(size: 11, weight: .black, design: .monospaced))
                 .tracking(0.7)
-                .foregroundStyle(.white.opacity(0.86))
+                .foregroundStyle(UpdoTheme.filmy(0.86))
                 .padding(.horizontal, 14)
                 .frame(height: 48)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.060))
+                        .fill(UpdoTheme.filmy(0.060))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.085), lineWidth: 1)
                         )
                 )
             }
@@ -453,26 +453,26 @@ struct ExamPlannerSheet: View {
             TextField("Konu", text: $manualTopic)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .tint(accent)
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.065))
+                        .fill(UpdoTheme.filmy(0.065))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.08), lineWidth: 1)
                         )
                 )
 
             DatePicker(tr("cs_day"), selection: $manualDate, displayedComponents: .date)
                 .tint(accent)
                 .font(.system(size: 15, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Stepper("\(tr("duration_label")): \(manualMinutes) \(tr("common_min_short"))", value: $manualMinutes, in: 15...180, step: 15)
                 .font(.system(size: 15, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
 
             Button {
                 createManualDay()
@@ -497,10 +497,10 @@ struct ExamPlannerSheet: View {
         .padding(15)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.070), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.070), lineWidth: 1)
                 )
         )
     }
@@ -573,12 +573,12 @@ struct ExamPlannerSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(first.courseName)
                         .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .lineLimit(1)
 
                     Text("\(first.examType.title) • \(dateText(first.examDate))")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(UpdoTheme.filmy(0.52))
                 }
 
                 Spacer()
@@ -590,7 +590,7 @@ struct ExamPlannerSheet: View {
 
                     Text(daysLeftText(first.examDate))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.44))
+                        .foregroundStyle(UpdoTheme.filmy(0.44))
                 }
             }
             .padding(15)
@@ -620,19 +620,19 @@ struct ExamPlannerSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(course.name)
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(2)
 
                 Text(tr("ep_day_plan", items.count))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(UpdoTheme.filmy(0.50))
             }
 
             Spacer()
 
             Image(systemName: expandedCourseID == course.id ? "chevron.up" : "chevron.down")
                 .font(.system(size: 13, weight: .black))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(UpdoTheme.filmy(0.45))
         }
         .padding(15)
         .background(rowBackground(tint: Color(arenaHex: AppArenaPalette.blue), isCompleted: false))
@@ -653,7 +653,7 @@ struct ExamPlannerSheet: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(item.topic)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 HStack(spacing: 8) {
                     miniInfo(icon: "calendar", text: dateText(item.studyDate))
@@ -941,7 +941,7 @@ struct ExamPlannerSheet: View {
 
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -965,14 +965,14 @@ struct ExamPlannerSheet: View {
 
             Text(value)
                 .font(.system(size: 12, weight: .black, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
             Text(title.uppercased())
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .tracking(0.7)
-                .foregroundStyle(.white.opacity(0.40))
+                .foregroundStyle(UpdoTheme.filmy(0.40))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(11)
@@ -992,13 +992,13 @@ struct ExamPlannerSheet: View {
             Text(text)
         }
         .font(.system(size: 10, weight: .black, design: .monospaced))
-        .foregroundStyle(.white.opacity(0.46))
+        .foregroundStyle(UpdoTheme.filmy(0.46))
     }
 
     private func progressCircle(_ progress: Double) -> some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.10), lineWidth: 5)
+                .stroke(UpdoTheme.filmy(0.10), lineWidth: 5)
 
             Circle()
                 .trim(from: 0, to: progress)
@@ -1015,7 +1015,7 @@ struct ExamPlannerSheet: View {
 
             Text(text)
                 .font(.system(size: 14, weight: .black))
-                .foregroundStyle(.white.opacity(0.62))
+                .foregroundStyle(UpdoTheme.filmy(0.62))
 
             Spacer()
         }
@@ -1029,7 +1029,7 @@ struct ExamPlannerSheet: View {
                 LinearGradient(
                     colors: [
                         tint.opacity(isCompleted ? 0.060 : 0.075),
-                        Color.white.opacity(0.035)
+                        UpdoTheme.filmy(0.035)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -1049,7 +1049,7 @@ struct ExamPlannerSheet: View {
                     colors: [
                         tint.opacity(0.075 + strength * 0.035),
                         Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        AppArenaPalette.surfaceColor.opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

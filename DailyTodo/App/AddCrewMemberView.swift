@@ -137,14 +137,14 @@ private extension AddCrewMemberView {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -160,7 +160,7 @@ private extension AddCrewMemberView {
 
                 Text(tr("am_add_member"))
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -183,7 +183,7 @@ private extension AddCrewMemberView {
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(canSubmit ? AddCrewMemberArenaPalette.green : Color.white.opacity(0.12))
+                        .fill(canSubmit ? AddCrewMemberArenaPalette.green : UpdoTheme.filmy(0.12))
                 )
             }
             .buttonStyle(.plain)
@@ -201,7 +201,7 @@ private extension AddCrewMemberView {
                     .overlay(
                         Image(systemName: "person.badge.plus")
                             .font(.system(size: 27, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -213,7 +213,7 @@ private extension AddCrewMemberView {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(appLanguageIsEnglish() ? "New" : "Yeni")
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(tr("member_lc"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
@@ -223,7 +223,7 @@ private extension AddCrewMemberView {
 
                     Text(tr("acm_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(2)
                 }
 
@@ -274,11 +274,11 @@ private extension AddCrewMemberView {
                     Text("USERNAME")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(1.3)
-                        .foregroundStyle(.white.opacity(0.36))
+                        .foregroundStyle(UpdoTheme.filmy(0.36))
 
                     TextField("username", text: $username)
                         .font(.system(size: 18, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .submitLabel(.done)
@@ -291,7 +291,7 @@ private extension AddCrewMemberView {
 
                     Text(tr("uname_hint"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.38))
+                        .foregroundStyle(UpdoTheme.filmy(0.38))
                 }
             }
             .padding(14)
@@ -324,7 +324,7 @@ private extension AddCrewMemberView {
             .frame(height: 54)
             .background(
                 Capsule()
-                    .fill(canSubmit ? AddCrewMemberArenaPalette.green : Color.white.opacity(0.12))
+                    .fill(canSubmit ? AddCrewMemberArenaPalette.green : UpdoTheme.filmy(0.12))
             )
         }
         .buttonStyle(.plain)
@@ -341,19 +341,19 @@ private extension AddCrewMemberView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -366,7 +366,7 @@ private extension AddCrewMemberView {
 
             Text(text)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.74))
+                .foregroundStyle(UpdoTheme.filmy(0.74))
                 .lineLimit(3)
 
             Spacer()
@@ -382,7 +382,7 @@ private extension AddCrewMemberView {
                     colors: [
                         tint.opacity(0.055),
                         AddCrewMemberArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -402,7 +402,7 @@ private extension AddCrewMemberView {
                     colors: [
                         AddCrewMemberArenaPalette.blue.opacity(0.035),
                         AddCrewMemberArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -410,7 +410,7 @@ private extension AddCrewMemberView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }

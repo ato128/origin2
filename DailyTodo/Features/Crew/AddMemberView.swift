@@ -77,7 +77,7 @@ struct AddMemberView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .tint(UpdoTheme.cyan)
     }
 
@@ -127,10 +127,10 @@ struct AddMemberView: View {
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.045))
+                        .fill(UpdoTheme.filmy(0.045))
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)
                         )
                 )
         }
@@ -152,16 +152,16 @@ struct AddMemberView: View {
                     } label: {
                         Image(systemName: item)
                             .font(.system(size: 20, weight: .medium))
-                            .foregroundStyle(isSelected ? UpdoTheme.cyan : .white.opacity(0.55))
+                            .foregroundStyle(isSelected ? UpdoTheme.cyan : UpdoTheme.filmy(0.55))
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
                             .background(
                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(Color.white.opacity(0.045))
+                                    .fill(UpdoTheme.filmy(0.045))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                                             .strokeBorder(
-                                                isSelected ? UpdoTheme.cyan : Color.white.opacity(0.08),
+                                                isSelected ? UpdoTheme.cyan : UpdoTheme.filmy(0.08),
                                                 lineWidth: isSelected ? 1.5 : 1
                                             )
                                     )

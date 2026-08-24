@@ -171,14 +171,14 @@ private extension BackendCrewTaskDetailView {
             } label: {
                 Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -194,7 +194,7 @@ private extension BackendCrewTaskDetailView {
 
                 Text(crew.name)
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
@@ -221,16 +221,16 @@ private extension BackendCrewTaskDetailView {
                     } else {
                         Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
                             .font(.system(size: 19, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     }
                 }
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(Color.white.opacity(0.075))
+                        .fill(UpdoTheme.filmy(0.075))
                         .overlay(
                             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                         )
                 )
             }
@@ -261,7 +261,7 @@ private extension BackendCrewTaskDetailView {
                     .overlay(
                         Image(systemName: currentTask.is_done ? "checkmark.circle.fill" : "circle.dashed")
                             .font(.system(size: 28, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -279,7 +279,7 @@ private extension BackendCrewTaskDetailView {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("Crew")
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(tr("bctd_task_lc"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
@@ -289,7 +289,7 @@ private extension BackendCrewTaskDetailView {
 
                     Text(currentTask.title)
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white.opacity(0.82))
+                        .foregroundStyle(UpdoTheme.filmy(0.82))
                         .lineLimit(2)
                         .minimumScaleFactor(0.70)
                 }
@@ -301,7 +301,7 @@ private extension BackendCrewTaskDetailView {
                !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(details)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(UpdoTheme.filmy(0.52))
                     .lineLimit(4)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -332,11 +332,11 @@ private extension BackendCrewTaskDetailView {
                     Text(tr("bctd_status"))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .tracking(1.1)
-                        .foregroundStyle(.white.opacity(0.42))
+                        .foregroundStyle(UpdoTheme.filmy(0.42))
 
                     Text(currentTask.is_done ? tr("bctd_task_done") : tr("bctd_task_open"))
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                 }
 
                 Spacer()
@@ -522,11 +522,11 @@ private extension BackendCrewTaskDetailView {
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 Text(value)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
                     .textSelection(.enabled)
@@ -546,14 +546,14 @@ private extension BackendCrewTaskDetailView {
 
             Text(value)
                 .font(.system(size: 14, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
 
             Text(title)
                 .font(.system(size: 9, weight: .bold, design: .monospaced))
                 .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(UpdoTheme.filmy(0.42))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 92)
@@ -582,19 +582,19 @@ private extension BackendCrewTaskDetailView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -606,7 +606,7 @@ private extension BackendCrewTaskDetailView {
                     colors: [
                         tint.opacity(0.055),
                         BackendCrewTaskArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -626,7 +626,7 @@ private extension BackendCrewTaskDetailView {
                     colors: [
                         BackendCrewTaskArenaPalette.blue.opacity(0.035),
                         BackendCrewTaskArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -634,7 +634,7 @@ private extension BackendCrewTaskDetailView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }

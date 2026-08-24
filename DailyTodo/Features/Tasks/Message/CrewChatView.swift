@@ -237,7 +237,7 @@ struct CrewChatView: View {
                             AppBackground()
 
                             ProgressView("crew_chat_loading_crew_info")
-                                .foregroundStyle(.white)
+                                .foregroundStyle(UpdoTheme.textPrimary)
                         }
                         .task {
                             if crewStore.crews.isEmpty {

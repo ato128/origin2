@@ -190,14 +190,14 @@ private extension CreateCrewBackendView {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -214,7 +214,7 @@ private extension CreateCrewBackendView {
 
                 Text(tr("cc_create"))
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -237,7 +237,7 @@ private extension CreateCrewBackendView {
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(canSave ? CreateCrewArenaPalette.green : Color.white.opacity(0.12))
+                        .fill(canSave ? CreateCrewArenaPalette.green : UpdoTheme.filmy(0.12))
                 )
             }
             .buttonStyle(.plain)
@@ -272,7 +272,7 @@ private extension CreateCrewBackendView {
                     .overlay(
                         Image(systemName: icon)
                             .font(.system(size: 29, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -284,7 +284,7 @@ private extension CreateCrewBackendView {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(displayName)
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.62)
 
@@ -296,7 +296,7 @@ private extension CreateCrewBackendView {
 
                     Text(tr("ccb_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(2)
                 }
 
@@ -346,7 +346,7 @@ private extension CreateCrewBackendView {
             ) {
                 TextField(tr("ccb_crew_name"), text: $name)
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
                     .submitLabel(.done)
@@ -359,7 +359,7 @@ private extension CreateCrewBackendView {
 
                 Text(tr("ccb_name_ph"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(UpdoTheme.filmy(0.38))
             }
         }
         .padding(18)
@@ -389,15 +389,15 @@ private extension CreateCrewBackendView {
                     } label: {
                         ZStack {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(selected ? tint.opacity(0.18) : Color.white.opacity(0.045))
+                                .fill(selected ? tint.opacity(0.18) : UpdoTheme.filmy(0.045))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .stroke(selected ? tint.opacity(0.42) : Color.white.opacity(0.07), lineWidth: 1)
+                                        .stroke(selected ? tint.opacity(0.42) : UpdoTheme.filmy(0.07), lineWidth: 1)
                                 )
 
                             Image(systemName: item)
                                 .font(.system(size: 21, weight: .black))
-                                .foregroundStyle(selected ? tint : .white.opacity(0.78))
+                                .foregroundStyle(selected ? tint : UpdoTheme.filmy(0.78))
                         }
                         .frame(height: 58)
                     }
@@ -438,21 +438,21 @@ private extension CreateCrewBackendView {
 
                             if selected {
                                 Circle()
-                                    .stroke(Color.white.opacity(0.95), lineWidth: 3)
+                                    .stroke(UpdoTheme.filmy(0.95), lineWidth: 3)
                                     .frame(width: 52, height: 52)
 
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 13, weight: .black))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
                             }
                         }
                         .frame(maxWidth: .infinity, minHeight: 58)
                         .background(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(selected ? tint.opacity(0.10) : Color.white.opacity(0.035))
+                                .fill(selected ? tint.opacity(0.10) : UpdoTheme.filmy(0.035))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .stroke(selected ? tint.opacity(0.22) : Color.white.opacity(0.05), lineWidth: 1)
+                                        .stroke(selected ? tint.opacity(0.22) : UpdoTheme.filmy(0.05), lineWidth: 1)
                                 )
                         )
                     }
@@ -487,7 +487,7 @@ private extension CreateCrewBackendView {
             .frame(height: 54)
             .background(
                 Capsule()
-                    .fill(canSave ? CreateCrewArenaPalette.green : Color.white.opacity(0.12))
+                    .fill(canSave ? CreateCrewArenaPalette.green : UpdoTheme.filmy(0.12))
             )
         }
         .buttonStyle(.plain)
@@ -504,19 +504,19 @@ private extension CreateCrewBackendView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -541,7 +541,7 @@ private extension CreateCrewBackendView {
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 content()
             }
@@ -575,7 +575,7 @@ private extension CreateCrewBackendView {
 
             Text(message)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.74))
+                .foregroundStyle(UpdoTheme.filmy(0.74))
                 .lineLimit(3)
 
             Spacer()
@@ -591,7 +591,7 @@ private extension CreateCrewBackendView {
                     colors: [
                         tint.opacity(0.055),
                         CreateCrewArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -611,7 +611,7 @@ private extension CreateCrewBackendView {
                     colors: [
                         CreateCrewArenaPalette.blue.opacity(0.035),
                         CreateCrewArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -619,7 +619,7 @@ private extension CreateCrewBackendView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
@@ -655,14 +655,14 @@ private extension CreateCrewBackendView {
                                 .overlay(
                                     Image(systemName: icon)
                                         .font(.system(size: 26, weight: .black))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(UpdoTheme.textPrimary)
                                 )
                         }
                     }
 
                     Image(systemName: "camera.fill")
                         .font(.system(size: 10, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .frame(width: 24, height: 24)
                         .background(
                             Circle().fill(hexColor(colorHex))
@@ -676,11 +676,11 @@ private extension CreateCrewBackendView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tr("ccb_crew_photo"))
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(tr("ccb_crew_photo_sub"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
             }
 
             Spacer(minLength: 0)
@@ -688,10 +688,10 @@ private extension CreateCrewBackendView {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        .stroke(UpdoTheme.filmy(0.06), lineWidth: 1)
                 )
         )
         .onChange(of: photoItem) { _, newItem in

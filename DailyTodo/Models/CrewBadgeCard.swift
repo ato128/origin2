@@ -63,7 +63,7 @@ struct CrewBadgeCard: View {
                 if showBadgeUnlocked {
                     Text(tr("cbc_unlocked"))
                         .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(

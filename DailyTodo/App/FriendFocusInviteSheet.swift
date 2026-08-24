@@ -100,7 +100,7 @@ struct FriendFocusInviteSheet: View {
                         tint: accent,
                         size: 84
                     )
-                    .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 2))
+                    .overlay(Circle().stroke(UpdoTheme.filmy(0.18), lineWidth: 2))
                     .shadow(color: accent.opacity(0.45), radius: 20, y: 10)
                     .scaleEffect(appeared ? 1 : 0.7)
 
@@ -116,7 +116,7 @@ struct FriendFocusInviteSheet: View {
 
                         Text(tr("ffi_invite_line", payload.hostName))
                             .font(.system(size: 23, weight: .black, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.96))
+                            .foregroundStyle(UpdoTheme.filmy(0.96))
                             .multilineTextAlignment(.center)
                             .lineLimit(3)
                             .minimumScaleFactor(0.8)
@@ -181,7 +181,7 @@ struct FriendFocusInviteSheet: View {
                     Button(action: onDecline) {
                         Text(tr("cfi_not_now"))
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(UpdoTheme.filmy(0.55))
                     }
                     .buttonStyle(.plain)
                 }
@@ -208,13 +208,13 @@ struct FriendFocusInviteSheet: View {
 
             Text(value)
                 .font(.system(size: 22, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(UpdoTheme.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.045))
+                .fill(UpdoTheme.filmy(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(tint.opacity(0.18), lineWidth: 1)

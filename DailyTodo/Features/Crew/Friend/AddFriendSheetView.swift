@@ -150,14 +150,14 @@ private extension AddFriendSheetView {
             } label: {
                 Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(Color.white.opacity(0.075))
+                            .fill(UpdoTheme.filmy(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                             )
                     )
             }
@@ -174,7 +174,7 @@ private extension AddFriendSheetView {
 
                 Text(!appLanguageIsEnglish() ? tr("af_add_friend") : "Add Friend")
                     .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
 
             Spacer()
@@ -197,7 +197,7 @@ private extension AddFriendSheetView {
                 .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(canSubmit ? AddFriendArenaPalette.green : Color.white.opacity(0.12))
+                        .fill(canSubmit ? AddFriendArenaPalette.green : UpdoTheme.filmy(0.12))
                 )
             }
             .buttonStyle(.plain)
@@ -219,7 +219,7 @@ private extension AddFriendSheetView {
                     .overlay(
                         Image(systemName: "person.badge.plus")
                             .font(.system(size: 29, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -231,7 +231,7 @@ private extension AddFriendSheetView {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(!appLanguageIsEnglish() ? "Yeni" : "New")
                             .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(UpdoTheme.textPrimary)
 
                         Text(!appLanguageIsEnglish() ? tr("ch_friend_word") : "friend")
                             .font(.system(size: 25, weight: .regular, design: .serif))
@@ -243,7 +243,7 @@ private extension AddFriendSheetView {
                          ? tr("af_subtitle")
                          : "Send a friend request by username and grow your study circle.")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                        .foregroundStyle(UpdoTheme.filmy(0.50))
                         .lineLimit(3)
                 }
 
@@ -295,7 +295,7 @@ private extension AddFriendSheetView {
             ) {
                 TextField(tr("add_friend_username_placeholder"), text: $username)
                     .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.send)
@@ -320,7 +320,7 @@ private extension AddFriendSheetView {
                      ? tr("uname_hint")
                      : "You can type it without @.")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.38))
+                    .foregroundStyle(UpdoTheme.filmy(0.38))
             }
         }
         .padding(18)
@@ -350,13 +350,13 @@ private extension AddFriendSheetView {
                          ? tr("af_step1")
                          : "A request is sent.")
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(UpdoTheme.textPrimary)
 
                     Text(!appLanguageIsEnglish()
                          ? tr("af_step2")
                          : "Once accepted, they appear in your friends list and social study features unlock.")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.48))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -392,7 +392,7 @@ private extension AddFriendSheetView {
             .frame(height: 54)
             .background(
                 Capsule()
-                    .fill(canSubmit ? AddFriendArenaPalette.green : Color.white.opacity(0.12))
+                    .fill(canSubmit ? AddFriendArenaPalette.green : UpdoTheme.filmy(0.12))
             )
         }
         .buttonStyle(.plain)
@@ -409,19 +409,19 @@ private extension AddFriendSheetView {
             Text("— \(eyebrow) —")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2.4)
-                .foregroundStyle(.white.opacity(0.34))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
                 .lineLimit(1)
                 .minimumScaleFactor(0.60)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(title)
                     .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
 
                 Text(italic)
                     .font(.system(size: 23, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoTheme.textPrimary)
             }
         }
     }
@@ -446,7 +446,7 @@ private extension AddFriendSheetView {
                 Text(title)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.3)
-                    .foregroundStyle(.white.opacity(0.36))
+                    .foregroundStyle(UpdoTheme.filmy(0.36))
 
                 content()
             }
@@ -480,7 +480,7 @@ private extension AddFriendSheetView {
 
             Text(message)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.74))
+                .foregroundStyle(UpdoTheme.filmy(0.74))
                 .lineLimit(3)
 
             Spacer()
@@ -497,7 +497,7 @@ private extension AddFriendSheetView {
 
             Text(message)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.74))
+                .foregroundStyle(UpdoTheme.filmy(0.74))
                 .lineLimit(3)
 
             Spacer()
@@ -513,7 +513,7 @@ private extension AddFriendSheetView {
                     colors: [
                         tint.opacity(0.055),
                         AddFriendArenaPalette.purple.opacity(0.040),
-                        Color.white.opacity(0.038)
+                        UpdoTheme.filmy(0.038)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -533,7 +533,7 @@ private extension AddFriendSheetView {
                     colors: [
                         AddFriendArenaPalette.blue.opacity(0.035),
                         AddFriendArenaPalette.purple.opacity(0.045),
-                        Color.white.opacity(0.040)
+                        UpdoTheme.filmy(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -541,7 +541,7 @@ private extension AddFriendSheetView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
