@@ -500,7 +500,7 @@ private extension ProfileHubView {
                     }
                 }
                 .pickerStyle(.menu)
-                .tint(.white)
+                .tint(UpdoTheme.textPrimary)
             }
             .padding(18)
             .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.blue), radius: 30, strength: 0.50))

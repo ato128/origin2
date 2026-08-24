@@ -40,11 +40,16 @@ struct InsightsGlassCard<Content: View>: View {
                         colors: [
                             tint.opacity(fillOpacity * 0.95),
                             UpdoTheme.filmy(0.028),
-                            Color.black.opacity(0.18)
+                            UpdoTheme.overlayScrim(0.18)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
+                )
+                // Light: a clean raised white card so it reads on the eggshell.
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(Color.adaptive(light: Color(arenaHex: "#FFFFFF").opacity(0.92), dark: .clear))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -73,7 +78,7 @@ struct InsightsGlassCard<Content: View>: View {
                         .offset(x: -24, y: -28)
                         .allowsHitTesting(false)
                 }
-                .shadow(color: Color.black.opacity(0.22), radius: 18, x: 0, y: 12)
+                .shadow(color: Color.adaptive(light: Color(arenaHex: "#6B5A3A").opacity(0.10), dark: Color.black.opacity(0.22)), radius: 18, x: 0, y: 12)
 
             content
                 .padding(18)

@@ -411,8 +411,15 @@ private struct PremiumStudentLaunchView: View {
     @State private var wordReveal = false
     @State private var shimmer = false
 
+    @Environment(\.colorScheme) private var colorScheme
+
     /// Logo + wordmark color follow the currently selected app icon.
     private var theme: (fg: AnyShapeStyle, glow: Color, word: AnyShapeStyle) { UpdoIconTheme.current() }
+
+    /// Wordmark reads as warm ink on the light launch, brand gradient on dark.
+    private var wordmarkStyle: AnyShapeStyle {
+        colorScheme == .light ? AnyShapeStyle(UpdoTheme.textPrimary) : theme.word
+    }
 
     var body: some View {
         ZStack {
@@ -428,11 +435,11 @@ private struct PremiumStudentLaunchView: View {
                         .font(.system(size: 62, weight: .regular, design: .serif))
                         .italic()
                         .tracking(-1.45)
-                        .foregroundStyle(theme.word)
+                        .foregroundStyle(wordmarkStyle)
                         .shadow(
-                            color: theme.glow.opacity(0.32),
-                            radius: 18,
-                            y: 8
+                            color: theme.glow.opacity(colorScheme == .light ? 0.16 : 0.32),
+                            radius: colorScheme == .light ? 10 : 18,
+                            y: colorScheme == .light ? 4 : 8
                         )
                         .overlay(alignment: .leading) {
                             wordmarkShimmer
@@ -474,38 +481,35 @@ private struct PremiumStudentLaunchView: View {
     }
 
     private var background: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+        let isLight = colorScheme == .light
+        return ZStack {
+            (isLight ? Color(arenaHex: "#F4EEE1") : Color.black).ignoresSafeArea()
 
             LinearGradient(
-                colors: [
-                    Color(arenaHex: "#01020A"),
-                    Color(arenaHex: "#050713"),
-                    Color(arenaHex: "#02030A")
-                ],
+                colors: isLight
+                    ? [Color(arenaHex: "#FBF6EC"), Color(arenaHex: "#F4EEE1"), Color(arenaHex: "#EFE7D6")]
+                    : [Color(arenaHex: "#01020A"), Color(arenaHex: "#050713"), Color(arenaHex: "#02030A")],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(arenaHex: "#0B3B8F").opacity(0.11))
+                .fill(Color(arenaHex: "#0B3B8F").opacity(isLight ? 0.06 : 0.11))
                 .frame(width: 340, height: 340)
                 .blur(radius: 110)
                 .offset(x: 185, y: -295)
 
             Circle()
-                .fill(Color(arenaHex: "#28135F").opacity(0.13))
+                .fill(Color(arenaHex: "#28135F").opacity(isLight ? 0.07 : 0.13))
                 .frame(width: 410, height: 410)
                 .blur(radius: 128)
                 .offset(x: -235, y: 420)
 
             LinearGradient(
-                colors: [
-                    Color.black.opacity(0.22),
-                    Color.clear,
-                    Color.black.opacity(0.62)
-                ],
+                colors: isLight
+                    ? [Color.white.opacity(0.28), Color.clear, Color(arenaHex: "#B8A47E").opacity(0.10)]
+                    : [Color.black.opacity(0.22), Color.clear, Color.black.opacity(0.62)],
                 startPoint: .top,
                 endPoint: .bottom
             )

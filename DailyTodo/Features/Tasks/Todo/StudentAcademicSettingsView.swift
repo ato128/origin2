@@ -1936,9 +1936,9 @@ private func academicNormalizedSearchKey(_ text: String) -> String {
 }
 
 private enum AcademicSettingsPalette {
-    static let backgroundTop = "#05060D"
-    static let backgroundMid = "#070713"
-    static let backgroundBottom = "#07040C"
+    static let backgroundTop = Color.adaptive(light: Color(arenaHex: "#FBF6EC"), dark: Color(arenaHex: "#05060D"))
+    static let backgroundMid = Color.adaptive(light: Color(arenaHex: "#F4EEE1"), dark: Color(arenaHex: "#070713"))
+    static let backgroundBottom = Color.adaptive(light: Color(arenaHex: "#EFE7D6"), dark: Color(arenaHex: "#07040C"))
 
     static let blue = "#1593FF"
     static let cyan = "#2DD4FF"
@@ -1955,9 +1955,9 @@ private struct AcademicSettingsBackground: View {
 
             LinearGradient(
                 colors: [
-                    Color(arenaHex: AcademicSettingsPalette.backgroundTop),
-                    Color(arenaHex: AcademicSettingsPalette.backgroundMid),
-                    Color(arenaHex: AcademicSettingsPalette.backgroundBottom)
+                    AcademicSettingsPalette.backgroundTop,
+                    AcademicSettingsPalette.backgroundMid,
+                    AcademicSettingsPalette.backgroundBottom
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

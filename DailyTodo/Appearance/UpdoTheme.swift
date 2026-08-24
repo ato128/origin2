@@ -62,6 +62,12 @@ enum UpdoTheme {
         )
     }
 
+    /// Top/bottom darkening scrim used on the bespoke "arena" backgrounds. Present
+    /// on dark; disappears on light (a black scrim would muddy the eggshell field).
+    static func overlayScrim(_ opacity: Double) -> Color {
+        Color.adaptive(light: .clear, dark: Color.black.opacity(opacity))
+    }
+
     // iMessage-style chat bubbles
     static let bubbleSentTop     = Color(arenaHex: "#0A84FF")   // sent (top) — blue in both modes
     static let bubbleSentBottom  = Color(arenaHex: "#0A6AF5")   // sent (bottom)
