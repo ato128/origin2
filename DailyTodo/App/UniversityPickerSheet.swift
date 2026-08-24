@@ -362,7 +362,7 @@ struct UniversityPickerSheet: View {
                                 lineWidth: 1
                             )
                     )
-                    .shadow(color: Color.black.opacity(0.18), radius: 14, y: 8)
+                    .shadow(color: UpdoTheme.cardShadow(0.18), radius: 14, y: 8)
             )
             .padding(.horizontal, 20)
         }

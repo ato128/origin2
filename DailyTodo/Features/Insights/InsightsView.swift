@@ -400,7 +400,7 @@ struct InsightsView: View {
                     .background(
                         Color.clear
                             .liquidGlass(in: RoundedRectangle(cornerRadius: 17, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
+                            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 12, y: 6)
                     )
             }
             .buttonStyle(.plain)
@@ -1289,7 +1289,7 @@ struct InsightsView: View {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .stroke(Color(arenaHex: AppArenaPalette.gold).opacity(0.20), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.26), radius: 16, y: 8)
+                .shadow(color: UpdoTheme.cardShadow(0.26), radius: 16, y: 8)
         )
         .onTapGesture {
             showLevelUpCelebration = true

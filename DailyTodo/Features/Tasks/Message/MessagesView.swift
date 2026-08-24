@@ -452,7 +452,7 @@ private extension MessagesView {
         .padding(.horizontal, 18)
         .frame(height: 52)
         .liquidGlass(in: Capsule())
-        .shadow(color: Color.black.opacity(0.30), radius: 18, y: 10)
+        .shadow(color: UpdoTheme.cardShadow(0.30), radius: 18, y: 10)
     }
 
     var summaryStrip: some View {

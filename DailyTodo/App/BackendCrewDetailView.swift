@@ -1482,7 +1482,7 @@ extension BackendCrewDetailView {
                     RoundedRectangle(cornerRadius: 30, style: .continuous)
                         .stroke(accent.opacity(0.18), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.24), radius: 20, y: 12)
+                .shadow(color: UpdoTheme.cardShadow(0.24), radius: 20, y: 12)
         )
     }
     func heroSubtitle(memberCount: Int, totalTasks: Int) -> String {
@@ -1564,7 +1564,7 @@ extension BackendCrewDetailView {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(tint.opacity(0.13), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 14, y: 8)
+            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 14, y: 8)
     }
 
     func membersSection(_ crewMembers: [CrewMemberDTO]) -> some View {

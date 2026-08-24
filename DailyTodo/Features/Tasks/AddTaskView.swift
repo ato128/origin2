@@ -518,6 +518,10 @@ struct AddTaskView: View {
     private var sectionCardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
             .fill(UpdoTheme.filmy(0.045))
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.adaptive(light: Color(arenaHex: "#FFFFFF").opacity(0.86), dark: .clear))
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(UpdoTheme.filmy(0.05), lineWidth: 1)

@@ -1913,7 +1913,7 @@ private struct CrewCommunityHero: View {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .stroke(Color(arenaHex: CrewArenaPalette.gold).opacity(0.18), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.18), radius: 18, y: 10)
+                .shadow(color: UpdoTheme.cardShadow(0.18), radius: 18, y: 10)
         )
     }
 }
@@ -2647,7 +2647,7 @@ private struct CrewSurface: View {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 9)
     }
 }
 

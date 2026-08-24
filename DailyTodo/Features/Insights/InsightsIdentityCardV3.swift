@@ -222,6 +222,6 @@ struct InsightsIdentityCardV3: View {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .stroke(primaryAccent.opacity(hasPendingLevelUp ? 0.26 : 0.18), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 9)
     }
 }

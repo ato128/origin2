@@ -351,7 +351,7 @@ struct WeekView: View {
             .background(
                 Color.clear
                     .liquidGlass(in: Circle())
-                    .shadow(color: Color.black.opacity(0.24), radius: 10, y: 6)
+                    .shadow(color: UpdoTheme.cardShadow(0.24), radius: 10, y: 6)
             )
     }
 
@@ -530,7 +530,7 @@ struct WeekView: View {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .stroke(cardAccent.opacity(0.18), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.20), radius: PerformanceSettings.cardShadowRadius, y: 6)
+                .shadow(color: UpdoTheme.cardShadow(0.20), radius: PerformanceSettings.cardShadowRadius, y: 6)
                 .shadow(color: cardAccent.opacity(active != nil ? 0.14 : 0.06), radius: 18, y: 0)
         )
     }

@@ -1326,7 +1326,7 @@ private struct ProductStageCard<Content: View>: View {
                         RoundedRectangle(cornerRadius: 30, style: .continuous)
                             .stroke(UpdoTheme.filmy(0.080), lineWidth: 1)
                     )
-                    .shadow(color: Color.black.opacity(0.20), radius: 18, y: 10)
+                    .shadow(color: UpdoTheme.cardShadow(0.20), radius: 18, y: 10)
             )
     }
 }

@@ -418,7 +418,7 @@ private extension FocusView {
                     .background(
                         Color.clear
                             .liquidGlass(in: RoundedRectangle(cornerRadius: 17, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
+                            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 12, y: 6)
                     )
 
                 if let badge {
@@ -658,7 +658,7 @@ private extension FocusView {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(selectedModeAccent.opacity(0.12), lineWidth: 1)
                     )
-                    .shadow(color: Color.black.opacity(0.18), radius: 10, y: 5)
+                    .shadow(color: UpdoTheme.cardShadow(0.18), radius: 10, y: 5)
             )
         }
         .buttonStyle(.plain)
@@ -2179,7 +2179,7 @@ struct FocusHeroDigits: View {
         }
         .lineLimit(1)
         .minimumScaleFactor(0.4)
-        .shadow(color: Color.black.opacity(0.55), radius: 14, y: 8)
+        .shadow(color: UpdoTheme.cardShadow(0.55), radius: 14, y: 8)
         .shadow(color: accent.opacity(0.16), radius: 26)
     }
 }

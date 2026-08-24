@@ -94,7 +94,7 @@ private extension FocusDetailSectionV3 {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .stroke(accent.opacity(0.14), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 9)
     }
 
     var headerRow: some View {

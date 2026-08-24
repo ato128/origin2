@@ -2070,7 +2070,7 @@ private extension FriendChatView {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .stroke(UpdoTheme.filmy(0.09), lineWidth: 1)
                         )
-                        .shadow(color: Color.black.opacity(0.20), radius: 12, y: 7)
+                        .shadow(color: UpdoTheme.cardShadow(0.20), radius: 12, y: 7)
                 )
             }
             

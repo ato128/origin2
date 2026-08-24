@@ -473,7 +473,7 @@ private extension FriendDetailView {
                     RoundedRectangle(cornerRadius: 30, style: .continuous)
                         .stroke(friendAccent.opacity(0.18), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.24), radius: 20, y: 12)
+                .shadow(color: UpdoTheme.cardShadow(0.24), radius: 20, y: 12)
         )
     }
 
@@ -640,7 +640,7 @@ private extension FriendDetailView {
                     RoundedRectangle(cornerRadius: 30, style: .continuous)
                         .stroke(friendAccent.opacity(0.18), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.24), radius: 20, y: 12)
+                .shadow(color: UpdoTheme.cardShadow(0.24), radius: 20, y: 12)
         )
     }
 
@@ -1122,7 +1122,7 @@ private extension FriendDetailView {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(tint.opacity(0.13), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 14, y: 8)
+            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 14, y: 8)
     }
 
     var cardBackground: some View {
@@ -1142,7 +1142,7 @@ private extension FriendDetailView {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .stroke(UpdoTheme.filmy(0.075), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 9)
     }
 }
 

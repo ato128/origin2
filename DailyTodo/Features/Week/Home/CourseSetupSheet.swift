@@ -1099,7 +1099,7 @@ private extension CourseSetupSheet {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(tint.opacity(0.14), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.18), radius: 14, y: 8)
+            .shadow(color: UpdoTheme.cardShadow(0.18), radius: 14, y: 8)
     }
 }
 

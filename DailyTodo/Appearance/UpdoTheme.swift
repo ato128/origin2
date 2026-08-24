@@ -68,6 +68,15 @@ enum UpdoTheme {
         Color.adaptive(light: .clear, dark: Color.black.opacity(opacity))
     }
 
+    /// Drop-shadow tone for cards. Keeps the original black on dark, but a soft,
+    /// warm, much lighter shadow on the eggshell (Apple-style light elevation).
+    static func cardShadow(_ opacity: Double) -> Color {
+        Color.adaptive(
+            light: Color(arenaHex: "#5B4A2E").opacity(opacity * 0.34),
+            dark: Color.black.opacity(opacity)
+        )
+    }
+
     // iMessage-style chat bubbles
     static let bubbleSentTop     = Color(arenaHex: "#0A84FF")   // sent (top) — blue in both modes
     static let bubbleSentBottom  = Color(arenaHex: "#0A6AF5")   // sent (bottom)

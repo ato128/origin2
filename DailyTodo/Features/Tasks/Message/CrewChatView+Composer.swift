@@ -145,7 +145,7 @@ extension CrewChatView {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.25), radius: 12, y: 6)
+                .shadow(color: UpdoTheme.cardShadow(0.25), radius: 12, y: 6)
         )
         .padding(.horizontal, 16)
     }

@@ -128,7 +128,7 @@ struct InsightsIdentityLevelSheet: View {
                                 Circle()
                                     .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                             )
-                            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+                            .shadow(color: UpdoTheme.cardShadow(0.24), radius: 12, y: 6)
                     )
             }
             .buttonStyle(.plain)
@@ -503,6 +503,6 @@ struct InsightsIdentityLevelSheet: View {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .stroke(tint.opacity(0.14), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 9)
     }
 }

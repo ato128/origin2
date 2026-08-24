@@ -1050,7 +1050,7 @@ private extension TasksView {
                 Circle()
                     .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
+            .shadow(color: UpdoTheme.cardShadow(0.28), radius: 14, y: 7)
     }
 
     func arenaCardBackground(tint: Color, radius: CGFloat, strength: Double) -> some View {
@@ -1084,7 +1084,7 @@ private extension TasksView {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(tint.opacity(0.14), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.20), radius: 13, y: 7)
+            .shadow(color: UpdoTheme.cardShadow(0.20), radius: 13, y: 7)
     }
 
     func rowBackground(tint: Color, radius: CGFloat) -> some View {

@@ -192,7 +192,7 @@ struct InsightsAchievementsView: View {
                                 Circle()
                                     .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                             )
-                            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+                            .shadow(color: UpdoTheme.cardShadow(0.24), radius: 12, y: 6)
                     )
             }
             .buttonStyle(.plain)
@@ -735,7 +735,7 @@ private struct AchievementSurface: View {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(tint.opacity(0.13), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.20), radius: 14, y: 7)
+            .shadow(color: UpdoTheme.cardShadow(0.20), radius: 14, y: 7)
     }
 }
 

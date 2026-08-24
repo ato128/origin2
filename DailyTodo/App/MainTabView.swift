@@ -531,8 +531,8 @@ struct HomeTabBar: View {
         .background(barBackground)
         .overlay(barBorder)
         .clipShape(RoundedRectangle(cornerRadius: 33, style: .continuous))
-        .shadow(color: Color.black.opacity(0.54), radius: 26, y: 16)
-        .shadow(color: Color.black.opacity(0.28), radius: 10, y: 5)
+        .shadow(color: UpdoTheme.cardShadow(0.54), radius: 26, y: 16)
+        .shadow(color: UpdoTheme.cardShadow(0.28), radius: 10, y: 5)
         .compositingGroup()
     }
 
@@ -674,7 +674,7 @@ struct HomeTabBar: View {
                                     lineWidth: 1
                                 )
                         )
-                        .shadow(color: Color.black.opacity(0.28), radius: 12, y: 5)
+                        .shadow(color: UpdoTheme.cardShadow(0.28), radius: 12, y: 5)
                         .matchedGeometryEffect(id: "selected-tab-bg", in: namespace)
                 }
             }

@@ -324,7 +324,7 @@ private extension HomeView {
                     .background(
                         Color.clear
                             .liquidGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.24), radius: 14, y: 7)
+                            .shadow(color: UpdoTheme.cardShadow(0.24), radius: 14, y: 7)
                     )
 
                 if let badge {
@@ -486,7 +486,7 @@ private extension HomeView {
                                 lineWidth: 1
                             )
                     )
-                    .shadow(color: Color.black.opacity(0.25), radius: 14, y: 7)
+                    .shadow(color: UpdoTheme.cardShadow(0.25), radius: 14, y: 7)
             )
             .tourAnchor("home.ai")
             .padding(.top, 2)
@@ -1112,7 +1112,7 @@ private extension HomeView {
                             .background(
                                 Circle()
                                     .fill(.white)
-                                    .shadow(color: Color.black.opacity(0.22), radius: 9, y: 5)
+                                    .shadow(color: UpdoTheme.cardShadow(0.22), radius: 9, y: 5)
                             )
                     }
                     .buttonStyle(.plain)
@@ -1174,7 +1174,7 @@ private extension HomeView {
         }
         .padding(15)
         .background(homeSurface(cornerRadius: 28, tint: isCritical ? accentGold : accentCyan, secondaryTint: accentPrimary))
-        .shadow(color: Color.black.opacity(0.20), radius: 17, y: 9)
+        .shadow(color: UpdoTheme.cardShadow(0.20), radius: 17, y: 9)
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 12)
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
@@ -1320,7 +1320,7 @@ private extension HomeView {
             }
             .padding(focusSession.isSessionActive ? 13 : 15)
             .background(homeSurface(cornerRadius: 28, tint: accentCyan, secondaryTint: accentPrimary))
-            .shadow(color: Color.black.opacity(0.20), radius: 16, y: 9)
+            .shadow(color: UpdoTheme.cardShadow(0.20), radius: 16, y: 9)
         }
         .buttonStyle(.plain)
     }
@@ -1399,7 +1399,7 @@ private extension HomeView {
         }
         .padding(16)
         .background(homeSurface(cornerRadius: 28, tint: accentCyan, secondaryTint: accentPrimary))
-        .shadow(color: Color.black.opacity(0.20), radius: 16, y: 9)
+        .shadow(color: UpdoTheme.cardShadow(0.20), radius: 16, y: 9)
     }
 }
 
@@ -1823,7 +1823,7 @@ private struct PremiumCountdownView: View {
                     .animation(.spring(response: 0.40, dampingFraction: 0.86), value: part)
             }
         }
-        .shadow(color: Color.black.opacity(0.45), radius: 8, y: 5)
+        .shadow(color: UpdoTheme.cardShadow(0.45), radius: 8, y: 5)
         .shadow(color: (isCritical ? warm : accent).opacity(0.14), radius: 16)
         .opacity(isPaused ? 0.55 : 1.0)
         .animation(.easeInOut(duration: 0.30), value: isPaused)
@@ -2539,7 +2539,7 @@ private struct TimelineDetailSheet: View {
                         .stroke(accentCyan.opacity(0.18), lineWidth: 1)
                 )
         )
-        .shadow(color: Color.black.opacity(0.20), radius: 16, y: 9)
+        .shadow(color: UpdoTheme.cardShadow(0.20), radius: 16, y: 9)
     }
 
     // MARK: Peak insights
@@ -3028,7 +3028,7 @@ struct StreakBubble: View {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(fAmber.opacity(0.28), lineWidth: 1)
                     )
-                    .shadow(color: Color.black.opacity(0.35), radius: 18, y: 10)
+                    .shadow(color: UpdoTheme.cardShadow(0.35), radius: 18, y: 10)
             )
         }
         .frame(maxWidth: 290, alignment: .leading)

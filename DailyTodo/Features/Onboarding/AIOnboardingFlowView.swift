@@ -143,7 +143,7 @@ struct AIOnboardingFlowView: View {
                     )
                     .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
                         .stroke(UpdoTheme.filmy(0.09), lineWidth: 1))
-                    .shadow(color: Color.black.opacity(0.28), radius: 18, y: 10)
+                    .shadow(color: UpdoTheme.cardShadow(0.28), radius: 18, y: 10)
             )
 
             Triangle()

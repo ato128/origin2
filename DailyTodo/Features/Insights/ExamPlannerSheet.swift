@@ -156,7 +156,7 @@ struct ExamPlannerSheet: View {
                                 Circle()
                                     .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                             )
-                            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+                            .shadow(color: UpdoTheme.cardShadow(0.24), radius: 12, y: 6)
                     )
             }
             .buttonStyle(.plain)
@@ -1039,7 +1039,7 @@ struct ExamPlannerSheet: View {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(tint.opacity(isCompleted ? 0.12 : 0.14), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.16), radius: 10, y: 5)
+            .shadow(color: UpdoTheme.cardShadow(0.16), radius: 10, y: 5)
     }
 
     private func arenaCardBackground(tint: Color, radius: CGFloat, strength: Double) -> some View {
@@ -1087,7 +1087,7 @@ struct ExamPlannerSheet: View {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(tint.opacity(0.14), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 9)
     }
 
     private func phaseIcon(_ item: ExamStudyPlanItem) -> String {

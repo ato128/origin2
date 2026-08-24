@@ -324,7 +324,7 @@ struct ArenaIconButton: View {
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
                         .stroke(UpdoTheme.filmy(0.11), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+                .shadow(color: UpdoTheme.cardShadow(0.24), radius: 12, y: 6)
         }
     }
 }
