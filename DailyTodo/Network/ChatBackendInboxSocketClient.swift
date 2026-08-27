@@ -291,6 +291,18 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
                             case "crew_weekly_goal_updated":
                                 postCrewWeeklyGoalEvent(payload: event.payload)
 
+                            // ════════════════════════════════════════════════════
+                            // FRIEND GRAPH (replaces Supabase friendships realtime)
+                            // ════════════════════════════════════════════════════
+                            case "friend_request_received":
+                                postFriendEvent(.friendRequestReceived, payload: event.payload)
+
+                            case "friend_request_accepted":
+                                postFriendEvent(.friendRequestAccepted, payload: event.payload)
+
+                            case "friend_removed":
+                                postFriendRemovedEvent(payload: event.payload)
+
             default:
                 break
             }
@@ -488,6 +500,42 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
             )
         }
     
+    // MARK: - Friend Graph Event Helpers
+
+    private func postFriendEvent(
+        _ name: Notification.Name,
+        payload: ChatBackendSocketPayload?
+    ) {
+        guard let edge = payload?.edge else {
+            ChatBackendLogger.error("❌ INBOX WS:", name.rawValue, "missing edge")
+            return
+        }
+
+        var userInfo: [String: Any] = ["edge": edge]
+        if let profile = payload?.profile {
+            userInfo["profile"] = profile
+        }
+
+        NotificationCenter.default.post(
+            name: name,
+            object: edge.id,
+            userInfo: userInfo
+        )
+    }
+
+    private func postFriendRemovedEvent(payload: ChatBackendSocketPayload?) {
+        guard let edgeID = payload?.edgeID ?? payload?.friendshipID else {
+            ChatBackendLogger.error("❌ INBOX WS: friend_removed missing edgeID")
+            return
+        }
+
+        NotificationCenter.default.post(
+            name: .friendRemoved,
+            object: edgeID,
+            userInfo: ["edgeID": edgeID]
+        )
+    }
+
     private func startHeartbeat() {
         stopHeartbeat()
 

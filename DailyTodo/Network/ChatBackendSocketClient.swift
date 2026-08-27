@@ -526,6 +526,12 @@ struct ChatBackendSocketPayload: Decodable {
         let crewID: UUID?
         let weeklyGoalMinutes: Int?
 
+    // Friend graph events (friend_request_received / accepted / removed)
+    let edge: FriendshipDTO?
+    let profile: FriendProfileDTO?
+    let edgeID: UUID?
+    let friendshipID: UUID?
+
 
     var asSeenPayload: ChatBackendMessageSeenPayload? {
         guard let conversationID, let readerID else {
@@ -605,4 +611,9 @@ extension Notification.Name {
         static let crewMemberUpdated = Notification.Name("crewMemberUpdated")
         static let crewFocusRecordCreated = Notification.Name("crewFocusRecordCreated")
         static let crewWeeklyGoalUpdated = Notification.Name("crewWeeklyGoalUpdated")
+
+    // Friend graph realtime (backend inbox socket — replaces Supabase friendships realtime):
+    static let friendRequestReceived = Notification.Name("friendRequestReceived")
+    static let friendRequestAccepted = Notification.Name("friendRequestAccepted")
+    static let friendRemoved = Notification.Name("friendRemoved")
 }

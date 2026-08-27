@@ -5,6 +5,11 @@
   Created by Atakan Ortaç on 24.03.2026.
   
 */
+// Live social banners (friend request received / accepted)
+"social_banner_request_title" = "Friend request";
+"social_banner_request_sub" = "%@ wants to add you";
+"social_banner_accept_title" = "You're now friends 🎉";
+"social_banner_accept_sub" = "%@ accepted your request";
 "settings_title" = "Settings";
 
 "settings_app_language_title" = "App Language";

@@ -36,6 +36,8 @@ final class FriendStore: ObservableObject {
     private var lastForegroundRefreshAt: Date? = nil
     private var friendshipsRealtimeChannel: RealtimeChannelV2?
     private var subscribedFriendshipsRealtimeUserID: UUID?
+    // Backend friend-event observers (replace Supabase friendships realtime).
+    private var friendEventCancellables: Set<AnyCancellable> = []
 
     func shouldDoForegroundRefresh() -> Bool {
         guard let lastForegroundRefreshAt else { return true }
@@ -81,21 +83,23 @@ final class FriendStore: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let response = try await SupabaseManager.shared.client
-                .from("friendships")
-                .select()
-                .or("requester_id.eq.\(currentUserID.uuidString),addressee_id.eq.\(currentUserID.uuidString)")
-                .execute()
+            // Friend graph now lives on OUR backend (friend_edges), which also
+            // embeds the counterparty profiles — so profiles are never missing
+            // (fixes "Unknown user").
+            let (edges, embeddedProfiles) = try await FriendBackendClient.shared.listFriends()
 
-            let decoded = try JSONDecoder().decode([FriendshipDTO].self, from: response.data)
-
-            friendships = decoded.sorted { lhs, rhs in
+            friendships = edges.sorted { lhs, rhs in
                 let l = CrewDateParser.parse(lhs.created_at) ?? .distantPast
                 let r = CrewDateParser.parse(rhs.created_at) ?? .distantPast
                 return l > r
             }
 
+            for profile in embeddedProfiles {
+                profiles[profile.id] = profile
+            }
+
             saveFriendshipsToCache(currentUserID: currentUserID)
+            saveProfilesToCache(currentUserID: currentUserID)
         } catch {
             Log.debug("LOAD ALL FRIENDSHIPS ERROR:", error.localizedDescription)
             if friendships.isEmpty {
@@ -198,36 +202,24 @@ final class FriendStore: ObservableObject {
     }
 
     func sendFriendRequest(to targetUserID: UUID, currentUserID: UUID) async throws {
-        struct Payload: Encodable {
-            let requester_id: UUID
-            let addressee_id: UUID
-            let status: String
-        }
-
-        let payload = Payload(requester_id: currentUserID, addressee_id: targetUserID, status: "pending")
-
-        try await SupabaseManager.shared.client
-            .from("friendships")
-            .insert(payload)
-            .execute()
-
-        // Karşı tarafa anlık bildirim — başarısız olsa da istek akışını bozmaz.
-        Task {
-            await FocusInviteService.shared.sendFriendRequestPush(toUserID: targetUserID)
-        }
+        // Backend owns the mutation: it writes the edge, fans out the live
+        // "friend_request_received" event to the target's inbox socket, and sends
+        // the push — all server-side (no client-driven Supabase write / push).
+        _ = try await FriendBackendClient.shared.sendRequest(toUserID: targetUserID, username: nil)
 
         await loadAllFriendships(currentUserID: currentUserID)
         markFriendsCacheRefreshed()
     }
 
-    func acceptFriendRequest(friendshipID: UUID) async throws {
-        struct Payload: Encodable { let status: String }
+    /// Sends a friend request by @username (backend resolves the user id).
+    func sendFriendRequest(username: String, currentUserID: UUID) async throws {
+        _ = try await FriendBackendClient.shared.sendRequest(toUserID: nil, username: username)
+        await loadAllFriendships(currentUserID: currentUserID)
+        markFriendsCacheRefreshed()
+    }
 
-        try await SupabaseManager.shared.client
-            .from("friendships")
-            .update(Payload(status: "accepted"))
-            .eq("id", value: friendshipID.uuidString)
-            .execute()
+    func acceptFriendRequest(friendshipID: UUID) async throws {
+        _ = try await FriendBackendClient.shared.accept(edgeID: friendshipID)
     }
 
     // MARK: - Block & Report (App Store Guideline 1.2 — UGC güvenliği)
@@ -645,9 +637,10 @@ final class FriendStore: ObservableObject {
         unsubscribeTypingRealtime()
 
         do {
-            try await SupabaseManager.shared.client.from("friendships").delete().eq("id", value: friendshipID.uuidString).execute()
+            // Backend deletes the edge + fans out "friend_removed" to both sides.
+            try await FriendBackendClient.shared.remove(edgeID: friendshipID)
         } catch {
-            Log.debug("❌ SUPABASE FRIENDSHIP DELETE ERROR:", error.localizedDescription)
+            Log.debug("❌ BACKEND FRIENDSHIP REMOVE ERROR:", error.localizedDescription)
             throw error
         }
 
@@ -954,56 +947,24 @@ final class FriendStore: ObservableObject {
         let addressee_pinned: Bool?
     }
 
+    // Server-authoritative now: the backend bumps the friend_edge's last_message +
+    // the recipient's unread when the DM message is created (messageService →
+    // bumpFriendEdgeOnMessage). The client no longer writes this. Kept as no-ops
+    // so the existing message-send call sites compile unchanged. Local chat
+    // summaries stay correct via friendMessagesByFriendship fallbacks.
     func updateFriendshipLastMessageMetadata(
         friendshipID: UUID,
         senderID: UUID,
         text: String
     ) async {
-        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let preview = clean.isEmpty ? "Message" : clean
-
-        let payload = FriendshipLastMessagePayload(
-            last_message_text: preview,
-            last_message_at: ISO8601DateFormatter().string(from: Date()),
-            last_sender_id: senderID
-        )
-
-        do {
-            try await SupabaseManager.shared.client
-                .from("friendships")
-                .update(payload)
-                .eq("id", value: friendshipID.uuidString)
-                .execute()
-        } catch {
-            Log.debug("UPDATE FRIENDSHIP LAST MESSAGE METADATA ERROR:", error.localizedDescription)
-        }
+        // no-op — backend owns friend_edge metadata.
     }
 
     func incrementFriendUnreadForOtherUser(
         friendshipID: UUID,
         senderID: UUID
     ) async {
-        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else { return }
-
-        let senderIsRequester = friendship.requester_id == senderID
-
-        let requesterUnread = friendship.requester_unread_count ?? 0
-        let addresseeUnread = friendship.addressee_unread_count ?? 0
-
-        let payload = FriendShipUnreadPatch(
-            requester_unread_count: senderIsRequester ? nil : requesterUnread + 1,
-            addressee_unread_count: senderIsRequester ? addresseeUnread + 1 : nil
-        )
-
-        do {
-            try await SupabaseManager.shared.client
-                .from("friendships")
-                .update(payload)
-                .eq("id", value: friendshipID.uuidString)
-                .execute()
-        } catch {
-            Log.debug("INCREMENT FRIEND UNREAD ERROR:", error.localizedDescription)
-        }
+        // no-op — backend increments the recipient's unread server-side.
     }
 
     private struct FriendShipUnreadPatch: Encodable {
@@ -1035,21 +996,11 @@ final class FriendStore: ObservableObject {
             return
         }
 
-        let currentIsRequester = friendship.requester_id == currentUserID
-
-        let payload = FriendShipUnreadPatch(
-            requester_unread_count: currentIsRequester ? 0 : nil,
-            addressee_unread_count: currentIsRequester ? nil : 0
-        )
+        _ = friendship
+        unreadCountByFriendship[friendshipID] = 0
 
         do {
-            try await SupabaseManager.shared.client
-                .from("friendships")
-                .update(payload)
-                .eq("id", value: friendshipID.uuidString)
-                .execute()
-
-            unreadCountByFriendship[friendshipID] = 0
+            try await FriendBackendClient.shared.markRead(edgeID: friendshipID)
         } catch {
             Log.debug("RESET FRIEND UNREAD ERROR:", error.localizedDescription)
         }
@@ -1059,120 +1010,113 @@ final class FriendStore: ObservableObject {
         await loadAllFriendships(currentUserID: currentUserID)
     }
     func subscribeToFriendshipsRealtime(currentUserID: UUID) {
-        if subscribedFriendshipsRealtimeUserID == currentUserID,
-           friendshipsRealtimeChannel != nil {
-            return
-        }
+        // Friend graph realtime now rides the persistent inbox WebSocket (per-user
+        // fan-out via ChatBackendInboxSocketClient) instead of a filterless Supabase
+        // whole-table subscription — the old scaling bomb (every friendship change
+        // in the app hitting every online client). We register lightweight
+        // NotificationCenter observers for the backend friend events.
+        subscribedFriendshipsRealtimeUserID = currentUserID
 
-        Task {
-            if let old = friendshipsRealtimeChannel {
-                try? await old.unsubscribe()
+        guard friendEventCancellables.isEmpty else { return }
+
+        NotificationCenter.default.publisher(for: .friendRequestReceived)
+            .sink { [weak self] note in
+                Task { @MainActor in self?.handleFriendEdgeEvent(note, isAccept: false) }
             }
+            .store(in: &friendEventCancellables)
 
-            await MainActor.run {
-                self.friendshipsRealtimeChannel = nil
-                self.subscribedFriendshipsRealtimeUserID = nil
+        NotificationCenter.default.publisher(for: .friendRequestAccepted)
+            .sink { [weak self] note in
+                Task { @MainActor in self?.handleFriendEdgeEvent(note, isAccept: true) }
             }
+            .store(in: &friendEventCancellables)
 
-            let channel = SupabaseManager.shared.client.realtimeV2
-                .channel("friendships-list-\(currentUserID.uuidString)")
-
-            _ = channel.onPostgresChange(
-                InsertAction.self,
-                schema: "public",
-                table: "friendships"
-            ) { [weak self] action in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                        let dto = try JSONDecoder().decode(FriendshipDTO.self, from: jsonData)
-
-                        guard dto.requester_id == currentUserID || dto.addressee_id == currentUserID else {
-                            return
-                        }
-
-                        self.upsertLocalFriendship(dto)
-                        self.markFriendsCacheRefreshed()
-                        self.saveFriendshipsToCache(currentUserID: currentUserID)
-                    } catch {
-                        Log.debug("FRIENDSHIPS INSERT REALTIME DECODE ERROR:", error.localizedDescription)
-                    }
-                }
+        NotificationCenter.default.publisher(for: .friendRemoved)
+            .sink { [weak self] note in
+                Task { @MainActor in self?.handleFriendRemovedEvent(note) }
             }
+            .store(in: &friendEventCancellables)
 
-            _ = channel.onPostgresChange(
-                UpdateAction.self,
-                schema: "public",
-                table: "friendships"
-            ) { [weak self] action in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                        let dto = try JSONDecoder().decode(FriendshipDTO.self, from: jsonData)
-
-                        guard dto.requester_id == currentUserID || dto.addressee_id == currentUserID else {
-                            return
-                        }
-
-                        self.upsertLocalFriendship(dto)
-                        self.markFriendsCacheRefreshed()
-                        self.saveFriendshipsToCache(currentUserID: currentUserID)
-                    } catch {
-                        Log.debug("FRIENDSHIPS UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
-                    }
-                }
-            }
-
-            _ = channel.onPostgresChange(
-                DeleteAction.self,
-                schema: "public",
-                table: "friendships"
-            ) { [weak self] action in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-
-                    if let idString = action.oldRecord["id"] as? String,
-                       let id = UUID(uuidString: idString) {
-                        self.removeLocalFriendship(id: id)
-                        self.saveFriendshipsToCache(currentUserID: currentUserID)
-                    }
-                }
-            }
-
-            await MainActor.run {
-                self.friendshipsRealtimeChannel = channel
-                self.subscribedFriendshipsRealtimeUserID = currentUserID
-            }
-
-            do {
-                try await channel.subscribeWithError()
-                Log.debug("✅ FRIENDSHIPS REALTIME SUBSCRIBED:", currentUserID.uuidString)
-            } catch {
-                Log.debug("FRIENDSHIPS REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
-
-                await MainActor.run {
-                    self.friendshipsRealtimeChannel = nil
-                    self.subscribedFriendshipsRealtimeUserID = nil
-                }
-            }
-        }
+        Log.debug("✅ FRIEND EVENTS OBSERVED (backend socket):", currentUserID.uuidString)
     }
 
     func unsubscribeFriendshipsRealtime() {
-        Task {
-            if let old = friendshipsRealtimeChannel {
-                try? await old.unsubscribe()
-            }
+        // Keep the cheap NotificationCenter observers alive across screens; just
+        // forget the bound user. Nothing socket-side to tear down.
+        subscribedFriendshipsRealtimeUserID = nil
+    }
 
-            await MainActor.run {
-                self.friendshipsRealtimeChannel = nil
-                self.subscribedFriendshipsRealtimeUserID = nil
-            }
+    // MARK: - Backend friend event handlers
+
+    @MainActor
+    private func handleFriendEdgeEvent(_ note: Notification, isAccept: Bool) {
+        guard let edge = note.userInfo?["edge"] as? FriendshipDTO else { return }
+        let profile = note.userInfo?["profile"] as? FriendProfileDTO
+
+        if let profile {
+            profiles[profile.id] = profile
         }
+
+        upsertLocalFriendship(edge)
+        markFriendsCacheRefreshed()
+
+        if let uid = subscribedFriendshipsRealtimeUserID {
+            saveFriendshipsToCache(currentUserID: uid)
+            saveProfilesToCache(currentUserID: uid)
+        }
+
+        // Sync accepted friends into local SwiftData + rebuild chat summaries so a
+        // newly-accepted friend appears INSTANTLY (fixes the "exit/re-enter" bug).
+        if let uid = retainedPresenceUserID, let ctx = retainedPresenceContext {
+            syncAcceptedFriendsToLocal(currentUserID: uid, modelContext: ctx)
+        }
+
+        let myID = subscribedFriendshipsRealtimeUserID
+
+        if !isAccept, edge.status == "pending", edge.addressee_id == myID {
+            // Someone sent ME a request → sound + haptic + in-app banner.
+            ChatFeedbackManager.shared.playRequest()
+            let name = displayName(for: profile)
+            SocialBannerCenter.shared.show(
+                title: tr("social_banner_request_title"),
+                subtitle: String(format: tr("social_banner_request_sub"), name),
+                systemImage: "person.crop.circle.badge.plus"
+            )
+        } else if isAccept, edge.requester_id == myID {
+            // They accepted MY request → success banner.
+            ChatFeedbackManager.shared.playRequest()
+            let name = displayName(for: profile)
+            SocialBannerCenter.shared.show(
+                title: tr("social_banner_accept_title"),
+                subtitle: String(format: tr("social_banner_accept_sub"), name),
+                systemImage: "checkmark.circle.fill"
+            )
+        }
+    }
+
+    @MainActor
+    private func handleFriendRemovedEvent(_ note: Notification) {
+        let id = (note.object as? UUID) ?? (note.userInfo?["edgeID"] as? UUID)
+        guard let id else { return }
+
+        removeLocalFriendship(id: id)
+
+        if let uid = subscribedFriendshipsRealtimeUserID {
+            saveFriendshipsToCache(currentUserID: uid)
+        }
+        if let uid = retainedPresenceUserID, let ctx = retainedPresenceContext {
+            syncAcceptedFriendsToLocal(currentUserID: uid, modelContext: ctx)
+        }
+    }
+
+    private func displayName(for profile: FriendProfileDTO?) -> String {
+        if let full = profile?.full_name, !full.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return full
+        }
+        if let username = profile?.username, !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return username
+        }
+        return profile?.email ?? tr("crew_unknown_user")
     }
     
     func setFriendChatPinned(
@@ -1180,20 +1124,8 @@ final class FriendStore: ObservableObject {
         currentUserID: UUID,
         isPinned: Bool
     ) async {
-        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else { return }
-        let isRequester = friendship.requester_id == currentUserID
-
-        let payload = FriendShipPinPatch(
-            requester_pinned: isRequester ? isPinned : nil,
-            addressee_pinned: isRequester ? nil : isPinned
-        )
-
         do {
-            try await SupabaseManager.shared.client
-                .from("friendships")
-                .update(payload)
-                .eq("id", value: friendshipID.uuidString)
-                .execute()
+            try await FriendBackendClient.shared.setState(edgeID: friendshipID, isPinned: isPinned)
         } catch {
             Log.debug("SET FRIEND CHAT PINNED ERROR:", error.localizedDescription)
         }
@@ -1204,20 +1136,8 @@ final class FriendStore: ObservableObject {
         currentUserID: UUID,
         isMuted: Bool
     ) async {
-        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else { return }
-        let isRequester = friendship.requester_id == currentUserID
-
-        let payload = FriendShipMutePatch(
-            requester_muted: isRequester ? isMuted : nil,
-            addressee_muted: isRequester ? nil : isMuted
-        )
-
         do {
-            try await SupabaseManager.shared.client
-                .from("friendships")
-                .update(payload)
-                .eq("id", value: friendshipID.uuidString)
-                .execute()
+            try await FriendBackendClient.shared.setState(edgeID: friendshipID, isMuted: isMuted)
         } catch {
             Log.debug("SET FRIEND CHAT MUTED ERROR:", error.localizedDescription)
         }
@@ -1228,20 +1148,8 @@ final class FriendStore: ObservableObject {
         currentUserID: UUID,
         isArchived: Bool
     ) async {
-        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else { return }
-        let isRequester = friendship.requester_id == currentUserID
-
-        let payload = FriendShipArchivePatch(
-            requester_archived: isRequester ? isArchived : nil,
-            addressee_archived: isRequester ? nil : isArchived
-        )
-
         do {
-            try await SupabaseManager.shared.client
-                .from("friendships")
-                .update(payload)
-                .eq("id", value: friendshipID.uuidString)
-                .execute()
+            try await FriendBackendClient.shared.setState(edgeID: friendshipID, isArchived: isArchived)
         } catch {
             Log.debug("SET FRIEND CHAT ARCHIVED ERROR:", error.localizedDescription)
         }

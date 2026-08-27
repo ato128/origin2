@@ -16,6 +16,7 @@ final class ChatFeedbackManager {
 
     private var sentPlayer: AVAudioPlayer?
     private var incomingPlayer: AVAudioPlayer?
+    private var requestPlayer: AVAudioPlayer?
 
     private init() {
         configureAudioSession()
@@ -38,6 +39,7 @@ final class ChatFeedbackManager {
     private func preparePlayers() {
         sentPlayer = makePlayer(fileName: "chat_sent", fileExtension: "caf")
         incomingPlayer = makePlayer(fileName: "chat_incoming", fileExtension: "caf")
+        requestPlayer = makePlayer(fileName: "friend_request", fileExtension: "caf")
     }
 
     private func makePlayer(fileName: String, fileExtension: String) -> AVAudioPlayer? {
@@ -82,6 +84,20 @@ final class ChatFeedbackManager {
             play(player: incomingPlayer)
         } else {
             AudioServicesPlaySystemSound(1003)
+        }
+    }
+
+    /// Incoming friend request (or acceptance): a warm chime + a gentle
+    /// notification haptic — distinct from chat message sounds.
+    func playRequest() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(.success)
+
+        if let requestPlayer {
+            play(player: requestPlayer)
+        } else {
+            AudioServicesPlaySystemSound(1002)
         }
     }
 

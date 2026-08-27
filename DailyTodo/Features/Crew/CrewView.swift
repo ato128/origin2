@@ -529,12 +529,8 @@ private extension CrewView {
 
     func removePendingRequest(_ request: FriendshipDTO) async {
         do {
-            try await SupabaseManager.shared.client
-                .from("friendships")
-                .delete()
-                .eq("id", value: request.id.uuidString)
-                .execute()
-
+            // Backend deletes the edge + fans out "friend_removed" to both sides.
+            try await FriendBackendClient.shared.decline(edgeID: request.id)
             await reloadBackendFriends(force: true)
         } catch {
             Log.debug("REMOVE PENDING FRIEND REQUEST ERROR:", error.localizedDescription)

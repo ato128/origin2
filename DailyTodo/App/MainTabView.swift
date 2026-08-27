@@ -10,6 +10,7 @@ import SwiftUI
 import SwiftData
 import Foundation
 import UIKit
+import Combine
 
 enum AppTab: Hashable, CaseIterable {
     case tasks
@@ -725,5 +726,139 @@ struct HomeTabBar: View {
         withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
             selectedTab = tab
         }
+    }
+}
+
+// MARK: - Social Banner
+//
+// Lightweight in-app banner shown when a social event lands live over the backend
+// inbox socket (incoming friend request, request accepted). Foreground only —
+// pushes cover the background case. Apple/Updo styled, CPU-light (a single spring
+// in/out, auto-dismiss; no continuous animation). Lives here (not its own file) —
+// this project's synchronized Xcode target doesn't reliably pick up brand-new
+// source files added outside Xcode.
+
+struct SocialBannerData: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let systemImage: String
+}
+
+@MainActor
+final class SocialBannerCenter: ObservableObject {
+    static let shared = SocialBannerCenter()
+
+    @Published var current: SocialBannerData?
+
+    private var dismissTask: Task<Void, Never>?
+
+    private init() {}
+
+    func show(title: String, subtitle: String, systemImage: String) {
+        let banner = SocialBannerData(title: title, subtitle: subtitle, systemImage: systemImage)
+
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+            current = banner
+        }
+
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.5)
+
+        dismissTask?.cancel()
+        dismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_600_000_000)
+            guard !Task.isCancelled else { return }
+            dismiss()
+        }
+    }
+
+    func dismiss() {
+        dismissTask?.cancel()
+        dismissTask = nil
+        withAnimation(.spring(response: 0.40, dampingFraction: 0.9)) {
+            current = nil
+        }
+    }
+}
+
+private struct SocialBannerView: View {
+    let data: SocialBannerData
+    let onTap: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(UpdoTheme.cyan.opacity(0.16))
+                Image(systemName: data.systemImage)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.cyan)
+            }
+            .frame(width: 38, height: 38)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(data.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .lineLimit(1)
+                Text(data.subtitle)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(UpdoTheme.textMuted)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(UpdoTheme.border, lineWidth: 1)
+        )
+        .shadow(color: UpdoTheme.cardShadow(0.18), radius: 18, x: 0, y: 8)
+        .padding(.horizontal, 14)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
+        .gesture(
+            DragGesture(minimumDistance: 12)
+                .onEnded { value in
+                    if value.translation.height < -8 { onClose() }
+                }
+        )
+    }
+}
+
+private struct SocialBannerHostModifier: ViewModifier {
+    @ObservedObject private var center = SocialBannerCenter.shared
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .top) {
+            if let data = center.current {
+                SocialBannerView(
+                    data: data,
+                    onTap: {
+                        center.dismiss()
+                        // The social hub IS the crew tab.
+                        NotificationCenter.default.post(name: .openCrewTab, object: nil)
+                    },
+                    onClose: { center.dismiss() }
+                )
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(999)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Attach at the app root so social banners float above all content.
+    func socialBannerOverlay() -> some View {
+        modifier(SocialBannerHostModifier())
     }
 }

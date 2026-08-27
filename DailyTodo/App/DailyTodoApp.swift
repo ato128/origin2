@@ -253,6 +253,8 @@ struct DailyTodoApp: App {
         // setting (System = follow the phone). Pre-login/onboarding screens pin
         // themselves to dark via their own .preferredColorScheme(.dark).
         .updoColorScheme()
+        // Live social banners (friend request received / accepted) float above all.
+        .socialBannerOverlay()
     }
 
     private var resolvedCurrentDisplayName: String {

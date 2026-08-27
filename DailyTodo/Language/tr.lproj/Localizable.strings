@@ -5,6 +5,11 @@
   Created by Atakan Ortaç on 24.03.2026.
   
 */
+// Canlı sosyal banner'lar (arkadaşlık isteği geldi / kabul edildi)
+"social_banner_request_title" = "Arkadaşlık isteği";
+"social_banner_request_sub" = "%@ seni eklemek istiyor";
+"social_banner_accept_title" = "Artık arkadaşsınız 🎉";
+"social_banner_accept_sub" = "%@ isteğini kabul etti";
 "settings_title" = "Ayarlar";
 
 "settings_app_language_title" = "Uygulama Dili";
