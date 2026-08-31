@@ -529,53 +529,18 @@ struct HomeTabBar: View {
         }
         .padding(.horizontal, 8)
         .frame(height: barHeight)
-        .background(barBackground)
+        // Eski bar, artık GERÇEK Liquid Glass üstünde: TEK cam yüzey = navigasyon
+        // katmanı (iOS 26 .glassEffect / altında .ultraThinMaterial). Seçili "pill"
+        // camın üstünde aurora tint — cam-üstüne-cam YOK (hem skill kuralı hem akıcı:
+        // kayan materyal yerine kayan hafif tint → geçişte backdrop yeniden örneklenmez).
+        .background(
+            RoundedRectangle(cornerRadius: 33, style: .continuous)
+                .fill(.clear)
+                .liquidGlass(in: RoundedRectangle(cornerRadius: 33, style: .continuous))
+        )
         .overlay(barBorder)
         .clipShape(RoundedRectangle(cornerRadius: 33, style: .continuous))
-        .shadow(color: UpdoTheme.cardShadow(0.54), radius: 26, y: 16)
-        .shadow(color: UpdoTheme.cardShadow(0.28), radius: 10, y: 5)
-        .compositingGroup()
-    }
-
-    private var barBackground: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 33, style: .continuous)
-                .fill(Color.adaptive(
-                    light: Color(arenaHex: "#FFFFFF").opacity(0.88),
-                    dark: Color(arenaHex: "#050611").opacity(0.96)
-                ))
-
-            RoundedRectangle(cornerRadius: 33, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            UpdoTheme.filmy(0.075),
-                            UpdoTheme.filmy(0.030),
-                            Color.adaptive(light: Color.white.opacity(0.40), dark: Color.black.opacity(0.28))
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-
-            RoundedRectangle(cornerRadius: 33, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            cyan.opacity(0.026),
-                            blue.opacity(0.020),
-                            violet.opacity(0.024),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            RoundedRectangle(cornerRadius: 33, style: .continuous)
-                .stroke(Color.adaptive(light: Color.black.opacity(0.10), dark: Color.black.opacity(0.44)), lineWidth: 1.2)
-                .blur(radius: 0.2)
-        }
+        .shadow(color: UpdoTheme.cardShadow(0.30), radius: 22, y: 13)
     }
 
     private var barBorder: some View {
@@ -618,7 +583,6 @@ struct HomeTabBar: View {
                                 )
                             )
                             .frame(width: 34, height: 34)
-                            .blur(radius: 1)
                     }
 
                     Image(systemName: tab.iconName)
@@ -651,23 +615,28 @@ struct HomeTabBar: View {
             .frame(height: 49)
             .background {
                 if isSelected {
-                    // Seçili sekme göstergesi artık gerçek Liquid Glass (iOS 26+
-                    // .glassEffect / altında .ultraThinMaterial). matchedGeometryEffect
-                    // ile sekmeler arasında kayar — "geçiş" bu cam pill.
+                    // Seçili "pill" = camın ÜSTÜNDE aurora tint (ikinci bir materyal DEĞİL).
+                    // matchedGeometry ile sekmeler arası kayar — "geçiş" bu ışıklı pill.
                     RoundedRectangle(cornerRadius: 24.5, style: .continuous)
-                        .fill(.clear)
-                        .liquidGlass(
-                            in: RoundedRectangle(cornerRadius: 24.5, style: .continuous),
-                            tint: cyan.opacity(0.07)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    cyan.opacity(0.22),
+                                    blue.opacity(0.14),
+                                    violet.opacity(0.12)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 24.5, style: .continuous)
                                 .stroke(
                                     LinearGradient(
                                         colors: [
-                                            UpdoTheme.filmy(0.16),
-                                            cyan.opacity(0.08),
-                                            UpdoTheme.filmy(0.05)
+                                            UpdoTheme.filmy(0.22),
+                                            cyan.opacity(0.12),
+                                            UpdoTheme.filmy(0.06)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -675,7 +644,6 @@ struct HomeTabBar: View {
                                     lineWidth: 1
                                 )
                         )
-                        .shadow(color: UpdoTheme.cardShadow(0.28), radius: 12, y: 5)
                         .matchedGeometryEffect(id: "selected-tab-bg", in: namespace)
                 }
             }
