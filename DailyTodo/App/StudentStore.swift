@@ -129,6 +129,10 @@ final class StudentStore: ObservableObject {
         }
 
         do {
+            // Onboarding remote senkronu daha önce başarısız olduysa burada
+            // sessizce telafi et (throttle'lı, güvenli) — sonra normal çekim.
+            await retryPendingOnboardingSyncIfNeeded()
+
             let profileResponse = try await SupabaseManager.shared.client
                 .from("student_profiles")
                 .select()
@@ -257,86 +261,15 @@ final class StudentStore: ObservableObject {
             }
             .filter { !$0.name.isEmpty }
 
-        // Ders (program) opsiyonel: kullanıcı bölüm/programı atlasa da profil
-        // onboarding_completed=true ile kaydedilir; kurulum başarısız olmaz.
-
         isLoading = true
         defer { isLoading = false }
 
-        let profilePayload = StudentProfileUpsertPayload(
-            user_id: userUUID,
-            education_level: educationLevel,
-            grade_level: gradeLevel,
-            high_school_track: highSchoolTrack,
-            institution_name: institutionName,
-            institution_country: Self.normalizedCountry(institutionCountry),
-            major_name: majorName,
-            daily_study_goal_minutes: dailyStudyGoalMinutes,
-            weekly_study_goal_minutes: weeklyStudyGoalMinutes,
-            onboarding_completed: true
-        )
-
-        do {
-            try await SupabaseManager.shared.client
-                .from("student_profiles")
-                .upsert(profilePayload, onConflict: "user_id")
-                .execute()
-        } catch {
-            Log.debug("❌ StudentStore.upsert profile error:", error)
-
-            throw NSError(
-                domain: "StudentStore",
-                code: 500,
-                userInfo: [NSLocalizedDescriptionKey: "Student profile could not be saved."]
-            )
-        }
-
-        do {
-            try await SupabaseManager.shared.client
-                .from("student_courses")
-                .delete()
-                .eq("user_id", value: userUUID.uuidString)
-                .execute()
-        } catch {
-            Log.debug("❌ StudentStore.delete remote courses error:", error)
-
-            throw NSError(
-                domain: "StudentStore",
-                code: 501,
-                userInfo: [NSLocalizedDescriptionKey: "Old courses could not be cleared."]
-            )
-        }
-
-        for draft in normalizedCourses {
-            do {
-                let payload = StudentCourseInsertPayload(
-                    user_id: userUUID,
-                    course_code: draft.code,
-                    course_name: draft.name,
-                    institution_name: institutionName,
-                    major_name: majorName,
-                    grade_level: gradeLevel,
-                    year_number: normalizedYearNumber(from: gradeLevel),
-                    term_number: nil,
-                    source_type: draft.isSuggested ? "catalog" : "manual",
-                    is_archived: false
-                )
-
-                try await SupabaseManager.shared.client
-                    .from("student_courses")
-                    .insert(payload)
-                    .execute()
-            } catch {
-                Log.debug("❌ StudentStore.insert remote course error:", error)
-
-                throw NSError(
-                    domain: "StudentStore",
-                    code: 502,
-                    userInfo: [NSLocalizedDescriptionKey: "Courses could not be saved."]
-                )
-            }
-        }
-
+        // ── 1) LOCAL-FIRST ─────────────────────────────────────────────────
+        // Onboarding'in tamamlanması YEREL bir kilometre taşıdır: profili +
+        // dersleri önce cihaza yazarız. Bu her koşulda çalışır → kullanıcı
+        // uygulamaya GİRER. (App Store 2.1a reddinin kök nedeni buydu: eski
+        // sıralama remote-önceydi → tek bir geçici network/RLS hatası tüm
+        // kurulumu throw edip kullanıcıyı çıkışsız onboarding'de kilitliyordu.)
         saveStudentProfile(
             educationLevel: educationLevel,
             gradeLevel: gradeLevel,
@@ -360,10 +293,140 @@ final class StudentStore: ObservableObject {
             )
         }
 
-        await loadFromRemote()
+        // ── 2) REMOTE: BEST-EFFORT ─────────────────────────────────────────
+        // Supabase senkronu dener; başarısız olursa payload'u retry kuyruğuna
+        // bırakır ve THROW ETMEZ — kurulum yerelde zaten tamamlandı. Kuyruk bir
+        // sonraki `loadFromRemote()`'ta (uygulama açılışı/yenileme) otomatik
+        // yeniden denenir.
+        let profilePayload = StudentProfileUpsertPayload(
+            user_id: userUUID,
+            education_level: educationLevel,
+            grade_level: gradeLevel,
+            high_school_track: highSchoolTrack,
+            institution_name: institutionName,
+            institution_country: Self.normalizedCountry(institutionCountry),
+            major_name: majorName,
+            daily_study_goal_minutes: dailyStudyGoalMinutes,
+            weekly_study_goal_minutes: weeklyStudyGoalMinutes,
+            onboarding_completed: true
+        )
+
+        let coursePayloads = normalizedCourses.map { draft in
+            StudentCourseInsertPayload(
+                user_id: userUUID,
+                course_code: draft.code,
+                course_name: draft.name,
+                institution_name: institutionName,
+                major_name: majorName,
+                grade_level: gradeLevel,
+                year_number: normalizedYearNumber(from: gradeLevel),
+                term_number: nil,
+                source_type: draft.isSuggested ? "catalog" : "manual",
+                is_archived: false
+            )
+        }
+
+        // Payload'u kuyruğa al, sonra arkada senkronu TETİKLE. Onboarding'i
+        // BLOKLAMAZ → kullanıcı ANINDA ilerler (yavaş internette bile beklemez).
+        // Başarısızsa kuyrukta kalır; bir sonraki `loadFromRemote()` (açılış/
+        // yenileme) telafi eder. Tüm push'lar tek yoldan (in-flight guard +
+        // throttle) geçer → eşzamanlı yazım / aşırı deneme yok, çökme yok.
+        savePendingOnboardingSync(
+            PendingOnboardingSync(profile: profilePayload, courses: coursePayloads),
+            userID: currentUserID
+        )
+        Task { [weak self] in
+            await self?.retryPendingOnboardingSyncIfNeeded(force: true)
+        }
+    }
+
+    /// Onboarding verisini Supabase'e yazar: profil upsert + dersleri sıfırla &
+    /// yeniden ekle. Best-effort çağrılır; hata çağıran tarafta yakalanır.
+    private func pushOnboardingToRemote(
+        userUUID: UUID,
+        profile: StudentProfileUpsertPayload,
+        courses: [StudentCourseInsertPayload]
+    ) async throws {
+        try await SupabaseManager.shared.client
+            .from("student_profiles")
+            .upsert(profile, onConflict: "user_id")
+            .execute()
+
+        try await SupabaseManager.shared.client
+            .from("student_courses")
+            .delete()
+            .eq("user_id", value: userUUID.uuidString)
+            .execute()
+
+        for payload in courses {
+            try await SupabaseManager.shared.client
+                .from("student_courses")
+                .insert(payload)
+                .execute()
+        }
+    }
+
+    // MARK: - Deferred onboarding sync (offline / retry-later)
+
+    private struct PendingOnboardingSync: Codable {
+        let profile: StudentProfileUpsertPayload
+        let courses: [StudentCourseInsertPayload]
+    }
+
+    private func pendingOnboardingSyncKey(_ userID: String) -> String {
+        "pending_onboarding_sync_\(userID)"
+    }
+
+    private func savePendingOnboardingSync(_ sync: PendingOnboardingSync, userID: String) {
+        guard let data = try? JSONEncoder().encode(sync) else { return }
+        UserDefaults.standard.set(data, forKey: pendingOnboardingSyncKey(userID))
+    }
+
+    private func clearPendingOnboardingSync(userID: String) {
+        UserDefaults.standard.removeObject(forKey: pendingOnboardingSyncKey(userID))
+    }
+
+    /// Eşzamanlı push'u engeller (in-flight guard) + oturum içinde 60 sn throttle
+    /// → retry sunucuyu hammer'lamaz, kendini tetikleyip döngüye girmez.
+    private var isOnboardingSyncInFlight = false
+    private var lastOnboardingSyncAttempt: Date?
+
+    /// Kuyruktaki onboarding senkronunu (offline/hata sonrası) yeniden dener.
+    /// `loadFromRemote()` içinden çağrılır → açılış/yenilemede otomatik telafi;
+    /// onboarding bittiğinde `force: true` ile anında bir kez denenir. Başarılıysa
+    /// kuyruğu temizler, değilse sessizce bekletir. Delete-then-insert deseni →
+    /// tekrar çalışsa bile idempotent (mükerrer ders oluşmaz). TÜM hatalar
+    /// yutulur → ASLA çökmez, ASLA UI'ı bloklamaz.
+    func retryPendingOnboardingSyncIfNeeded(force: Bool = false) async {
+        guard !isOnboardingSyncInFlight else { return }
+        if !force,
+           let last = lastOnboardingSyncAttempt,
+           Date().timeIntervalSince(last) < 60 { return }
+
+        guard let currentUserID,
+              let userUUID = UUID(uuidString: currentUserID),
+              let data = UserDefaults.standard.data(forKey: pendingOnboardingSyncKey(currentUserID)),
+              let pending = try? JSONDecoder().decode(PendingOnboardingSync.self, from: data)
+        else { return }
+
+        isOnboardingSyncInFlight = true
+        lastOnboardingSyncAttempt = Date()
+        defer { isOnboardingSyncInFlight = false }
+
+        do {
+            try await pushOnboardingToRemote(
+                userUUID: userUUID,
+                profile: pending.profile,
+                courses: pending.courses
+            )
+            clearPendingOnboardingSync(userID: currentUserID)
+            Log.debug("✅ onboarding sync completed")
+        } catch {
+            Log.debug("⚠️ onboarding sync failed; queued for later:", error)
+        }
     }
     
-    private struct StudentProfileUpsertPayload: Encodable {
+    private struct StudentProfileUpsertPayload: Codable {
         let user_id: UUID
         let education_level: String
         let grade_level: String
@@ -376,7 +439,7 @@ final class StudentStore: ObservableObject {
         let onboarding_completed: Bool
     }
 
-    private struct StudentCourseInsertPayload: Encodable {
+    private struct StudentCourseInsertPayload: Codable {
         let user_id: UUID
         let course_code: String
         let course_name: String

@@ -463,6 +463,11 @@ final class AIOnboardingStore: ObservableObject {
             // Weekly schedule: every parsed/picked slot becomes a real event.
             studentStore.createScheduleEvents(from: parsedCourses)
 
+            // Kurulum artık YEREL + anlık (remote arkada senkronlanıyor). "setting
+            // up…" mesajı flash gibi geçmesin diye kısa, kasıtlı bir beat — akıcı
+            // ve premium hissettirir.
+            try? await Task.sleep(nanoseconds: 650_000_000)
+
             withAnimation { isWorking = false; phase = .finished; currentLine = tr("aio_done") }
             speak()
             HapticManager.shared.success()
