@@ -324,7 +324,7 @@ private extension FocusView {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Focus")
+                    Text(tr("tab_focus"))
                         .font(.system(size: 39, weight: .black))
                         .foregroundStyle(UpdoTheme.textPrimary)
 
@@ -383,7 +383,7 @@ private extension FocusView {
         case .personal:
             return tr("fv_accent_zone")
         case .crew:
-            return "crew"
+            return tr("fv_accent_crew")
         case .friend:
             return "duo"
         }
@@ -779,7 +779,7 @@ private extension FocusView {
 
     var activeCrewSessionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(activeCrewSessionsForHome.count > 1 ? "Aktif Crew Focuslar" : "Aktif Crew Focus")
+            Text(activeCrewSessionsForHome.count > 1 ? tr("focus_active_crew_many") : tr("focus_active_crew_one"))
                 .font(.system(size: 14, weight: .heavy, design: .rounded))
                 .foregroundStyle(palette.primaryText.opacity(0.94))
 
@@ -1042,7 +1042,7 @@ private extension FocusView {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Crew Focus")
+                    Text(tr("focus_crew_screen_title"))
                         .font(.system(size: 32, weight: .black))
                         .foregroundStyle(UpdoTheme.textPrimary)
 

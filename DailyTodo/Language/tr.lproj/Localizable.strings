@@ -556,6 +556,13 @@
 "fv_eyebrow_crew" = "CREW FOCUS · CANLI";
 "fv_eyebrow_friend" = "ARKADAŞ SEANSI";
 "fv_accent_zone" = "alanı";
+"fv_accent_crew" = "takım";
+"fm_mode_crew" = "Takım";
+"fm_hero_crew" = "Takım\nFocus";
+"fm_badge_crew" = "TAKIM";
+"focus_active_crew_one" = "Aktif Takım Focus";
+"focus_active_crew_many" = "Aktif Takım Focuslar";
+"focus_crew_screen_title" = "Takım Focus";
 "fv_goal_caps" = "HEDEF";
 "fv_sound_caps" = "SES";
 "fm_mode_personal" = "Kişisel";

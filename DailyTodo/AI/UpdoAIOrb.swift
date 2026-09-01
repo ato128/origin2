@@ -4,8 +4,8 @@
 //
 //  The Updo AI symbol — a Siri-grade glass orb. Inside a deep glass sphere,
 //  blurred clouds of cyan / blue / purple / pink drift and swirl (additive
-//  blending, clipped to the sphere); a glass rim light and a soft specular
-//  catch sell the material. Idle it drifts slowly; while the AI is thinking
+//  blending, clipped to the sphere); a glass rim light sells the material.
+//  Idle it drifts slowly; while the AI is thinking
 //  or streaming the clouds speed up, brighten and the orb quickens its
 //  breath. TimelineView-driven — no assets, no shaders.
 //
@@ -182,19 +182,6 @@ struct UpdoAIOrb: View {
                 )
                 .frame(width: size, height: size)
 
-            // Specular catch — the glass "window" reflection.
-            Ellipse()
-                .fill(
-                    RadialGradient(
-                        colors: [UpdoTheme.filmy(0.55), .clear],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: size * 0.16
-                    )
-                )
-                .frame(width: size * 0.34, height: size * 0.20)
-                .rotationEffect(.degrees(-28))
-                .offset(x: -size * 0.16, y: -size * 0.24)
         }
         .scaleEffect(breathe)
         .drawingGroup()

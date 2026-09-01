@@ -522,16 +522,22 @@ extension HomeView {
         )
     }
 
+    /// ŞİMDİLİK KAPALI (kullanıcı isteği): AI challenge/öneri kartı Home'da
+    /// gösterilmesin. Mantık yerinde duruyor — geri açmak için `true` yeter.
+    private var showUpdoAICard: Bool { false }
+
     @ViewBuilder
     var updoAICard: some View {
         // Kompakt: challenge/öneri hero'nun "yaz" bar'ının hemen altında küçük
         // bir kart olur (eski büyük genişleyen kart çok yer kaplıyordu). Altında
         // "Updo AI ile konuş" durur — yaz/konuş erişimi kaybolmaz.
-        if challengeAccepted, let challenge = socialChallenge {
-            compactSuggestionCard(challenge)
-        } else if let suggestion = updoSuggestion {
-            compactSuggestionCard(suggestion)
-                .onAppear { markSuggestionSurfacedIfNeeded() }
+        if showUpdoAICard {
+            if challengeAccepted, let challenge = socialChallenge {
+                compactSuggestionCard(challenge)
+            } else if let suggestion = updoSuggestion {
+                compactSuggestionCard(suggestion)
+                    .onAppear { markSuggestionSurfacedIfNeeded() }
+            }
         }
         // Nötr durum boş: AI hero (HomeView.heroSection) ana sayfanın yüzü.
     }

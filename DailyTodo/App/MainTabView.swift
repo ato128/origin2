@@ -112,6 +112,10 @@ struct MainTabView: View {
             store.setCurrentUserID(session.currentUser?.id.uuidString)
             crewStore.setCurrentUser(session.currentUser?.id)
 
+            // Tab bar profil sekmesi Instagram tarzı avatarı gösterebilsin diye
+            // kullanıcının fotoğrafını erkenden yükle (lokal cache anında, backend sync arka planda).
+            ProfileAvatarStore.shared.load(for: session.currentUser?.id.uuidString)
+
             runProgressionEvaluate()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -126,6 +130,8 @@ struct MainTabView: View {
             store.setCurrentUserID(newUserID?.uuidString)
             crewStore.setCurrentUser(newUserID)
             crewStore.resetForUserChange()
+
+            ProfileAvatarStore.shared.load(for: newUserID?.uuidString)
         }
         .onChange(of: openFocusFromNotification) { _, newValue in
             guard newValue else { return }
@@ -515,6 +521,10 @@ struct HomeTabBar: View {
 
     @Namespace private var namespace
 
+    /// Instagram tarzı: profil sekmesinde kullanıcının fotoğrafı varsa avatarı,
+    /// yoksa normal SF Symbol. Mevcut kullanıcının fotoğrafının tek kaynağı.
+    @ObservedObject private var avatarStore = ProfileAvatarStore.shared
+
     private let barHeight: CGFloat = 66
 
     private var cyan: Color { Color(arenaHex: "#2DD4FF") }
@@ -534,9 +544,25 @@ struct HomeTabBar: View {
         // camın üstünde aurora tint — cam-üstüne-cam YOK (hem skill kuralı hem akıcı:
         // kayan materyal yerine kayan hafif tint → geçişte backdrop yeniden örneklenmez).
         .background(
-            RoundedRectangle(cornerRadius: 33, style: .continuous)
-                .fill(.clear)
-                .liquidGlass(in: RoundedRectangle(cornerRadius: 33, style: .continuous))
+            ZStack {
+                // 1) Liquid glass (materyal derinliği/kırılması)
+                RoundedRectangle(cornerRadius: 33, style: .continuous)
+                    .fill(.clear)
+                    .liquidGlass(in: RoundedRectangle(cornerRadius: 33, style: .continuous))
+
+                // 2) Koyu mavi scrim — camı eski barın koyuluğunda LACİVERT'e boyar.
+                RoundedRectangle(cornerRadius: 33, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.adaptive(light: Color(arenaHex: "#C9D8F0").opacity(0.55), dark: Color(arenaHex: "#0A1A33").opacity(0.80)),
+                                Color.adaptive(light: Color(arenaHex: "#DCE6F5").opacity(0.55), dark: Color(arenaHex: "#081228").opacity(0.84))
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
         )
         .overlay(barBorder)
         .clipShape(RoundedRectangle(cornerRadius: 33, style: .continuous))
@@ -585,16 +611,7 @@ struct HomeTabBar: View {
                             .frame(width: 34, height: 34)
                     }
 
-                    Image(systemName: tab.iconName)
-                        .font(.system(size: 16, weight: .black))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(
-                            isSelected
-                            ? AnyShapeStyle(activeIconGradient)
-                            : AnyShapeStyle(UpdoTheme.filmy(0.40))
-                        )
-                        .scaleEffect(isSelected ? 1.04 : 1.0)
-                        .animation(.spring(response: 0.34, dampingFraction: 0.78), value: isSelected)
+                    tabGlyph(tab, isSelected: isSelected)
                 }
                 .frame(width: 34, height: 34)
 
@@ -652,6 +669,41 @@ struct HomeTabBar: View {
         .buttonStyle(.plain)
         .animation(.spring(response: 0.42, dampingFraction: 0.82), value: selectedTab)
         .onboardingTabAnchor(tab)
+    }
+
+    /// Profil (insights) sekmesi: kullanıcının fotoğrafı varsa daire avatar,
+    /// yoksa normal SF Symbol (Instagram tarzı). Diğer sekmeler her zaman symbol.
+    @ViewBuilder
+    private func tabGlyph(_ tab: AppTab, isSelected: Bool) -> some View {
+        if tab == .insights, let avatar = avatarStore.image {
+            Image(uiImage: avatar)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 26, height: 26)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .strokeBorder(
+                            isSelected
+                            ? AnyShapeStyle(activeIconGradient)
+                            : AnyShapeStyle(UpdoTheme.filmy(0.35)),
+                            lineWidth: isSelected ? 1.5 : 1
+                        )
+                )
+                .scaleEffect(isSelected ? 1.04 : 1.0)
+                .animation(.spring(response: 0.34, dampingFraction: 0.78), value: isSelected)
+        } else {
+            Image(systemName: tab.iconName)
+                .font(.system(size: 16, weight: .black))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(
+                    isSelected
+                    ? AnyShapeStyle(activeIconGradient)
+                    : AnyShapeStyle(UpdoTheme.filmy(0.40))
+                )
+                .scaleEffect(isSelected ? 1.04 : 1.0)
+                .animation(.spring(response: 0.34, dampingFraction: 0.78), value: isSelected)
+        }
     }
 
     private var activeIconGradient: LinearGradient {

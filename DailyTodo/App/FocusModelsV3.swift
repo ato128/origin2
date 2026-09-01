@@ -18,7 +18,7 @@ enum FocusMode: String, CaseIterable, Identifiable, Codable {
     var title: String {
         switch self {
         case .personal: return tr("fm_mode_personal")
-        case .crew: return "Crew"
+        case .crew: return tr("fm_mode_crew")
         case .friend: return tr("fm_mode_friend")
         }
     }
@@ -26,7 +26,7 @@ enum FocusMode: String, CaseIterable, Identifiable, Codable {
     var heroEyebrow: String {
         switch self {
         case .personal: return tr("fm_mode_personal")
-        case .crew: return "Crew"
+        case .crew: return tr("fm_mode_crew")
         case .friend: return tr("fm_mode_friend")
         }
     }
@@ -34,7 +34,7 @@ enum FocusMode: String, CaseIterable, Identifiable, Codable {
     var heroTitle: String {
         switch self {
         case .personal: return tr("fm_personal_focus")
-        case .crew: return "Crew\nFocus"
+        case .crew: return tr("fm_hero_crew")
         case .friend: return "Friend\nFocus"
         }
     }
@@ -82,7 +82,7 @@ enum FocusMode: String, CaseIterable, Identifiable, Codable {
     var detailBadge: String {
         switch self {
         case .personal: return "PERSONAL"
-        case .crew: return "CREW"
+        case .crew: return tr("fm_badge_crew")
         case .friend: return "FRIEND"
         }
     }

@@ -554,6 +554,13 @@
 "fv_eyebrow_crew" = "CREW FOCUS · LIVE";
 "fv_eyebrow_friend" = "FRIEND SESSION";
 "fv_accent_zone" = "zone";
+"fv_accent_crew" = "crew";
+"fm_mode_crew" = "Crew";
+"fm_hero_crew" = "Crew\nFocus";
+"fm_badge_crew" = "CREW";
+"focus_active_crew_one" = "Active Crew Focus";
+"focus_active_crew_many" = "Active Crew Focuses";
+"focus_crew_screen_title" = "Crew Focus";
 "fv_goal_caps" = "GOAL";
 "fv_sound_caps" = "SOUND";
 "fm_mode_personal" = "Personal";

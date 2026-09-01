@@ -22,8 +22,8 @@ private enum BackendCrewArenaPalette {
     static let gold = Color(arenaHex: "#FBBF24")
     static let green = Color(arenaHex: "#A3E635")
 
-    static let surface = Color(arenaHex: "#101118")
-    static let surface2 = Color(arenaHex: "#171821")
+    static let surface = Color.adaptive(light: Color(arenaHex: "#FFFDF7"), dark: Color(arenaHex: "#101118"))
+    static let surface2 = Color.adaptive(light: Color(arenaHex: "#F1EADC"), dark: Color(arenaHex: "#171821"))
 
     static var appGradient: LinearGradient {
         LinearGradient(
