@@ -4,6 +4,14 @@
 //
 //  Created by Atakan Ortaç on 4.03.2026.
 //
+//  The class/schedule Live Activity — brought to parity with the Focus Live
+//  Activity (FocusLiveActivityWidget): same card chrome, icon bubble, phase
+//  chip, serif hero timer and a live auto-advancing progress bar. Two live
+//  phases — a countdown that starts 10 min BEFORE class ("kala") and a
+//  countdown DURING class ("kaldı") — each drives the timer AND the bar so
+//  nothing freezes across the boundary. Phase-aware accent: the event colour
+//  before/during, green once done.
+//
 
 import ActivityKit
 import WidgetKit
@@ -19,7 +27,7 @@ struct ScheduleLiveActivityWidget: Widget {
             let now = Date()
             let start = context.state.startDate
             let end = context.state.endDate
-            let accent = scheduleAccent(for: context)
+            let accent = scheduleAccent(now: now, start: start, end: end, hex: context.state.colorHex)
 
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -36,16 +44,11 @@ struct ScheduleLiveActivityWidget: Widget {
                                 .lineLimit(1)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    Link(destination: URL(string: "dailytodo://live/stop")!) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 28, height: 28)
-                            .background(Circle().fill(Color.white.opacity(0.10)))
-                    }
+                    SchedulePhaseChip(now: now, start: start, end: end, accent: accent)
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
@@ -53,9 +56,17 @@ struct ScheduleLiveActivityWidget: Widget {
                         HStack(alignment: .firstTextBaseline) {
                             scheduleTimer(now: now, start: start, end: end)
                                 .focusHeroNumber(size: 26, accent: accent, live: true)
-                            Spacer()
+
+                            Text(scheduleCountLabel(now: now, start: start, end: end))
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
+
+                            Spacer(minLength: 8)
+
                             Text("\(hmDate(start))–\(hmDate(end))")
-                                .focusHeroNumber(size: 12, accent: accent)
+                                .font(.system(size: 12, weight: .semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
                         }
                         UpdoLiveProgressBar(
                             running: scheduleRunningRange(now: now, start: start, end: end),
@@ -69,8 +80,12 @@ struct ScheduleLiveActivityWidget: Widget {
             } compactLeading: {
                 ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 22)
             } compactTrailing: {
+                // Fixed width + scale so the mm:ss timer never widens the island
+                // (matches the Focus Live Activity's compact trailing).
                 scheduleCompactTimer(now: now, start: start, end: end)
                     .focusHeroNumber(size: 14, accent: accent, live: true)
+                    .minimumScaleFactor(0.6)
+                    .frame(width: 48, alignment: .trailing)
             } minimal: {
                 ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 22)
             }
@@ -85,12 +100,13 @@ private struct ScheduleLockScreenView: View {
     let context: ActivityViewContext<ScheduleAttributes>
 
     var body: some View {
-        let accent = scheduleAccent(for: context)
         let now = Date()
         let start = context.state.startDate
         let end = context.state.endDate
+        let accent = scheduleAccent(now: now, start: start, end: end, hex: context.state.colorHex)
 
         VStack(alignment: .leading, spacing: 12) {
+            // Top row — icon + title + status + phase chip (Focus-parity).
             HStack(spacing: 11) {
                 ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 36)
 
@@ -109,27 +125,24 @@ private struct ScheduleLockScreenView: View {
 
                 Spacer(minLength: 6)
 
-                Link(destination: URL(string: "dailytodo://live/stop")!) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(UpdoWidgetPalette.textSecondary)
-                        .frame(width: 28, height: 28)
-                        .background(Circle().fill(UpdoWidgetPalette.fillSoft))
-                }
+                SchedulePhaseChip(now: now, start: start, end: end, accent: accent)
             }
 
+            // Hero timer — serif, live-ticking; "kala" before, "kaldı" during.
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 scheduleTimer(now: now, start: start, end: end)
                     .focusHeroNumber(size: 40, accent: accent, live: true)
 
-                Text(now < start ? widgetLocalized("kala", "to go") : (now < end ? widgetLocalized("kaldı", "left") : ""))
+                Text(scheduleCountLabel(now: now, start: start, end: end))
                     .font(WidgetFont.caption())
                     .foregroundStyle(UpdoWidgetPalette.textTertiary)
 
                 Spacer(minLength: 6)
 
                 Text("\(hmDate(start))–\(hmDate(end))")
-                    .focusHeroNumber(size: 12, accent: accent)
+                    .font(.system(size: 12, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(UpdoWidgetPalette.textSecondary)
             }
 
             UpdoLiveProgressBar(
@@ -175,6 +188,22 @@ private struct ScheduleIconBubble: View {
     }
 }
 
+/// The phase pill (YAKINDA / CANLI / BİTTİ) — the schedule twin of the Focus
+/// mode chip, so both Live Activities read the same.
+private struct SchedulePhaseChip: View {
+    let now: Date, start: Date, end: Date
+    let accent: Color
+    var body: some View {
+        Text(schedulePhaseLabel(now: now, start: start, end: end))
+            .font(.system(size: 10, weight: .semibold))
+            .tracking(0.4)
+            .foregroundStyle(accent)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(accent.opacity(0.16)))
+    }
+}
+
 struct GlowProgressBar: View {
     let progress: CGFloat
     let accent: Color
@@ -196,8 +225,10 @@ struct GlowProgressBar: View {
 
 // MARK: - Helpers
 
-private func scheduleAccent(for context: ActivityViewContext<ScheduleAttributes>) -> Color {
-    hexColor(context.state.colorHex)
+/// Phase-aware accent: the class colour before/during, green once done.
+private func scheduleAccent(now: Date, start: Date, end: Date, hex: String) -> Color {
+    if now >= end { return UpdoWidgetPalette.green }
+    return hexColor(hex)
 }
 
 private func scheduleIcon(now: Date, start: Date, end: Date) -> String {
@@ -207,9 +238,22 @@ private func scheduleIcon(now: Date, start: Date, end: Date) -> String {
 }
 
 private func scheduleStatus(now: Date, start: Date, end: Date) -> String {
-    if now < start { return "Başlamak üzere" }
-    if now < end { return "Şu an aktif" }
-    return "Tamamlandı"
+    if now < start { return widgetLocalized("Başlamak üzere", "Starting soon") }
+    if now < end { return widgetLocalized("Şu an aktif", "In progress now") }
+    return widgetLocalized("Tamamlandı", "Completed")
+}
+
+private func schedulePhaseLabel(now: Date, start: Date, end: Date) -> String {
+    if now < start { return widgetLocalized("YAKINDA", "SOON") }
+    if now < end { return widgetLocalized("CANLI", "LIVE") }
+    return widgetLocalized("BİTTİ", "DONE")
+}
+
+/// The little suffix next to the hero timer: "kala" before class, "kaldı" during.
+private func scheduleCountLabel(now: Date, start: Date, end: Date) -> String {
+    if now < start { return widgetLocalized("kala", "to go") }
+    if now < end { return widgetLocalized("kaldı", "left") }
+    return ""
 }
 
 @ViewBuilder
@@ -219,7 +263,7 @@ private func scheduleTimer(now: Date, start: Date, end: Date) -> some View {
     } else if now < end {
         Text(timerInterval: now...end, countsDown: true)
     } else {
-        Text("Bitti")
+        Text(widgetLocalized("Bitti", "Ended"))
     }
 }
 
@@ -234,17 +278,23 @@ private func scheduleCompactTimer(now: Date, start: Date, end: Date) -> some Vie
     }
 }
 
-/// Interval for the auto-advancing bar, or nil once the class is over.
+/// Interval for the auto-advancing bar. Before class it fills over the last
+/// 10 minutes toward start; during class it fills toward end; nil once over.
 private func scheduleRunningRange(now: Date, start: Date, end: Date) -> ClosedRange<Date>? {
+    if now < start {
+        // Fill over the last 10 minutes toward start (auto-advancing).
+        let windowStart = start.addingTimeInterval(-600)
+        return windowStart < start ? windowStart...start : nil
+    }
     guard end > start, now < end else { return nil }
     return start...end
 }
 
 private func scheduleProgress(now: Date, start: Date, end: Date) -> CGFloat {
     if now < start {
-        let total = start.timeIntervalSince(now)
         let window: TimeInterval = 600
-        return CGFloat(max(0.05, 1 - (total / window)))
+        let remaining = start.timeIntervalSince(now)
+        return CGFloat(max(0.05, min(1, 1 - (remaining / window))))
     }
     if now >= end { return 1 }
     let total = end.timeIntervalSince(start)
@@ -256,4 +306,3 @@ private func hmDate(_ date: Date) -> String {
     let c = Calendar.current.dateComponents([.hour, .minute], from: date)
     return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
 }
-

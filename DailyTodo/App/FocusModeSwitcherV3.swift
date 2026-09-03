@@ -32,7 +32,10 @@ struct FocusModeSwitcherV3: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                         }
-                        .foregroundStyle(isSelected ? .white : UpdoTheme.filmy(0.38))
+                        .foregroundStyle(isSelected
+                            ? Color.adaptive(light: Color(arenaHex: "#1A1712"), dark: .white)
+                            : Color.adaptive(light: Color(arenaHex: "#1A1712").opacity(0.55),
+                                             dark: Color.white.opacity(0.38)))
 
                         ZStack {
                             Capsule()

@@ -65,7 +65,7 @@ struct AIOnboardingFlowView: View {
                 .transition(.opacity)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .tint(UpdoTheme.cyan)
         .onAppear {
             store.configure(studentStore: studentStore)

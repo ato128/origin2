@@ -26,11 +26,10 @@ enum AppSecrets {
         return key
     }
 
-    /// RevenueCat public SDK key.
-    /// ⚠️ Şu an Config.xcconfig'de bir TEST STORE key'i ("test_" öneki) tanımlı —
-    /// App Store'da gerçek satın alma bu key ile ÇALIŞMAZ. Production'a geçiş tek satır:
-    /// Config.xcconfig'deki REVENUECAT_API_KEY değerini "appl_..." key'iyle değiştirmek yeterli
-    /// (App Store Connect ürünleri + RevenueCat bağlantısı tamamlandıktan sonra).
+    /// RevenueCat public SDK key. Config.xcconfig'de production `appl_` key tanımlı
+    /// (2026-08-10 geçildi) — gerçek satın almalar çalışır. Test store key'ine
+    /// (`test_` öneki) GERİ DÖNME: Release build'inde SDK assertion ile çöker
+    /// (SubscriptionManager.configure bu yüzden `test_` key'i Release'te reddeder).
     static var revenueCatAPIKey: String {
         guard let key = Bundle.main.object(forInfoDictionaryKey: "REVENUECAT_API_KEY") as? String, !key.isEmpty else {
             fatalError("REVENUECAT_API_KEY missing in Info.plist / xcconfig")

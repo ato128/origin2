@@ -40,82 +40,7 @@ struct AppBackground: View {
 private extension AppBackground {
 
     var premiumCreamBackground: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.984, green: 0.965, blue: 0.925),
-                    Color(red: 0.957, green: 0.933, blue: 0.882),
-                    Color(red: 0.937, green: 0.906, blue: 0.839)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            RadialGradient(
-                colors: [
-                    Color(red: 0.58, green: 0.38, blue: 1.00).opacity(0.11),
-                    Color(red: 0.74, green: 0.56, blue: 1.00).opacity(0.05),
-                    .clear
-                ],
-                center: UnitPoint(x: -0.18, y: 0.18),
-                startRadius: 18,
-                endRadius: 390
-            )
-
-            RadialGradient(
-                colors: [
-                    Color(red: 0.16, green: 0.62, blue: 1.00).opacity(0.10),
-                    Color(red: 0.48, green: 0.78, blue: 1.00).opacity(0.05),
-                    .clear
-                ],
-                center: UnitPoint(x: 1.20, y: 0.22),
-                startRadius: 20,
-                endRadius: 410
-            )
-
-            RadialGradient(
-                colors: [
-                    Color(red: 0.42, green: 0.26, blue: 1.00).opacity(0.09),
-                    Color(red: 0.22, green: 0.54, blue: 1.00).opacity(0.05),
-                    .clear
-                ],
-                center: UnitPoint(x: -0.16, y: 0.94),
-                startRadius: 25,
-                endRadius: 430
-            )
-
-            RadialGradient(
-                colors: [
-                    Color(red: 0.18, green: 0.58, blue: 1.00).opacity(0.08),
-                    Color(red: 0.72, green: 0.36, blue: 1.00).opacity(0.05),
-                    .clear
-                ],
-                center: UnitPoint(x: 1.18, y: 0.98),
-                startRadius: 25,
-                endRadius: 460
-            )
-
-            RadialGradient(
-                colors: [
-                    Color.white.opacity(0.34),
-                    Color.white.opacity(0.16),
-                    .clear
-                ],
-                center: UnitPoint(x: 0.50, y: 0.42),
-                startRadius: 40,
-                endRadius: 420
-            )
-
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.40),
-                    .clear,
-                    Color(red: 0.66, green: 0.54, blue: 0.40).opacity(0.09)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
+        PremiumLightField()
     }
     var darkBackground: some View {
         ZStack {
@@ -240,6 +165,69 @@ private extension AppBackground {
                     Color.clear,
                     Color.black.opacity(0.05)
                 ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
+}
+
+/// The shared light-mode field: a dense cool grey settles at the base and opens
+/// to warm light toward the top — a clean dark→light vertical transition. Used by
+/// every light-mode surface so the whole app reads consistently. All static
+/// gradients: no timeline, no blur → effectively free on the GPU, zero CPU.
+struct PremiumLightField: View {
+    private let baseGrey = Color(red: 0.588, green: 0.596, blue: 0.620)
+
+    var body: some View {
+        ZStack {
+            // Light at top → a plain, recognizable grey at the very bottom.
+            LinearGradient(
+                colors: [
+                    Color(red: 0.982, green: 0.974, blue: 0.958),
+                    Color(red: 0.905, green: 0.902, blue: 0.900),
+                    Color(red: 0.735, green: 0.740, blue: 0.758),
+                    baseGrey
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            // Cloudy transition — soft grey puffs billow up from the base so the
+            // boundary reads as clouds, not a straight line.
+            RadialGradient(
+                colors: [Color(red: 0.560, green: 0.570, blue: 0.598).opacity(0.55), .clear],
+                center: UnitPoint(x: 0.28, y: 1.02), startRadius: 20, endRadius: 430
+            )
+            RadialGradient(
+                colors: [Color(red: 0.575, green: 0.585, blue: 0.612).opacity(0.50), .clear],
+                center: UnitPoint(x: 0.80, y: 1.05), startRadius: 20, endRadius: 450
+            )
+            RadialGradient(
+                colors: [Color(red: 0.600, green: 0.610, blue: 0.636).opacity(0.42), .clear],
+                center: UnitPoint(x: 0.52, y: 0.90), startRadius: 30, endRadius: 400
+            )
+
+            // Light puffs drifting down into the transition to feather it further.
+            RadialGradient(
+                colors: [Color.white.opacity(0.42), .clear],
+                center: UnitPoint(x: 0.64, y: 0.62), startRadius: 20, endRadius: 360
+            )
+            RadialGradient(
+                colors: [Color.white.opacity(0.34), .clear],
+                center: UnitPoint(x: 0.20, y: 0.56), startRadius: 20, endRadius: 330
+            )
+
+            // Solid grey anchor so the known grey shows directly at the very bottom.
+            LinearGradient(
+                colors: [baseGrey.opacity(0.85), .clear],
+                startPoint: .bottom,
+                endPoint: UnitPoint(x: 0.5, y: 0.55)
+            )
+
+            // Top sheen keeps the upper third crisp and bright.
+            LinearGradient(
+                colors: [Color.white.opacity(0.38), .clear, .clear],
                 startPoint: .top,
                 endPoint: .bottom
             )

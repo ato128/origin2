@@ -155,7 +155,7 @@ struct AppOnboardingFlowView: View {
                     .transition(screenTransition)
             }
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .onAppear {
             normalizeStage()
             crewStore.setCurrentUser(session.currentUser?.id)

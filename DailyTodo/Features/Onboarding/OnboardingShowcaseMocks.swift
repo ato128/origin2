@@ -29,17 +29,24 @@ struct ShowcaseMockScreen: View {
     let kind: ShowcaseMockKind
     let accent: Color
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(arenaHex: AppArenaPalette.backgroundTop),
-                    Color(arenaHex: AppArenaPalette.backgroundMid),
-                    Color(arenaHex: AppArenaPalette.backgroundBottom)
-                ],
-                startPoint: .top, endPoint: .bottom
-            )
-            Circle().fill(accent.opacity(0.14)).frame(width: 180, height: 180)
+            // Mirror the real app: warm grey light field on light, deep arena on dark.
+            if colorScheme == .light {
+                PremiumLightField()
+            } else {
+                LinearGradient(
+                    colors: [
+                        Color(arenaHex: AppArenaPalette.backgroundTop),
+                        Color(arenaHex: AppArenaPalette.backgroundMid),
+                        Color(arenaHex: AppArenaPalette.backgroundBottom)
+                    ],
+                    startPoint: .top, endPoint: .bottom
+                )
+            }
+            Circle().fill(accent.opacity(colorScheme == .light ? 0.10 : 0.14)).frame(width: 180, height: 180)
                 .blur(radius: 80).offset(x: -70, y: -190)
 
             VStack(spacing: 0) {
@@ -167,7 +174,7 @@ private struct MockTabBar: View {
         .padding(.horizontal, 8).padding(.vertical, 9)
         .background(
             Capsule().fill(.ultraThinMaterial)
-                .overlay(Capsule().fill(Color.black.opacity(0.35)))
+                .overlay(Capsule().fill(UpdoTheme.overlayScrim(0.35)))
                 .overlay(Capsule().stroke(UpdoTheme.filmy(0.08), lineWidth: 1))
         )
         .padding(.horizontal, 12)
@@ -204,20 +211,20 @@ private struct HomeMock: View {
                 .frame(height: 74)
 
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(appLanguageIsEnglish() ? "What's" : "Bugün ne")
+                    Text(appLanguageIsEnglish() ? "4 tasks" : "4 görev")
                         .font(.system(size: 19, weight: .black)).foregroundStyle(UpdoTheme.textPrimary)
-                    Text(appLanguageIsEnglish() ? "the plan?" : "planlayalım?")
+                    Text(appLanguageIsEnglish() ? "await you" : "seni bekliyor")
                         .font(.system(size: 17, weight: .regular, design: .serif)).italic()
                         .foregroundStyle(LinearGradient(colors: [cCyan, cBlue, cPurple], startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
                 .lineLimit(1).minimumScaleFactor(0.6)
 
-                Text(appLanguageIsEnglish() ? "3 tasks today · 7-day streak" : "Bugün 3 görev · 7 günlük seri")
+                Text(appLanguageIsEnglish() ? "16 active tasks · 7-day streak" : "16 aktif görev · 7 günlük seri")
                     .font(.system(size: 9.5, weight: .semibold)).foregroundStyle(UpdoTheme.filmy(0.5))
 
                 // Command bar
                 HStack(spacing: 7) {
-                    Text(appLanguageIsEnglish() ? "Ask Updo AI…" : "Updo AI'ya sor…")
+                    Text(appLanguageIsEnglish() ? "Ask Updo AI…" : "Updo AI'ya yaz…")
                         .font(.system(size: 10, weight: .medium)).foregroundStyle(UpdoTheme.filmy(0.42))
                     Spacer()
                     HStack(spacing: 2) {
@@ -411,7 +418,7 @@ private struct WeekMock: View {
                     Capsule().fill(cBlue).frame(width: geo.size.width * 0.11, height: 7).offset(x: geo.size.width * 0.34)
                     Capsule().fill(cPurple).frame(width: geo.size.width * 0.13, height: 7).offset(x: geo.size.width * 0.60)
 
-                    Capsule().fill(.white)
+                    Capsule().fill(UpdoTheme.textPrimary)
                         .frame(width: 2, height: 13)
                         .shadow(color: UpdoTheme.filmy(0.6), radius: 3)
                         .offset(x: geo.size.width * 0.16 - 1)
@@ -511,7 +518,12 @@ private struct FocusMock: View {
 
                 Text("25")
                     .font(.system(size: 62, weight: .bold, design: .serif)).italic()
-                    .foregroundStyle(LinearGradient(colors: [.white, Color(arenaHex: "#7C8AA8")], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(LinearGradient(
+                        colors: [
+                            UpdoTheme.textPrimary,
+                            Color.adaptive(light: Color(arenaHex: "#6B655C"), dark: Color(arenaHex: "#7C8AA8"))
+                        ],
+                        startPoint: .top, endPoint: .bottom))
                     .kerning(-1.2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(alignment: .leading) {
@@ -581,7 +593,7 @@ private struct FocusMock: View {
                 Image(systemName: icon).font(.system(size: 9, weight: .black))
                 Text(title).font(.system(size: 11, weight: .black)).lineLimit(1).minimumScaleFactor(0.7)
             }
-            .foregroundStyle(active ? .white : UpdoTheme.filmy(0.38))
+            .foregroundStyle(active ? UpdoTheme.textPrimary : UpdoTheme.filmy(0.55))
             ZStack {
                 Capsule().fill(UpdoTheme.filmy(0.05)).frame(height: 2.5)
                 if active {
@@ -754,7 +766,7 @@ private struct CrewMock: View {
                 Image(systemName: icon).font(.system(size: 10, weight: .black))
                 Text(title).font(.system(size: 11, weight: .black, design: .monospaced)).tracking(0.2)
             }
-            .foregroundStyle(active ? .white : UpdoTheme.filmy(0.38))
+            .foregroundStyle(active ? UpdoTheme.textPrimary : UpdoTheme.filmy(0.55))
             ZStack {
                 Capsule().fill(UpdoTheme.filmy(0.05)).frame(height: 2.5)
                 if active {
@@ -810,9 +822,9 @@ private struct InsightsMock: View {
                 .rotationEffect(.degrees(-90))
                 .frame(width: 100, height: 100)
 
-                ProfileAvatarCircle(image: nil, name: "Ada", accent: pink, size: 84)
+                ProfileAvatarCircle(image: nil, name: "Atakan", accent: pink, size: 84)
 
-                Text(isEN ? "LEVEL  9" : "SEVİYE  9")
+                Text(isEN ? "LEVEL  8" : "SEVİYE  8")
                     .font(.system(size: 8, weight: .black, design: .monospaced))
                     .foregroundStyle(UpdoTheme.textPrimary)
                     .padding(.horizontal, 9).padding(.vertical, 4)
@@ -825,14 +837,14 @@ private struct InsightsMock: View {
             Spacer(minLength: 12)
 
             VStack(spacing: 2) {
-                Text("Ada Yılmaz").font(.system(size: 16, weight: .black)).foregroundStyle(UpdoTheme.textPrimary)
-                Text(isEN ? "Habit Driver" : "Alışkanlık Sürücüsü")
+                Text("Atakan Ortaç").font(.system(size: 16, weight: .black)).foregroundStyle(UpdoTheme.textPrimary)
+                Text(isEN ? "Daily Engine" : "Günlük Motoru")
                     .font(.system(size: 15, weight: .regular, design: .serif)).italic()
                     .foregroundStyle(LinearGradient(colors: [pink, cPurple], startPoint: .leading, endPoint: .trailing))
-                Text(isEN ? "BOĞAZİÇİ UNIVERSITY · CMPE" : "BOĞAZİÇİ ÜNİVERSİTESİ · BİLGİSAYAR MÜH.")
+                Text(isEN ? "EASTERN MEDITERRANEAN UNIVERSITY · SOFTWARE ENG" : "DOĞU AKDENİZ ÜNİVERSİTESİ · YAZILIM MÜH.")
                     .font(.system(size: 7, weight: .black, design: .monospaced)).tracking(1)
                     .foregroundStyle(UpdoTheme.filmy(0.4)).padding(.top, 3).lineLimit(1).minimumScaleFactor(0.65)
-                Text(isEN ? "ROAD TO LEVEL 10 · 97%" : "SEVİYE 10 YOLU · %97")
+                Text(isEN ? "ROAD TO LEVEL 9 · 67%" : "SEVİYE 9 YOLU · %67")
                     .font(.system(size: 7.5, weight: .black, design: .monospaced)).tracking(1)
                     .foregroundStyle(UpdoTheme.filmy(0.5)).padding(.top, 6)
             }
@@ -841,9 +853,9 @@ private struct InsightsMock: View {
 
             // Stats row
             HStack(spacing: 0) {
-                statCell(isEN ? "FRIENDS" : "ARKADAŞ", "1")
+                statCell(isEN ? "FRIENDS" : "ARKADAŞ", "6")
                 statDivider
-                statCell(isEN ? "CREWS" : "CREW", "1")
+                statCell(isEN ? "CREWS" : "CREW", "2")
                 statDivider
                 statCell(isEN ? "DAY STREAK" : "GÜN SERİ", "4", icon: "flame.fill", iconTint: cGold)
             }
@@ -854,7 +866,7 @@ private struct InsightsMock: View {
             // For the next level capsule
             HStack(spacing: 6) {
                 Text(isEN ? "For the next level:" : "Sonraki seviye için:").font(.system(size: 9, weight: .semibold)).foregroundStyle(UpdoTheme.filmy(0.6))
-                Text(isEN ? "2 tasks" : "2 görev").font(.system(size: 9, weight: .black)).foregroundStyle(pink)
+                Text(isEN ? "3-day streak" : "3 gün seri").font(.system(size: 9, weight: .black)).foregroundStyle(pink)
                 Image(systemName: "chevron.right").font(.system(size: 7, weight: .black)).foregroundStyle(pink)
             }
             .padding(.horizontal, 14).padding(.vertical, 8)

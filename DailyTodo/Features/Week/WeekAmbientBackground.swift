@@ -8,7 +8,20 @@
 import SwiftUI
 
 struct WeekAmbientBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        if colorScheme == .light {
+            // Light mode shares the app-wide grey dark→light field so every tab
+            // reads consistently; the dark ambient below is untouched.
+            PremiumLightField()
+                .ignoresSafeArea()
+        } else {
+            darkAmbient
+        }
+    }
+
+    private var darkAmbient: some View {
         ZStack {
 
             UpdoTheme.background

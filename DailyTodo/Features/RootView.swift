@@ -7,6 +7,29 @@
 
 import SwiftUI
 import SwiftData
+import Network
+import Combine
+
+/// Lightweight connectivity watcher for the launch screen. NWPathMonitor is
+/// cheap (one system callback), so this stays alive for the whole app. Starts
+/// optimistic (online) so a normal fast launch never flashes an offline hint.
+@MainActor
+final class NetworkMonitor: ObservableObject {
+    static let shared = NetworkMonitor()
+
+    @Published private(set) var isOnline: Bool = true
+
+    private let monitor = NWPathMonitor()
+    private let queue = DispatchQueue(label: "com.atakan.updo.network-monitor")
+
+    private init() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            let online = path.status == .satisfied
+            Task { @MainActor in self?.isOnline = online }
+        }
+        monitor.start(queue: queue)
+    }
+}
 
 struct RootView: View {
     @Binding var openFocusFromNotification: Bool
@@ -214,6 +237,15 @@ struct RootView: View {
                 await hydrateMainAppData(reason: "RootView.didFinishFullOnboarding")
             }
         }
+        // Dönüş yapan kullanıcı (yeni cihaz/yeniden kurulum): uzak profil ilk kez
+        // çözülür çözülmez ve tamamlanmışsa onboarding'i işaretle → tekrar kurulum
+        // yaptırmadan, "flash" olmadan doğrudan uygulamaya gir. Yeni kullanıcı
+        // profilini onboarding İÇİNDE tamamladığı için (login'de değil) bu an
+        // didResolveRemoteProfile geçişi yaşanmaz → showcase akışı bozulmaz.
+        .onChange(of: studentStore.didResolveRemoteProfile) { _, resolved in
+            guard resolved, studentStore.hasCompletedStudentProfile else { return }
+            markCurrentUserOnboardingCompletedIfNeeded()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
 
@@ -411,6 +443,11 @@ private struct PremiumStudentLaunchView: View {
     @State private var wordReveal = false
     @State private var shimmer = false
 
+    @ObservedObject private var network = NetworkMonitor.shared
+    /// Only surface the offline hint after a short grace, so a normal (online)
+    /// launch that resolves in ~450ms never shows it.
+    @State private var graceElapsed = false
+
     @Environment(\.colorScheme) private var colorScheme
 
     /// Logo + wordmark color follow the currently selected app icon.
@@ -464,9 +501,19 @@ private struct PremiumStudentLaunchView: View {
             }
             .padding(.horizontal, 28)
         }
+        .overlay(alignment: .bottom) {
+            offlineHint
+                .padding(.bottom, 54)
+        }
         .onAppear {
             withAnimation(.easeOut(duration: 0.18)) {
                 appear = true
+            }
+
+            // Reveal the "connect to the internet" hint only if we're still
+            // offline after a short grace (a healthy launch clears well before).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+                withAnimation(.easeInOut(duration: 0.3)) { graceElapsed = true }
             }
 
             // Wordmark reveals after the logo mark has started drawing in.
@@ -477,6 +524,28 @@ private struct PremiumStudentLaunchView: View {
             withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: false).delay(0.7)) {
                 shimmer = true
             }
+        }
+    }
+
+    @ViewBuilder
+    private var offlineHint: some View {
+        if graceElapsed && !network.isOnline {
+            let isLight = colorScheme == .light
+            HStack(spacing: 8) {
+                Image(systemName: "wifi.slash")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(appLanguageIsEnglish() ? "Connect to the internet" : "İnternete bağlanın")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundStyle(isLight ? UpdoTheme.textPrimary.opacity(0.8) : Color.white.opacity(0.85))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(isLight ? Color.black.opacity(0.05) : Color.white.opacity(0.08))
+                    .overlay(Capsule().stroke(isLight ? Color.black.opacity(0.08) : Color.white.opacity(0.12), lineWidth: 1))
+            )
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
     }
 

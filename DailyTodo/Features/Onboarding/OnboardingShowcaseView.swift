@@ -71,7 +71,7 @@ struct OnboardingShowcaseView: View {
             }
             .opacity(appeared ? 1 : 0)
         }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) { appeared = true }
         }
