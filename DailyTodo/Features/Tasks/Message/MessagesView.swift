@@ -143,7 +143,8 @@ struct MessagesView: View {
                 isOnline: isFriendOnline(friend),
                 showsPresence: true,
                 isPinned: backendConversation?.isPinned ?? false,
-                isMuted: backendConversation?.isMuted ?? false
+                isMuted: backendConversation?.isMuted ?? false,
+                isFocusing: isFriendFocusing(friend)
             )
         }
 
@@ -693,7 +694,9 @@ private extension MessagesView {
 
                 if item.showsPresence {
                     Circle()
-                        .fill(item.isOnline ? Color(arenaHex: AppArenaPalette.green) : Color.gray.opacity(0.75))
+                        .fill(item.isFocusing
+                              ? Color(arenaHex: "#7C3AED")
+                              : (item.isOnline ? Color(arenaHex: AppArenaPalette.green) : Color.gray.opacity(0.75)))
                         .frame(width: 13, height: 13)
                         .overlay(
                             Circle()
@@ -729,6 +732,16 @@ private extension MessagesView {
                             .padding(.horizontal, 5)
                             .frame(height: 15)
                             .background(Capsule().fill(item.tint.opacity(0.14)))
+                    }
+
+                    if item.isFocusing {
+                        Text(tr("chat_in_focus").uppercased())
+                            .font(.system(size: 8.5, weight: .black, design: .monospaced))
+                            .tracking(0.6)
+                            .foregroundStyle(Color(arenaHex: "#7C3AED"))
+                            .padding(.horizontal, 5)
+                            .frame(height: 15)
+                            .background(Capsule().fill(Color(arenaHex: "#7C3AED").opacity(0.16)))
                     }
                 }
 
@@ -1359,6 +1372,10 @@ private extension MessagesView {
     private func isFriendOnline(_ friend: Friend) -> Bool {
         FriendPresenceEngine.isOnline(friendPresence(for: friend))
     }
+
+    private func isFriendFocusing(_ friend: Friend) -> Bool {
+        FriendPresenceEngine.isFocusing(friendPresence(for: friend))
+    }
 }
 
 // MARK: - Mutations
@@ -1845,4 +1862,6 @@ struct MessagesHubItem: Identifiable {
     let showsPresence: Bool
     let isPinned: Bool
     let isMuted: Bool
+    /// Arkadaş şu an odak seansında mı (presence'ten). Odakta → mor nokta + "Odakta".
+    var isFocusing: Bool = false
 }

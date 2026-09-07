@@ -294,6 +294,11 @@ struct DailyTodoApp: App {
                     reason: "onAppear after session restore"
                 )
             }
+
+            // Cold-start: bildirimle açıldıysa oturum geri yüklendikten + UI oturunca
+            // tamponlanan focus davetini tüket (katıl sheet'i çıksın).
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            await MainActor.run { consumePendingFocusInviteIfNeeded() }
         }
 
         let context = ModelContext(container)
@@ -326,6 +331,25 @@ struct DailyTodoApp: App {
     }
     
     // MARK: - Friend focus (duo) invite handling
+
+    /// Cold-start (bildirime dokununca app kapalıyken) davet post'u boşa gidebilir;
+    /// UI + oturum hazır olunca tamponlanan daveti tüketip sheet'i sunar. Zaten
+    /// açık bir davet varsa dokunmaz (çift sunum yok).
+    private func consumePendingFocusInviteIfNeeded() {
+        guard session.currentUser != nil else { return }
+        guard friendFocusInvitePayload == nil, crewFocusInvitePayload == nil else { return }
+        guard let userInfo = PendingFocusInvite.take() else { return }
+        guard let type = userInfo["type"] as? String else { return }
+
+        switch type {
+        case "friend_focus_invite":
+            handleFriendFocusInviteReceived(userInfo)
+        case "crew_focus_invite":
+            handleCrewFocusInviteReceived(userInfo)
+        default:
+            break
+        }
+    }
 
     private func handleFriendFocusInviteReceived(_ userInfo: [AnyHashable: Any]) {
         guard let payload = FriendFocusInvitePayload.from(userInfo: userInfo) else {
@@ -508,6 +532,12 @@ struct DailyTodoApp: App {
         if let newID {
             updateFriendPresence(isOnline: true)
             bootstrapFriendRealtime(for: newID)
+
+            // Cold-start'ta oturum handleAppAppear'dan SONRA geldiyse tamponlanan
+            // focus davetini burada tüket.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                consumePendingFocusInviteIfNeeded()
+            }
         }
 
         let context = ModelContext(container)
@@ -621,6 +651,11 @@ struct DailyTodoApp: App {
             }
             startInboxSocket()
             rescheduleSmartNotifications(reason: "scene active")
+
+            // Arka plandan dönerken tamponlanan davet varsa sun.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                consumePendingFocusInviteIfNeeded()
+            }
 
         case .inactive:
             friendStore.setAppActive(false)

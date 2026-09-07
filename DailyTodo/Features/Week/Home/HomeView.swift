@@ -137,6 +137,8 @@ struct HomeView: View {
 
                     focusCard
 
+                    focusingFriendsCard
+
                     if showWeeklySummaryCard {
                         weeklySummaryCard
                     }
@@ -1012,6 +1014,84 @@ private extension HomeView {
         .padding(.vertical, 6)
         .padding(.horizontal, 4)
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Focusing friends (Updo AI action nudge)
+
+private extension HomeView {
+    /// Şu an odak seansında olan arkadaşlar (presence.is_focusing) + isim/friendship.
+    var focusingFriends: [(name: String, friendshipID: UUID)] {
+        friendStore.friendChatSummaries.compactMap { summary in
+            guard let uid = summary.friendUserID,
+                  friendStore.presenceByUserID[uid]?.is_focusing == true
+            else { return nil }
+            return (name: summary.title, friendshipID: summary.friendshipID)
+        }
+    }
+
+    /// Ana ekranda "arkadaşın odakta — sen de katıl" aksiyon kartı (Updo AI sesi).
+    /// Kendi seansın aktifken gösterme (zaten odaktasın). Dokununca o arkadaşın
+    /// sohbetini açar (koordine et / odak daveti gönder-al).
+    @ViewBuilder
+    var focusingFriendsCard: some View {
+        if !focusSession.isSessionActive, let first = focusingFriends.first {
+            let count = focusingFriends.count
+            let en = appLanguageIsEnglish()
+            let headline = count == 1
+                ? (en ? "\(first.name) is in focus" : "\(first.name) şu an odakta")
+                : (en ? "\(count) friends are focusing" : "\(count) arkadaşın odakta")
+            let sub = en
+                ? "Updo AI: jump in and ride the momentum together."
+                : "Updo AI: sen de katıl, momentumu birlikte yakala."
+
+            Button {
+                HapticManager.shared.selection()
+                NotificationCenter.default.post(
+                    name: .openFriendChatFromNotification,
+                    object: first.friendshipID.uuidString
+                )
+            } label: {
+                HStack(spacing: 13) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(arenaHex: "#7C3AED").opacity(0.16))
+                            .frame(width: 46, height: 46)
+                        Image(systemName: "scope")
+                            .font(.system(size: 20, weight: .black))
+                            .foregroundStyle(Color(arenaHex: "#7C3AED"))
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(headline)
+                            .font(.system(size: 15, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .lineLimit(1)
+                        Text(sub)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.52))
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 6)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(UpdoTheme.filmy(0.32))
+                }
+                .padding(16)
+                .background(
+                    homeSurface(
+                        cornerRadius: 24,
+                        tint: Color(arenaHex: "#7C3AED"),
+                        secondaryTint: Color(arenaHex: "#2DD4FF")
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+            .transition(.scale(scale: 0.96).combined(with: .opacity))
+        }
     }
 }
 

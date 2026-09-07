@@ -257,6 +257,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             }
 
         case "crew_focus_invite":
+            // Cold-start'ta observer henüz yoksa post kaybolur → tamponla + tüket.
+            PendingFocusInvite.store(userInfo)
             NotificationCenter.default.post(
                 name: .presentCrewFocusInviteSheet,
                 object: userInfo
@@ -264,6 +266,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             return
 
         case "friend_focus_invite":
+            PendingFocusInvite.store(userInfo)
             NotificationCenter.default.post(
                 name: .presentFriendFocusInviteSheet,
                 object: userInfo
@@ -373,4 +376,25 @@ extension Notification.Name {
     static let crewFocusJoinedFromNotification = Notification.Name("crewFocusJoinedFromNotification")
 
     static let focusNotificationOpened = Notification.Name("focusNotificationOpened")
+}
+
+/// Cold-start tamponu: bildirime dokununca app KAPALIYSA `handleNotificationPayload`
+/// SwiftUI observer'ları bağlanmadan önce çalışır → `.presentFriendFocusInviteSheet`
+/// post'u boşa gider, katıl sheet'i HİÇ açılmazdı. Daveti burada sakla; UI + oturum
+/// hazır olunca (handleAppAppear / scene active / login) tüketip sheet'i sun.
+enum PendingFocusInvite {
+    private(set) static var userInfo: [AnyHashable: Any]?
+    private static var storedAt: Date?
+
+    static func store(_ info: [AnyHashable: Any]) {
+        userInfo = info
+        storedAt = Date()
+    }
+
+    /// Taze (son 2 dk) bir davet varsa döndürür ve tamponu temizler.
+    static func take() -> [AnyHashable: Any]? {
+        defer { userInfo = nil; storedAt = nil }
+        guard let storedAt, Date().timeIntervalSince(storedAt) < 120 else { return nil }
+        return userInfo
+    }
 }

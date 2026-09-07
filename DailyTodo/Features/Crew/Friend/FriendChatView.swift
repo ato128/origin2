@@ -458,7 +458,9 @@ private extension FriendChatView {
                             )
 
                             Circle()
-                                .fill(isFriendOnline ? FriendChatArenaPalette.green : Color.gray.opacity(0.65))
+                                .fill(isFriendFocusingLive
+                                      ? Color(arenaHex: "#7C3AED")
+                                      : (isFriendOnline ? FriendChatArenaPalette.green : Color.gray.opacity(0.65)))
                                 .frame(width: 10, height: 10)
                                 .overlay(
                                     Circle()
@@ -531,6 +533,11 @@ private extension FriendChatView {
 
     private var isFriendOnline: Bool {
         FriendPresenceEngine.isOnline(friendPresence)
+    }
+
+    /// Presence'ten odak durumu (Pro-gated SocialStats'a bağlı DEĞİL).
+    private var isFriendFocusingLive: Bool {
+        FriendPresenceEngine.isFocusing(friendPresence)
     }
 
     private var headerStatusText: String {

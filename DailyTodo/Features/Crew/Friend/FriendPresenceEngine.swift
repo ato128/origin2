@@ -21,12 +21,22 @@ enum FriendPresenceEngine {
         return Date().timeIntervalSince(lastSeen) <= onlineTTL
     }
 
+    /// Arkadaş şu an odak seansında mı (backend user_stats.is_focusing).
+    static func isFocusing(_ presence: FriendPresenceDTO?) -> Bool {
+        presence?.is_focusing == true
+    }
+
     static func statusText(
         presence: FriendPresenceDTO?,
         locale: Locale
     ) -> String {
         guard let presence else {
             return tr("chat_direct_chat")
+        }
+
+        // "Odakta" online'ın önüne geçer — arkadaş çalışıyorsa en anlamlı sinyal bu.
+        if presence.is_focusing {
+            return tr("chat_in_focus")
         }
 
         if isOnline(presence) {

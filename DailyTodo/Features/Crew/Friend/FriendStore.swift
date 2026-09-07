@@ -2605,17 +2605,21 @@ final class FriendStore: ObservableObject {
 
         for id in uniqueIDs {
             let online = result.online[id] ?? false
+            let focusing = result.focusing.contains(id)
             if online {
                 presenceByUserID[id] = FriendPresenceDTO(
-                    user_id: id, is_online: true, last_seen_at: nowISO, updated_at: nowISO
+                    user_id: id, is_online: true, last_seen_at: nowISO, updated_at: nowISO,
+                    is_focusing: focusing
                 )
             } else {
                 // Offline: GERÇEK son görülme (backend'in tuttuğu offline anı).
                 // Yoksa boş bırak → statusText jenerik "Çevrimdışı" gösterir,
                 // "az önce / 1-2 sn" gibi yanıltıcı taze zaman ÜRETMEZ.
+                // Odak seansı arka planda sürebilir → offline olsa da is_focusing taşınır.
                 let seen = result.lastSeen[id] ?? ""
                 presenceByUserID[id] = FriendPresenceDTO(
-                    user_id: id, is_online: false, last_seen_at: seen, updated_at: nowISO
+                    user_id: id, is_online: false, last_seen_at: seen, updated_at: nowISO,
+                    is_focusing: focusing
                 )
             }
         }
@@ -2626,11 +2630,11 @@ final class FriendStore: ObservableObject {
     /// kullanıcının canlı bir socket bağlantısı var (inbox socket önplandayken bağlı).
     private func fetchOnlinePresenceFromBackend(
         userIDs: [UUID]
-    ) async -> (online: [UUID: Bool], lastSeen: [UUID: String]) {
-        guard !userIDs.isEmpty else { return ([:], [:]) }
+    ) async -> (online: [UUID: Bool], lastSeen: [UUID: String], focusing: Set<UUID>) {
+        guard !userIDs.isEmpty else { return ([:], [:], []) }
         do {
             let token = try await SupabaseManager.shared.client.auth.session.accessToken
-            guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/presence") else { return ([:], [:]) }
+            guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/presence") else { return ([:], [:], []) }
 
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
@@ -2640,12 +2644,13 @@ final class FriendStore: ObservableObject {
             req.httpBody = try JSONSerialization.data(withJSONObject: ["userIDs": userIDs.map(\.uuidString)])
 
             let (data, response) = try await URLSession.shared.data(for: req)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return ([:], [:]) }
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return ([:], [:], []) }
 
             struct Resp: Decodable {
                 let ok: Bool
                 let online: [String: Bool]
                 let lastSeen: [String: String]?
+                let focusing: [String: Bool]?
             }
             let decoded = try JSONDecoder().decode(Resp.self, from: data)
 
@@ -2657,10 +2662,14 @@ final class FriendStore: ObservableObject {
             for (key, value) in (decoded.lastSeen ?? [:]) {
                 if let id = UUID(uuidString: key) { seenResult[id] = value }
             }
-            return (onlineResult, seenResult)
+            var focusingResult: Set<UUID> = []
+            for (key, value) in (decoded.focusing ?? [:]) where value {
+                if let id = UUID(uuidString: key) { focusingResult.insert(id) }
+            }
+            return (onlineResult, seenResult, focusingResult)
         } catch {
             Log.debug("BACKEND PRESENCE FETCH ERROR:", error.localizedDescription)
-            return ([:], [:])
+            return ([:], [:], [])
         }
     }
 
