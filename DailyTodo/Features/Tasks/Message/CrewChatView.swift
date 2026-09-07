@@ -43,6 +43,9 @@ struct CrewChatView: View {
     /// Cancellable scroll-to-bottom so rapid message bursts don't stack
     /// competing spring animations (jank). Mirrors FriendChatView.
     @State var scrollTask: Task<Void, Never>?
+    /// Filtrelenmiş + sıralanmış mesajların cache'i — yalnız backendMessages ya da
+    /// engellenenler değişince computeMessages() ile yeniden kurulur (yazarken DEĞİL).
+    @State var cachedMessages: [CrewChatMessageItem] = []
 
     /// Başarısız foto gönderimlerinin retry için bellekte tutulan içeriği (clientID → payload).
     @State var crewMediaRetryPayloads: [String: (data: Data, caption: String?)] = [:]
@@ -135,6 +138,12 @@ struct CrewChatView: View {
                 }
             }
             
+        }
+        .onChange(of: backendMessages) { _, _ in
+            cachedMessages = computeMessages()
+        }
+        .onChange(of: friendStore.blockedUserIDs) { _, _ in
+            cachedMessages = computeMessages()
         }
         .onDisappear {
             typingStopTask?.cancel()

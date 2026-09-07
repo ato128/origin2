@@ -112,6 +112,22 @@ struct FriendDetailView: View {
         friendFocusSessions.reduce(0) { $0 + $1.durationMinute }
     }
 
+    /// Arkadaşın GERÇEK toplam odak dakikası: paylaştığı backend istatistiği
+    /// (user_stats) varsa onu göster — yerel `FriendFocusSession` yalnızca
+    /// BİRLİKTE yapılan seansları tutar (seyrek), tek başına "kaç dk focus
+    /// yaptı" için yanıltıcı 0 verirdi. Backend yoksa yerele düş.
+    private var displayTotalFocusMinutes: Int {
+        if let shared = friendSharedStat?.totalFocusMinutes, shared > 0 {
+            return shared
+        }
+        return totalFocusMinutes
+    }
+
+    /// Arkadaşın güncel seri değeri (paylaşımlıysa backend'ten).
+    private var displayFriendStreak: Int? {
+        friendSharedStat?.currentStreak
+    }
+
     private var weeklyFocusSessions: [FriendFocusSession] {
         let calendar = Calendar.current
         let now = Date()
@@ -694,16 +710,24 @@ private extension FriendDetailView {
 
             HStack(spacing: 10) {
                 insightStatCard(
-                    value: "\(totalFocusMinutes)",
+                    value: "\(displayTotalFocusMinutes)",
                     title: !appLanguageIsEnglish() ? "Toplam dk" : "Total min",
                     tint: friendAccent
                 )
 
-                insightStatCard(
-                    value: "\(weeklyFocusCount)",
-                    title: !appLanguageIsEnglish() ? "Bu hafta" : "This week",
-                    tint: FriendDetailArenaPalette.blue
-                )
+                if let streak = displayFriendStreak {
+                    insightStatCard(
+                        value: "\(streak)",
+                        title: !appLanguageIsEnglish() ? "Seri" : "Streak",
+                        tint: FriendDetailArenaPalette.blue
+                    )
+                } else {
+                    insightStatCard(
+                        value: "\(weeklyFocusCount)",
+                        title: !appLanguageIsEnglish() ? "Bu hafta" : "This week",
+                        tint: FriendDetailArenaPalette.blue
+                    )
+                }
 
                 insightStatCard(
                     value: "\(longestFocusMinutes)",

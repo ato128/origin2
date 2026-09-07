@@ -9,7 +9,17 @@ import SwiftUI
 
 extension CrewChatView {
 
+    // ÖNEMLİ: `messages` her satırda shouldShowDateSeparator/shouldShowSenderName
+    // içinden defalarca okunuyordu; computed olarak KALIRSA her erişimde filter+sort
+    // (O(N log N)) çalışır → görünür satır × yardımcı çağrısı kadar tam sort = ağır
+    // jank (özellikle yazarken body her keystroke'ta yeniden eval olurken). Bunun
+    // yerine cache'lenmiş diziyi döndür; yalnız backendMessages/blocked değişince
+    // computeMessages() ile yeniden kur.
     var messages: [CrewChatMessageItem] {
+        cachedMessages
+    }
+
+    func computeMessages() -> [CrewChatMessageItem] {
         backendMessages
             // Engellenen kullanıcıların mesajlarını gizle (App Store Guideline 1.2).
             .filter { msg in
@@ -48,6 +58,11 @@ extension CrewChatView {
             .scrollIndicators(.hidden)
             .hideKeyboardOnTap()
             .onAppear {
+                // backendMessages önceden set edilmişse onChange tetiklenmez —
+                // ilk render için cache'i burada seed et.
+                if cachedMessages.isEmpty, !backendMessages.isEmpty {
+                    cachedMessages = computeMessages()
+                }
                 scrollToBottom(proxy: proxy, animated: false)
             }
             .onChange(of: messages.count) { _, _ in

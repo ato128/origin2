@@ -153,6 +153,9 @@ struct FriendChatView: View {
     @StateObject private var audioRecorder = AudioRecorderManager()
     
     @State private var scrollTask: Task<Void, Never>?
+    // Gün-gruplarının cache'i — yalnız mesaj seti değişince yeniden hesaplanır,
+    // yazarken DEĞİL. computeMessageGroups() üretir.
+    @State private var cachedGroups: [MessageGroup] = []
     @State private var typingStopTask: Task<Void, Never>?
     @State private var lastTypingTextWasEmpty = true
     @State private var lastTypingSentAt: Date = .distantPast
@@ -720,7 +723,7 @@ private extension FriendChatView {
                                         }
                                     }
 
-                                    ForEach(groupedMessages, id: \.date) { group in
+                                    ForEach(cachedGroups, id: \.date) { group in
                         DaySeparatorView(date: group.date)
                             .padding(.vertical, 8)
 
@@ -786,17 +789,21 @@ private extension FriendChatView {
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .onAppear {
+                cachedGroups = computeMessageGroups()
                 lastScrolledMessageID = visibleMessages.last?.id
                 // scrollToBottom kendi içinde debounce'lu (cancellable Task + sleep);
                 // dıştan ikinci bir asyncAfter sarmak çift gecikme + iptal edilemeyen
                 // yığılma yaratıp jank'e sebep oluyordu — doğrudan çağır.
                 scrollToBottom(proxy: proxy, animated: false)
             }
-            .onChange(of: visibleMessages.last?.id) { _, newValue in
-                guard let newValue else { return }
-                guard newValue != lastScrolledMessageID else { return }
-
-                lastScrolledMessageID = newValue
+            // Gruplama sadece mesaj seti değişince yeniden hesaplanır (yazarken değil).
+            .onChange(of: backendMessages) { _, _ in
+                cachedGroups = computeMessageGroups()
+            }
+            // Yeni mesaj (gönder/al) count'u değiştirir — sort etmeden ucuzca izle.
+            // Eski `visibleMessages.last?.id` her body eval'de (keystroke dahil) tüm
+            // diziyi sort ediyordu = jank.
+            .onChange(of: backendMessages.count) { _, _ in
                 scrollToBottom(proxy: proxy, animated: true)
             }
             .onChange(of: isComposerFocused) { _, focused in
@@ -837,7 +844,12 @@ private extension FriendChatView {
         }
     }
 
-    var groupedMessages: [MessageGroup] {
+    // Gün-gruplaması N tane Calendar işlemi yapıyor. Computed property olarak
+    // KALIRSA her keystroke'ta (composer draft @State değişimi → body yeniden
+    // eval) tüm mesajları yeniden gruplar = jank. Bunun yerine cache'le ve
+    // yalnız backendMessages GERÇEKTEN değişince (gönder/al/reaction) yeniden
+    // hesapla — böylece yazarken liste dokunulmaz kalır (WhatsApp hissi).
+    func computeMessageGroups() -> [MessageGroup] {
         let calendar = Calendar.current
         var groups: [MessageGroup] = []
         var currentDate: Date?
