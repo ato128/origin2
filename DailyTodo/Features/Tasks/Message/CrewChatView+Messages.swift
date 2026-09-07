@@ -40,7 +40,9 @@ extension CrewChatView {
                         .id("crew-chat-bottom-anchor")
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 4)
+                // Header artık overlay (friend chat gibi) → ilk mesaj yüzen
+                // header'ın altından başlasın diye üstten boşluk.
+                .padding(.top, 64)
                 .padding(.bottom, 126)
             }
             .scrollIndicators(.hidden)
@@ -493,7 +495,15 @@ extension CrewChatView {
     }
 
     func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+        // Cancellable: art arda gelen mesajlar yarışan spring animasyonları
+        // yığmasın (jank). Önceki scroll'u iptal et, tek bir animasyon kalsın.
+        scrollTask?.cancel()
+
+        scrollTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: animated ? 80_000_000 : 20_000_000)
+
+            guard !Task.isCancelled else { return }
+
             if animated {
                 withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
                     proxy.scrollTo("crew-chat-bottom-anchor", anchor: .bottom)

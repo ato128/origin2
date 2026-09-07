@@ -97,8 +97,15 @@ final class LiveActivityScheduler {
             }
 
         case .upcomingWindow, .live:
+            // Kendi çözdüğümüz kesin tarihleri (weekday-bazlı) doğrudan geçir —
+            // manager yeniden çözerse ayrışabilir ve LA hiç açılmayabilir.
             Task {
-                await LiveActivityManager.shared.startIfNeeded(events: [target.event])
+                await LiveActivityManager.shared.applyState(
+                    title: target.event.title,
+                    startDate: target.startDate,
+                    endDate: target.endDate,
+                    colorHex: target.event.colorHex
+                )
             }
 
         case .ended:

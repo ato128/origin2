@@ -82,6 +82,43 @@ final class LiveActivityManager {
         Log.debug("🟡 LiveActivity ended:", activity.id)
     }
 
+    /// Start or update the schedule Live Activity with EXPLICIT dates.
+    /// The scheduler resolves the authoritative occurrence date (weekday-based);
+    /// re-deriving it here from `event.scheduledDate` could disagree (a stale
+    /// scheduledDate would land in the past → no candidate → activity never
+    /// appears). So the scheduler passes its resolved dates straight through.
+    func applyState(title: String, startDate: Date, endDate: Date, colorHex: String) async {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        let state = ScheduleAttributes.ContentState(
+            title: title,
+            startDate: startDate,
+            endDate: endDate,
+            colorHex: colorHex
+        )
+
+        if let activity = currentActivity() {
+            if activity.content.state == state { return }
+            await activity.update(
+                ActivityContent(state: state, staleDate: endDate)
+            )
+            Log.debug("🔵 LiveActivity applied (update):", title)
+            return
+        }
+
+        do {
+            let activity = try Activity<ScheduleAttributes>.request(
+                attributes: ScheduleAttributes(scheduleName: title),
+                content: ActivityContent(state: state, staleDate: endDate),
+                pushType: nil
+            )
+            UserDefaults.standard.set(activity.id, forKey: currentIDKey)
+            Log.debug("🟢 LiveActivity applied (start):", activity.id, title)
+        } catch {
+            Log.debug("🔴 LiveActivity apply error:", error)
+        }
+    }
+
     func startIfNeeded(events: [EventItem]) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 

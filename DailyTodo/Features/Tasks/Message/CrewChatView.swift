@@ -40,6 +40,9 @@ struct CrewChatView: View {
     @State private var localActiveFocusSession: CrewFocusSessionDTO?
     @State var backendConversationID: UUID?
     @State var backendMessages: [CrewChatMessageItem] = []
+    /// Cancellable scroll-to-bottom so rapid message bursts don't stack
+    /// competing spring animations (jank). Mirrors FriendChatView.
+    @State var scrollTask: Task<Void, Never>?
 
     /// Başarısız foto gönderimlerinin retry için bellekte tutulan içeriği (clientID → payload).
     @State var crewMediaRetryPayloads: [String: (data: Data, caption: String?)] = [:]
@@ -68,7 +71,7 @@ struct CrewChatView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             ambientBackground
 
             VStack(spacing: 0) {
@@ -85,20 +88,19 @@ struct CrewChatView: View {
                     messagesList
                 }
             }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
+
+            // Friend chat ile birebir: header, mesajların ÜSTÜNDE yüzer
+            // (safeAreaInset DEĞİL) → scrim yumuşak bir fade olur, mesajlar
+            // altından akar; koyu "solid bant" hissi gider.
+            // Odak kartı kaldırıldı: canlı odak sağ üstteki focus pill'de.
             VStack(spacing: 8) {
                 floatingTopControls
 
-                // Odak kartı kaldırıldı: canlı odak artık sağ üstteki focus pill'de
-                // (dokununca odak odasını açar). Burada yalnız "yazıyor…" göster.
                 if let typingText {
                     typingBanner(text: typingText)
                 }
             }
-            .padding(.top, 8)
-            .padding(.bottom, 6)
-            .background(Color.clear)
+            .zIndex(1)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             composerBar

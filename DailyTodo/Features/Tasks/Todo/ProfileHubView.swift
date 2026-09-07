@@ -40,6 +40,9 @@ struct ProfileHubView: View {
     @State private var showRestoreResult = false
     @State private var restoreResultMessage = ""
     @State private var isRestoring = false
+    @State private var showDeleteAccountConfirm = false
+    @State private var isDeletingAccount = false
+    @State private var showDeleteAccountError = false
 
     private var pageAccent: Color {
         Color(arenaHex: AppArenaPalette.cyan)
@@ -726,8 +729,95 @@ private extension ProfileHubView {
                         .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.coral), radius: 30, strength: 0.48))
                     }
                     .buttonStyle(.plain)
+
+                    deleteAccountButton
+                }
+                .alert(
+                    appLanguageIsEnglish() ? "Delete account?" : "Hesabını sil?",
+                    isPresented: $showDeleteAccountConfirm
+                ) {
+                    Button(appLanguageIsEnglish() ? "Cancel" : "Vazgeç", role: .cancel) {}
+                    Button(appLanguageIsEnglish() ? "Delete" : "Sil", role: .destructive) {
+                        performAccountDeletion()
+                    }
+                } message: {
+                    Text(appLanguageIsEnglish()
+                         ? "Are you sure you want to delete your account? This permanently removes your account and all your data. This can't be undone."
+                         : "Hesabını silmek istediğine emin misin? Bu, hesabını ve tüm verilerini kalıcı olarak siler. Bu işlem geri alınamaz.")
+                }
+                .alert(
+                    appLanguageIsEnglish() ? "Couldn't delete account" : "Hesap silinemedi",
+                    isPresented: $showDeleteAccountError
+                ) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(appLanguageIsEnglish()
+                         ? "Something went wrong. Check your connection and try again."
+                         : "Bir şeyler ters gitti. Bağlantını kontrol edip tekrar dene.")
                 }
             }
+        }
+    }
+
+    private var deleteAccountButton: some View {
+        Button {
+            showDeleteAccountConfirm = true
+        } label: {
+            HStack(spacing: 12) {
+                iconBox(
+                    icon: "trash",
+                    tint: Color(arenaHex: AppArenaPalette.coral)
+                )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(appLanguageIsEnglish() ? "Delete My Account" : "Hesabımı Sil")
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.coral))
+
+                    Text(appLanguageIsEnglish()
+                         ? "Permanently delete your account and data"
+                         : "Hesabını ve tüm verilerini kalıcı olarak sil")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
+                }
+
+                Spacer()
+
+                if isDeletingAccount {
+                    ProgressView()
+                        .tint(Color(arenaHex: AppArenaPalette.coral))
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(UpdoTheme.filmy(0.34))
+                }
+            }
+            .padding(18)
+            .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.coral), radius: 30, strength: 0.48))
+        }
+        .buttonStyle(.plain)
+        .disabled(isDeletingAccount)
+    }
+
+    private func performAccountDeletion() {
+        guard !isDeletingAccount else { return }
+        isDeletingAccount = true
+        Task {
+            let ok = await session.deleteAccount()
+            isDeletingAccount = false
+            guard ok else {
+                showDeleteAccountError = true
+                return
+            }
+            // Wipe local state + reset onboarding so the app opens on the auth
+            // screen exactly like a brand-new install.
+            studentStore.clearForSignOut()
+            let defaults = UserDefaults.standard
+            defaults.set(false, forKey: "didFinishFullOnboardingV2")
+            defaults.set("", forKey: "lastCompletedFullOnboardingUserIDV2")
+            defaults.set(AppOnboardingStage.welcome.rawValue, forKey: "appOnboardingStageV2")
+            defaults.set(false, forKey: "hasSeenAppTourV1")
+            dismiss()
         }
     }
 }

@@ -1160,6 +1160,10 @@
 "mv_unmute" = "Sessizden çıkar";
 "mv_mute" = "Sessize al";
 "mv_archive" = "Arşivle";
+"mv_archive_title" = "Arşiv";
+"mv_unarchive" = "Arşivden çıkar";
+"mv_archive_empty" = "Arşiv boş";
+"mv_archive_empty_sub" = "Arşivlediğin sohbetler burada görünür.";
 "mv_search_ph" = "Sohbet ara...";
 "mv_crew_convo" = "Crew sohbeti";
 "mv_pin" = "Sohbeti sabitle";

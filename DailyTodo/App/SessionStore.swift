@@ -400,6 +400,32 @@ final class SessionStore: ObservableObject {
         removePendingVerificationEmail()
     }
 
+    /// Permanently deletes the caller's account (App Store 5.1.1(v)).
+    /// Calls the backend, which wipes the user from Railway + Supabase and
+    /// removes the auth user so sign-in stops working. On success we tear down
+    /// the local session so the app returns to the auth screen as a fresh install.
+    /// Returns `true` when the account was deleted server-side.
+    func deleteAccount() async -> Bool {
+        do {
+            var request = try await makeBackendRequest(
+                path: "/v1/account/delete",
+                method: "POST"
+            )
+            // Deletion sweeps every user-scoped table — give it room.
+            request.timeoutInterval = 45
+            let (_, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                return false
+            }
+        } catch {
+            return false
+        }
+
+        // Backend confirmed deletion → clear everything locally.
+        signOut()
+        return true
+    }
+
     // MARK: - Email Verification
 
     func refreshEmailVerificationStatus() async {

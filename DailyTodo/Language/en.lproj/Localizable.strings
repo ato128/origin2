@@ -1158,6 +1158,10 @@
 "mv_unmute" = "Unmute";
 "mv_mute" = "Mute";
 "mv_archive" = "Archive";
+"mv_archive_title" = "Archive";
+"mv_unarchive" = "Unarchive";
+"mv_archive_empty" = "No archived chats";
+"mv_archive_empty_sub" = "Chats you archive will appear here.";
 "mv_search_ph" = "Search chats...";
 "mv_crew_convo" = "Crew conversation";
 "mv_pin" = "Pin chat";

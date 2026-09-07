@@ -787,27 +787,21 @@ private extension FriendChatView {
             .scrollDismissesKeyboard(.interactively)
             .onAppear {
                 lastScrolledMessageID = visibleMessages.last?.id
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                    scrollToBottom(proxy: proxy, animated: false)
-                }
+                // scrollToBottom kendi içinde debounce'lu (cancellable Task + sleep);
+                // dıştan ikinci bir asyncAfter sarmak çift gecikme + iptal edilemeyen
+                // yığılma yaratıp jank'e sebep oluyordu — doğrudan çağır.
+                scrollToBottom(proxy: proxy, animated: false)
             }
             .onChange(of: visibleMessages.last?.id) { _, newValue in
                 guard let newValue else { return }
                 guard newValue != lastScrolledMessageID else { return }
 
                 lastScrolledMessageID = newValue
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                    scrollToBottom(proxy: proxy, animated: true)
-                }
+                scrollToBottom(proxy: proxy, animated: true)
             }
             .onChange(of: isComposerFocused) { _, focused in
                 guard focused else { return }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    scrollToBottom(proxy: proxy, animated: true)
-                }
+                scrollToBottom(proxy: proxy, animated: true)
             }
         }
     }

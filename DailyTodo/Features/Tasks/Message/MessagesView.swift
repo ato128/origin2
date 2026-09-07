@@ -46,6 +46,7 @@ struct MessagesView: View {
     @State private var backendConversations: [ChatBackendConversationDTO] = []
     @State private var backendLiveRefreshTask: Task<Void, Never>?
     @State private var isRefreshingBackendConversations = false
+    @State private var showArchivedSheet = false
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
@@ -88,6 +89,15 @@ struct MessagesView: View {
     }
 
     private var allConversationItems: [MessagesHubItem] {
+        conversationItems(archivedOnly: false)
+    }
+
+    /// Only the chats the user has archived — shown in the Archive sheet.
+    private var archivedConversationItems: [MessagesHubItem] {
+        conversationItems(archivedOnly: true)
+    }
+
+    private func conversationItems(archivedOnly: Bool) -> [MessagesHubItem] {
         let friendItems: [MessagesHubItem] = backendFriends.compactMap { friend in
             guard let friendshipID = friend.backendFriendshipID else {
                 return nil
@@ -95,7 +105,7 @@ struct MessagesView: View {
 
             let backendConversation = backendConversation(for: friend)
 
-            if backendConversation?.isArchived == true {
+            if (backendConversation?.isArchived == true) != archivedOnly {
                 return nil
             }
 
@@ -140,7 +150,7 @@ struct MessagesView: View {
         let crewItems: [MessagesHubItem] = backendCrews.compactMap { crew -> MessagesHubItem? in
             let backendConversation = backendConversation(for: crew)
 
-            if backendConversation?.isArchived == true {
+            if (backendConversation?.isArchived == true) != archivedOnly {
                 return nil
             }
 
@@ -292,6 +302,9 @@ struct MessagesView: View {
                         .environmentObject(friendStore)
                         .environmentObject(session)
                 }
+                .sheet(isPresented: $showArchivedSheet) {
+                    archivedSheet
+                }
         }
     }
 }
@@ -412,6 +425,18 @@ private extension MessagesView {
                         systemImage: filterMode == filter ? "checkmark" : filter.icon
                     )
                 }
+            }
+
+            Divider()
+
+            Button {
+                showArchivedSheet = true
+            } label: {
+                let count = archivedConversationItems.count
+                Label(
+                    count > 0 ? "\(tr("mv_archive_title")) (\(count))" : tr("mv_archive_title"),
+                    systemImage: "archivebox"
+                )
             }
         } label: {
             Image(systemName: "line.3.horizontal.decrease")
@@ -1635,6 +1660,110 @@ private extension MessagesView {
                 }
             }
         }
+    }
+
+    // MARK: - Unarchive
+
+    private func unarchive(_ item: MessagesHubItem) {
+        switch item.payload {
+        case .friend(let friend):        unarchiveFriendChat(friend)
+        case .friendSummary(let summary): unarchiveFriendSummary(summary)
+        case .crew(let crew):            unarchiveCrewChat(crew)
+        }
+    }
+
+    private func unarchiveConversation(_ conversationID: UUID) {
+        Task {
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
+                isArchived: false
+            )
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
+        }
+    }
+
+    private func unarchiveFriendChat(_ friend: Friend) {
+        guard let friendshipID = friend.backendFriendshipID,
+              let conversationID = backendConversationID(for: friendshipID) else { return }
+        unarchiveConversation(conversationID)
+    }
+
+    private func unarchiveFriendSummary(_ summary: FriendChatThreadSummary) {
+        guard let conversationID = backendConversationID(for: summary.friendshipID) else { return }
+        unarchiveConversation(conversationID)
+    }
+
+    private func unarchiveCrewChat(_ crew: WeekCrewItem) {
+        guard let conversationID = backendCrewConversationID(for: crew.id) else { return }
+        unarchiveConversation(conversationID)
+    }
+
+    // MARK: - Archive sheet
+
+    var archivedSheet: some View {
+        NavigationStack {
+            ZStack {
+                ArenaBackground(
+                    primaryGlow: Color(arenaHex: AppArenaPalette.blue),
+                    secondaryGlow: Color(arenaHex: AppArenaPalette.purple)
+                )
+                .ignoresSafeArea()
+
+                if archivedConversationItems.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "archivebox")
+                            .font(.system(size: 42, weight: .bold))
+                            .foregroundStyle(UpdoTheme.filmy(0.30))
+
+                        Text(tr("mv_archive_empty"))
+                            .font(.system(size: 18, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+
+                        Text(tr("mv_archive_empty_sub"))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.50))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(40)
+                } else {
+                    List {
+                        ForEach(archivedConversationItems, id: \.id) { item in
+                            NavigationLink {
+                                destinationView(for: item)
+                            } label: {
+                                conversationRow(item)
+                            }
+                            .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button {
+                                    unarchive(item)
+                                } label: {
+                                    Label(tr("mv_unarchive"), systemImage: "tray.and.arrow.up")
+                                }
+                                .tint(Color(arenaHex: AppArenaPalette.cyan))
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .navigationTitle(tr("mv_archive_title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(tr("common_done")) { showArchivedSheet = false }
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                }
+            }
+        }
+        .presentationDragIndicator(.visible)
     }}
 
 // MARK: - Color
