@@ -91,6 +91,29 @@ final class FriendFocusBackendClient {
         }
     }
 
+    /// Devam eden bir arkadaş odağına katılma isteği gönder (host'a bildirim gider).
+    /// Host kabul ederse `create(friendID: requester...)` ile davet döner.
+    @discardableResult
+    func requestJoin(hostID: UUID, requesterName: String) async -> Bool {
+        do {
+            var request = try await makeRequest(path: "/v1/friend-focus/request-join", method: "POST")
+            let body: [String: Any] = [
+                "host_id": hostID.uuidString,
+                "requester_name": requesterName
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return false }
+            struct Resp: Decodable { let ok: Bool }
+            let decoded = try JSONDecoder().decode(Resp.self, from: data)
+            return decoded.ok
+        } catch {
+            Log.debug("FRIEND FOCUS REQUEST-JOIN ERROR:", error.localizedDescription)
+            return false
+        }
+    }
+
     func join(sessionID: UUID) async -> FriendFocusSessionDTO? {
         do {
             let request = try await makeRequest(

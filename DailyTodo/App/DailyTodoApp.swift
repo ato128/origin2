@@ -33,6 +33,7 @@ struct DailyTodoApp: App {
     @State private var openFocusFromNotification: Bool = false
     @State private var crewFocusInvitePayload: CrewFocusInvitePayload?
     @State private var friendFocusInvitePayload: FriendFocusInvitePayload?
+    @State private var friendFocusJoinRequest: FriendFocusJoinRequest?
 
     init() {
         do {
@@ -188,6 +189,13 @@ struct DailyTodoApp: App {
             )
             .interactiveDismissDisabled(false)
         }
+        .confirmationDialog(
+            friendFocusJoinRequestTitle,
+            isPresented: friendFocusJoinRequestPresented,
+            titleVisibility: .visible,
+            actions: { friendFocusJoinRequestActions },
+            message: { Text(friendFocusJoinRequestMessage) }
+        )
         .onAppear {
             handleAppAppear()
         }
@@ -232,6 +240,10 @@ struct DailyTodoApp: App {
         .onReceive(NotificationCenter.default.publisher(for: .presentFriendFocusInviteSheet)) { output in
             guard let userInfo = output.object as? [AnyHashable: Any] else { return }
             handleFriendFocusInviteReceived(userInfo)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .presentFriendFocusJoinRequest)) { output in
+            guard let userInfo = output.object as? [AnyHashable: Any] else { return }
+            handleFriendFocusJoinRequestReceived(userInfo)
         }
         .onReceive(NotificationCenter.default.publisher(for: .friendFocusPeerEvent)) { output in
             guard let userInfo = output.object as? [AnyHashable: Any] else { return }
@@ -390,6 +402,70 @@ struct DailyTodoApp: App {
                     Log.debug("⚠️ FRIEND FOCUS GUEST START FAILED")
                 }
             }
+        }
+    }
+
+    // Body'yi hafif tutmak için diyalog parçaları computed olarak dışarıda.
+    private var friendFocusJoinRequestPresented: Binding<Bool> {
+        Binding(
+            get: { friendFocusJoinRequest != nil },
+            set: { if !$0 { friendFocusJoinRequest = nil } }
+        )
+    }
+
+    private var friendFocusJoinRequestTitle: String {
+        guard let req = friendFocusJoinRequest else { return "" }
+        return appLanguageIsEnglish()
+            ? "\(req.requesterName) wants to focus with you"
+            : "\(req.requesterName) seninle odaklanmak istiyor"
+    }
+
+    private var friendFocusJoinRequestMessage: String {
+        appLanguageIsEnglish()
+            ? "Start a duo focus and they'll join you."
+            : "Bir düet odak başlat, o da sana katılsın."
+    }
+
+    @ViewBuilder
+    private var friendFocusJoinRequestActions: some View {
+        Button(appLanguageIsEnglish() ? "Focus together" : "Birlikte odaklan") {
+            if let req = friendFocusJoinRequest {
+                approveFriendFocusJoin(req)
+            }
+            friendFocusJoinRequest = nil
+        }
+        Button(appLanguageIsEnglish() ? "Decline" : "Reddet", role: .cancel) {
+            friendFocusJoinRequest = nil
+        }
+    }
+
+    /// Bir arkadaş DEVAM EDEN odağıma katılmak istedi → host onay diyaloğunu aç.
+    private func handleFriendFocusJoinRequestReceived(_ userInfo: [AnyHashable: Any]) {
+        guard let ridStr = userInfo["requester_user_id"] as? String,
+              let rid = UUID(uuidString: ridStr),
+              rid != session.currentUser?.id else { return }
+
+        let rawName = (userInfo["requester_name"] as? String)?.trimmingCharacters(in: .whitespaces)
+        let name = (rawName?.isEmpty == false)
+            ? rawName!
+            : (appLanguageIsEnglish() ? "A friend" : "Arkadaşın")
+
+        friendFocusJoinRequest = FriendFocusJoinRequest(requesterID: rid, requesterName: name)
+    }
+
+    /// Host kabul etti → düet odak başlat (friend = requester). Mevcut host-start
+    /// akışı requester'a normal `friend_focus_invite` push'lar → o da join sheet'iyle
+    /// katılır (tüm invite/join makinesi tekrar kullanılır).
+    private func approveFriendFocusJoin(_ req: FriendFocusJoinRequest) {
+        Task {
+            _ = await focusSession.startRequestedSession(
+                mode: .friend,
+                durationMinutes: 25,
+                goal: .study,
+                style: .silent,
+                friendUserID: req.requesterID,
+                friendName: req.requesterName
+            )
         }
     }
 

@@ -60,6 +60,8 @@ struct HomeView: View {
     @State private var shimmer = false
     @State private var shimmerPhase: CGFloat = -1.2
     @State private var aiCardPressed = false
+    // Odaktaki arkadaşa gönderilen katılma isteğinin geçici onayı (userID).
+    @State private var joinRequestSentFor: UUID?
 
     // Updo AI rule-based suggestion / challenge card
     @State var aiSuggestionExpanded = false
@@ -1020,37 +1022,54 @@ private extension HomeView {
 // MARK: - Focusing friends (Updo AI action nudge)
 
 private extension HomeView {
-    /// Şu an odak seansında olan arkadaşlar (presence.is_focusing) + isim/friendship.
-    var focusingFriends: [(name: String, friendshipID: UUID)] {
+    /// Şu an odak seansında olan arkadaşlar (presence.is_focusing) + isim/friendship/userID.
+    var focusingFriends: [(name: String, friendshipID: UUID, userID: UUID)] {
         friendStore.friendChatSummaries.compactMap { summary in
             guard let uid = summary.friendUserID,
                   friendStore.presenceByUserID[uid]?.is_focusing == true
             else { return nil }
-            return (name: summary.title, friendshipID: summary.friendshipID)
+            return (name: summary.title, friendshipID: summary.friendshipID, userID: uid)
         }
     }
 
-    /// Ana ekranda "arkadaşın odakta — sen de katıl" aksiyon kartı (Updo AI sesi).
-    /// Kendi seansın aktifken gösterme (zaten odaktasın). Dokununca o arkadaşın
-    /// sohbetini açar (koordine et / odak daveti gönder-al).
+    private var myFocusDisplayName: String {
+        if let user = session.currentUser {
+            let full = user.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !full.isEmpty { return full }
+            let uname = user.username.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !uname.isEmpty { return uname }
+        }
+        return appLanguageIsEnglish() ? "A friend" : "Arkadaşın"
+    }
+
+    /// Ana ekranda "arkadaşın odakta — katılmak iste" aksiyon kartı (Updo AI sesi).
+    /// Kendi seansın aktifken gizli. Dokununca devam eden seansa KATILMA İSTEĞİ
+    /// gönderir → arkadaş kabul ederse davet gelir, join sheet'iyle katılırsın.
     @ViewBuilder
     var focusingFriendsCard: some View {
         if !focusSession.isSessionActive, let first = focusingFriends.first {
             let count = focusingFriends.count
             let en = appLanguageIsEnglish()
+            let sent = (joinRequestSentFor == first.userID)
             let headline = count == 1
                 ? (en ? "\(first.name) is in focus" : "\(first.name) şu an odakta")
                 : (en ? "\(count) friends are focusing" : "\(count) arkadaşın odakta")
-            let sub = en
-                ? "Updo AI: jump in and ride the momentum together."
-                : "Updo AI: sen de katıl, momentumu birlikte yakala."
+            let sub = sent
+                ? (en ? "Request sent ✓ — they'll invite you back." : "İstek gönderildi ✓ — kabul edince davet gelir.")
+                : (en ? "Updo AI: ask to join and focus together." : "Updo AI: katılmak iste, birlikte odaklanın.")
 
             Button {
+                guard !sent else { return }
                 HapticManager.shared.selection()
-                NotificationCenter.default.post(
-                    name: .openFriendChatFromNotification,
-                    object: first.friendshipID.uuidString
-                )
+                let hostID = first.userID
+                let myName = myFocusDisplayName
+                joinRequestSentFor = hostID
+                Task {
+                    await FriendFocusBackendClient.shared.requestJoin(hostID: hostID, requesterName: myName)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    if joinRequestSentFor == hostID { joinRequestSentFor = nil }
+                }
             } label: {
                 HStack(spacing: 13) {
                     ZStack {
@@ -1076,9 +1095,9 @@ private extension HomeView {
 
                     Spacer(minLength: 6)
 
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(UpdoTheme.filmy(0.32))
+                    Image(systemName: sent ? "checkmark.circle.fill" : "person.fill.badge.plus")
+                        .font(.system(size: sent ? 16 : 15, weight: .black))
+                        .foregroundStyle(sent ? Color(arenaHex: "#A3E635") : Color(arenaHex: "#7C3AED"))
                 }
                 .padding(16)
                 .background(

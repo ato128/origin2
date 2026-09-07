@@ -183,6 +183,22 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
             case "pong":
                 ChatBackendLogger.log("🏓 INBOX WS PONG")
 
+            case "friend_focus_join_request":
+                // Tipli payload'da bu alanlar yok — ham JSON'dan çıkar (foreground yolu).
+                if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let payload = obj["payload"] as? [String: Any] {
+                    var userInfo: [AnyHashable: Any] = ["type": "friend_focus_join_request"]
+                    if let rid = payload["requester_user_id"] as? String { userInfo["requester_user_id"] = rid }
+                    if let rname = payload["requester_name"] as? String { userInfo["requester_name"] = rname }
+                    if let sid = payload["session_id"] as? String { userInfo["session_id"] = sid }
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(
+                            name: .presentFriendFocusJoinRequest,
+                            object: userInfo
+                        )
+                    }
+                }
+
             case "message_created":
                 guard let message = event.payload?.message else {
                     ChatBackendLogger.error("❌ INBOX MESSAGE_CREATED MISSING")

@@ -273,6 +273,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             )
             return
 
+        case "friend_focus_join_request":
+            NotificationCenter.default.post(
+                name: .presentFriendFocusJoinRequest,
+                object: userInfo
+            )
+            return
+
         case "friend_focus_joined", "friend_focus_left", "friend_focus_declined", "friend_focus_ended":
             NotificationCenter.default.post(
                 name: .friendFocusPeerEvent,
@@ -367,6 +374,7 @@ extension Notification.Name {
 
     static let presentCrewFocusInviteSheet = Notification.Name("presentCrewFocusInviteSheet")
     static let presentFriendFocusInviteSheet = Notification.Name("presentFriendFocusInviteSheet")
+    static let presentFriendFocusJoinRequest = Notification.Name("presentFriendFocusJoinRequest")
     static let friendFocusPeerEvent = Notification.Name("friendFocusPeerEvent")
     static let presentActiveCrewFocusFromNotification = Notification.Name("presentActiveCrewFocusFromNotification")
     static let openCrewFocusInviteFromNotification = Notification.Name("openCrewFocusInviteFromNotification")
@@ -397,4 +405,11 @@ enum PendingFocusInvite {
         guard let storedAt, Date().timeIntervalSince(storedAt) < 120 else { return nil }
         return userInfo
     }
+}
+
+/// Bir arkadaşın "devam eden odağına katılma" isteği (host tarafında onay için).
+struct FriendFocusJoinRequest: Identifiable {
+    let id = UUID()
+    let requesterID: UUID
+    let requesterName: String
 }
