@@ -92,6 +92,10 @@ final class DailyCreditsManager: ObservableObject {
 
             var req = URLRequest(url: url)
             req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+            // Server-side RC doğrulaması kapalıyken (key yok) kredi özeti de istemcinin
+            // Premium AI durumunu yansıtsın → pill "kredi" gösterir, "mesaj" değil.
+            let claimsProAI = await MainActor.run { SubscriptionManager.shared.isProAI }
+            req.setValue(claimsProAI ? "true" : "false", forHTTPHeaderField: "x-updo-pro-ai")
             req.timeoutInterval = 20
 
             let (data, response) = try await URLSession.shared.data(for: req)

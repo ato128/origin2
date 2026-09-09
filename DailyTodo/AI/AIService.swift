@@ -140,6 +140,11 @@ actor AIService {
                     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
                     req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    // İstemcinin bildiği Premium AI durumu: backend server-side RC
+                    // doğrulaması KAPALIYKEN (REVENUECAT_SECRET_KEY yoksa) bunu kullanır.
+                    // Key set edilince backend server-side'ı yetkili sayar, bunu yok sayar.
+                    let claimsProAI = await MainActor.run { SubscriptionManager.shared.isProAI }
+                    req.setValue(claimsProAI ? "true" : "false", forHTTPHeaderField: "x-updo-pro-ai")
                     req.timeoutInterval = 60
 
                     var finalBody: [String: Any] = [
@@ -226,6 +231,9 @@ actor AIService {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        // Bkz. stream isteği: server-side RC doğrulaması kapalıyken kullanılır.
+        let claimsProAI = await MainActor.run { SubscriptionManager.shared.isProAI }
+        req.setValue(claimsProAI ? "true" : "false", forHTTPHeaderField: "x-updo-pro-ai")
         req.timeoutInterval = 60
 
         // Uygulama dilini her AI isteğine ekle — backend LLM'i bu dile zorlar
