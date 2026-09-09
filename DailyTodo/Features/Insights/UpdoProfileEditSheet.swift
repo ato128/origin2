@@ -37,7 +37,7 @@ struct UpdoProfileEditSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(arenaHex: "#07090F").ignoresSafeArea()
+                UpdoTheme.background.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 26) {
@@ -139,7 +139,7 @@ struct UpdoProfileEditSheet: View {
                         .foregroundStyle(.black)
                         .frame(width: 28, height: 28)
                         .background(Circle().fill(accent))
-                        .overlay(Circle().stroke(Color(arenaHex: "#07090F"), lineWidth: 3))
+                        .overlay(Circle().stroke(UpdoTheme.background, lineWidth: 3))
                 }
             }
             .buttonStyle(.plain)

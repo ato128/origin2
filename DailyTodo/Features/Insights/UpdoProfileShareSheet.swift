@@ -39,8 +39,10 @@ struct UpdoProfileShareSheet: View {
 
     var body: some View {
         ZStack {
-            // Stage: near-black with the card's own accent bleeding from above.
-            Color(arenaHex: "#06080D").ignoresSafeArea()
+            // Stage adapts to the app appearance (warm eggshell in light, near-black
+            // in dark) with the card's own accent bleeding from above. The card
+            // itself stays the dark branded export (pinned below).
+            UpdoTheme.background.ignoresSafeArea()
 
             RadialGradient(
                 colors: [data.accent.opacity(0.16), .clear],
@@ -58,6 +60,7 @@ struct UpdoProfileShareSheet: View {
                 Spacer(minLength: 16)
 
                 UpdoProfileShareCard(data: data)
+                    .environment(\.colorScheme, .dark)
                     .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 26, style: .continuous)
@@ -138,7 +141,9 @@ struct UpdoProfileShareSheet: View {
         Button {
             HapticManager.shared.action()
 
-            let renderer = ImageRenderer(content: UpdoProfileShareCard(data: data))
+            let renderer = ImageRenderer(
+                content: UpdoProfileShareCard(data: data).environment(\.colorScheme, .dark)
+            )
             renderer.scale = 3
 
             guard let image = renderer.uiImage else { return }

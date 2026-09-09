@@ -3178,10 +3178,12 @@ struct StreakBubble: View {
     }
 
     private var bubbleFill: LinearGradient {
+        // Warm amber-tinted cream in light, warm dark brown in dark. The text
+        // tokens (textPrimary/filmy) already adapt, so both stay legible.
         LinearGradient(
             colors: [
-                Color(arenaHex: "#241910").opacity(0.98),
-                Color(arenaHex: "#16110C").opacity(0.98)
+                Color.adaptive(light: Color(arenaHex: "#FFF7EC"), dark: Color(arenaHex: "#241910")).opacity(0.98),
+                Color.adaptive(light: Color(arenaHex: "#FCEFD8"), dark: Color(arenaHex: "#16110C")).opacity(0.98)
             ],
             startPoint: .topLeading, endPoint: .bottomTrailing
         )

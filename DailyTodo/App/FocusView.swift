@@ -1784,7 +1784,7 @@ private extension FocusView {
     var friendPickerSheet: some View {
         NavigationStack {
             ZStack {
-                Color(arenaHex: "#07090F").ignoresSafeArea()
+                UpdoTheme.background.ignoresSafeArea()
 
                 if invitableFriends.isEmpty {
                     VStack(spacing: 12) {
