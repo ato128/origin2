@@ -704,7 +704,7 @@ private extension ProfileSetupView {
                     .font(.system(size: 20, weight: .black, design: .rounded))
                     .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
 
-                TextField("username", text: $username)
+                TextField(isEnglish ? "username" : "kullanıcı adı", text: $username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.asciiCapable)

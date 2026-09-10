@@ -129,23 +129,24 @@ private extension AuthFormSheetView {
 
             premiumField(
                 title: tr("afs_email"),
-                placeholder: "you@example.com",
+                placeholder: tr("afs_email_ph"),
                 text: $email,
                 systemImage: "envelope.fill",
-                capitalization: .never
+                capitalization: .never,
+                keyboard: .emailAddress
             )
 
             passwordField(
                 title: tr("afs_password"),
-                placeholder: "Password",
+                placeholder: tr("afs_password_ph"),
                 text: $password,
                 showText: $showPassword
             )
 
             if mode == .signup {
                 passwordField(
-                    title: "Confirm Password",
-                    placeholder: "Confirm password",
+                    title: tr("afs_confirm"),
+                    placeholder: tr("afs_confirm_ph"),
                     text: $confirmPassword,
                     showText: $showConfirmPassword
                 )
@@ -173,7 +174,7 @@ private extension AuthFormSheetView {
                             .font(.system(size: 18, weight: .black))
                     }
 
-                    Text((isLoading || session.isLoading) ? "Please wait..." : mode.buttonTitle)
+                    Text((isLoading || session.isLoading) ? tr("afs_please_wait") : mode.buttonTitle)
                         .font(.system(size: 18, weight: .black, design: .rounded))
                 }
                 .foregroundStyle(UpdoTheme.textPrimary)
@@ -241,33 +242,33 @@ private extension AuthFormSheetView {
         let cleanConfirmPassword = confirmPassword.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedEmail.isEmpty else {
-            errorMessage = "Please enter your email."
+            errorMessage = tr("afs_err_email_empty")
             return
         }
 
         guard trimmedEmail.contains("@"), trimmedEmail.contains(".") else {
-            errorMessage = "Please enter a valid email."
+            errorMessage = tr("afs_err_email_invalid")
             return
         }
 
         guard !cleanPassword.isEmpty else {
-            errorMessage = "Please enter your password."
+            errorMessage = tr("afs_err_pass_empty")
             return
         }
 
         if mode == .signup {
             guard !trimmedName.isEmpty else {
-                errorMessage = "Please enter your name."
+                errorMessage = tr("afs_err_name_empty")
                 return
             }
 
             guard cleanPassword.count >= 6 else {
-                errorMessage = "Password must be at least 6 characters."
+                errorMessage = tr("afs_err_pass_short")
                 return
             }
 
             guard cleanPassword == cleanConfirmPassword else {
-                errorMessage = "Passwords do not match."
+                errorMessage = tr("afs_err_pass_mismatch")
                 return
             }
         }
@@ -301,19 +302,19 @@ private extension AuthFormSheetView {
         let message = error.localizedDescription.lowercased()
 
         if message.contains("invalid login credentials") {
-            return "Email or password is incorrect."
+            return tr("afs_err_credentials")
         }
 
         if message.contains("email not confirmed") {
-            return "Please confirm your email before logging in."
+            return tr("afs_err_email_unconfirmed")
         }
 
         if message.contains("user already registered") {
-            return "This email is already registered."
+            return tr("afs_err_email_taken")
         }
 
         if message.contains("password should be at least") {
-            return "Password must be at least 6 characters."
+            return tr("afs_err_pass_short")
         }
 
         return error.localizedDescription
@@ -324,7 +325,8 @@ private extension AuthFormSheetView {
         placeholder: String,
         text: Binding<String>,
         systemImage: String,
-        capitalization: TextInputAutocapitalization
+        capitalization: TextInputAutocapitalization,
+        keyboard: UIKeyboardType = .default
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title.uppercased())
@@ -341,7 +343,7 @@ private extension AuthFormSheetView {
                 TextField(placeholder, text: text)
                     .textInputAutocapitalization(capitalization)
                     .autocorrectionDisabled()
-                    .keyboardType(title.lowercased() == "email" ? .emailAddress : .default)
+                    .keyboardType(keyboard)
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(UpdoTheme.textPrimary)
                     .tint(Color(arenaHex: AuthFormPalette.appCyan))
@@ -530,45 +532,43 @@ enum AuthMode {
 
     var eyebrow: String {
         switch self {
-        case .login: return "WELCOME BACK"
-        case .signup: return "NEW ACCOUNT"
+        case .login: return tr("afs_eyebrow_login")
+        case .signup: return tr("afs_eyebrow_signup")
         }
     }
 
     var titleFirst: String {
         switch self {
-        case .login: return "Login"
-        case .signup: return "Create"
+        case .login: return tr("afs_title_first_login")
+        case .signup: return tr("afs_title_first_signup")
         }
     }
 
     var titleAccent: String {
         switch self {
-        case .login: return "now"
-        case .signup: return "account"
+        case .login: return tr("afs_title_accent_login")
+        case .signup: return tr("afs_title_accent_signup")
         }
     }
 
     var title: String {
         switch self {
-        case .login: return "Login"
-        case .signup: return "Create Account"
+        case .login: return tr("afs_title_login")
+        case .signup: return tr("afs_title_signup")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .login:
-            return "Welcome back. Continue planning your day."
-        case .signup:
-            return "Start fresh with a new Updo account."
+        case .login: return tr("afs_subtitle_login")
+        case .signup: return tr("afs_subtitle_signup")
         }
     }
 
     var buttonTitle: String {
         switch self {
-        case .login: return "Login"
-        case .signup: return "Create Account"
+        case .login: return tr("afs_btn_login")
+        case .signup: return tr("afs_btn_signup")
         }
     }
 }
