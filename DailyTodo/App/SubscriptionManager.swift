@@ -5,12 +5,24 @@ import StoreKit
 
 enum SubscriptionError: LocalizedError {
     case notConfigured
+    case productUnavailable
     var errorDescription: String? {
         switch self {
         case .notConfigured:
             return appLanguageIsEnglish() ? "Purchases are unavailable right now." : "Satın alma şu an kullanılamıyor."
+        case .productUnavailable:
+            return appLanguageIsEnglish()
+                ? "Couldn't reach the App Store. Check your connection and try again."
+                : "App Store'a ulaşılamadı. Bağlantını kontrol edip tekrar dene."
         }
     }
+}
+
+/// Bir satın alma denemesinin sonucu — kullanıcı iptali başarıyla karıştırılmasın
+/// (iptalde paywall kapanmamalı, "satın alındı" gibi davranmamalıyız).
+enum PurchaseOutcome {
+    case success
+    case cancelled
 }
 
 @MainActor
@@ -23,6 +35,10 @@ final class SubscriptionManager: ObservableObject {
     @Published private(set) var isProAI: Bool = false
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var availablePackages: [Package] = []
+    /// RevenueCat StoreProduct'ları — offering yapılandırmasından BAĞIMSIZ, doğrudan
+    /// mağazadan gelir. Paywall'daki "current offering" panelde yanlış kurulsa bile
+    /// satın alma bu haritadan ürünle tamamlanır (checkout asla tıkanmaz).
+    @Published private(set) var storeProductsByID: [String: StoreProduct] = [:]
     /// Fiyatlar DOĞRUDAN StoreKit 2'den (canlı vitrin) — RevenueCat'in önbelleğe
     /// alınmış storefront'unu baypas eder, böylece paywall'da gösterilen fiyat
     /// satın alınacak fiyatla (aynı canlı vitrin) BİREBİR aynı olur.
@@ -118,6 +134,7 @@ final class SubscriptionManager: ObservableObject {
         Task { [weak self] in
             for await _ in Storefront.updates {
                 await self?.loadOfferings()
+                await self?.loadProducts()
                 await self?.refreshStoreKitPrices()
             }
         }
@@ -203,15 +220,78 @@ final class SubscriptionManager: ObservableObject {
         } catch {}
     }
 
+    /// StoreProduct'ları doğrudan mağazadan çeker (offering'e bağlı DEĞİL). Paywall
+    /// açılışında ve satın alma öncesi çağrılır; boş dönerse eski harita korunur.
+    func loadProducts() async {
+        guard isConfigured else { return }
+        let products = await Purchases.shared.products(allSubscriptionProductIDs)
+        guard !products.isEmpty else { return }
+        var map: [String: StoreProduct] = [:]
+        for product in products { map[product.productIdentifier] = product }
+        storeProductsByID = map
+    }
+
+    /// Ürünlerin satın almaya hazır olduğundan emin ol — hem offering paketlerini
+    /// hem doğrudan StoreProduct'ları paralel yükler. Paywall açılışında bir kez.
+    func prepareForPurchase() async {
+        async let a: Void = loadOfferings()
+        async let b: Void = loadProducts()
+        async let c: Void = refreshStoreKitPrices()
+        _ = await (a, b, c)
+    }
+
+    /// Ürün kimliğiyle satın alma — çökme-korumalı akış:
+    /// 1) Varsa offering paketi (intro-offer uygunluğu + RC offering analitiği).
+    /// 2) Yoksa doğrudan StoreProduct (offering panelde yanlış kurulsa bile çalışır).
+    /// 3) İkisi de yoksa taze yükleyip tekrar dener; hâlâ yoksa net hata fırlatır.
+    /// Kullanıcı Apple sayfasında iptal ederse `.cancelled` döner (hata değil).
+    @discardableResult
+    func purchase(productID: String) async throws -> PurchaseOutcome {
+        guard isConfigured else { throw SubscriptionError.notConfigured }
+        isLoading = true
+        defer { isLoading = false }
+
+        // Offering paketi ya da StoreProduct henüz yoksa, satın almadan önce yükle.
+        if availablePackages.isEmpty && storeProductsByID[productID] == nil {
+            await prepareForPurchase()
+        }
+
+        if let pkg = availablePackages.first(where: {
+            $0.storeProduct.productIdentifier == productID
+        }) {
+            let result = try await Purchases.shared.purchase(package: pkg)
+            if result.userCancelled { return .cancelled }
+            updateStatus(from: result.customerInfo)
+            trackConversion(productID: productID, packageType: pkg.packageType.debugDescription)
+            return .success
+        }
+
+        if storeProductsByID[productID] == nil { await loadProducts() }
+        guard let product = storeProductsByID[productID] else {
+            throw SubscriptionError.productUnavailable
+        }
+
+        let result = try await Purchases.shared.purchase(product: product)
+        if result.userCancelled { return .cancelled }
+        updateStatus(from: result.customerInfo)
+        trackConversion(productID: productID, packageType: "direct_product")
+        return .success
+    }
+
     func purchase(package pkg: Package) async throws {
         guard isConfigured else { throw SubscriptionError.notConfigured }
         isLoading = true
         defer { isLoading = false }
         let result = try await Purchases.shared.purchase(package: pkg)
         updateStatus(from: result.customerInfo)
+        trackConversion(productID: pkg.storeProduct.productIdentifier,
+                        packageType: pkg.packageType.debugDescription)
+    }
+
+    private func trackConversion(productID: String, packageType: String) {
         Analytics.shared.track("paywall_converted", properties: [
-            "product_id": pkg.storeProduct.productIdentifier,
-            "package_type": pkg.packageType.debugDescription
+            "product_id": productID,
+            "package_type": packageType
         ])
     }
 

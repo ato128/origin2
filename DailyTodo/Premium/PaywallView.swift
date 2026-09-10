@@ -104,10 +104,7 @@ struct PaywallView: View {
         }
         .onAppear {
             Analytics.shared.track("paywall_viewed", properties: ["context": context])
-            Task {
-                await manager.loadOfferings()
-                await manager.refreshStoreKitPrices()
-            }
+            Task { await manager.prepareForPurchase() }
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.05)) { appeared = true }
         }
         // Premium paywall keeps its fixed gold-on-dark luxury look in any app appearance.
@@ -517,19 +514,22 @@ struct PaywallView: View {
     // MARK: – Purchase logic
 
     private func purchase() {
-        guard let pkg = manager.availablePackages.first(where: {
-            $0.storeProduct.productIdentifier == productID
-        }) else {
-            errorMessage = tr("pw_products_loading")
-            Task { await manager.loadOfferings() }
-            return
-        }
+        guard !isPurchasing else { return }
         isPurchasing = true
         errorMessage = nil
+        HapticManager.shared.action()
         Task {
             do {
-                try await manager.purchase(package: pkg)
-                dismiss(); onDismiss?()
+                // Ürünler henüz gelmemişse manager içeride yükleyip devam eder;
+                // offering panelde yanlış kurulsa bile doğrudan üründen satın alır.
+                let outcome = try await manager.purchase(productID: productID)
+                switch outcome {
+                case .success:
+                    HapticManager.shared.success()
+                    dismiss(); onDismiss?()
+                case .cancelled:
+                    break // kullanıcı vazgeçti — paywall açık kalsın, hata gösterme
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }
