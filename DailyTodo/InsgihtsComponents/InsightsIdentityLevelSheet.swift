@@ -298,10 +298,9 @@ struct InsightsIdentityLevelSheet: View {
 
     private var levelUpButton: some View {
         Button {
-            dismiss()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                onLevelUp()
-            }
+            // Parent handles dismissing this sheet and presenting the
+            // celebration from onDismiss (no fullScreenCover-over-sheet race).
+            onLevelUp()
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "arrow.up.forward.circle.fill")

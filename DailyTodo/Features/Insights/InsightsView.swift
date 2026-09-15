@@ -52,6 +52,10 @@ struct InsightsView: View {
     // Identity level-up flow
     @State private var showLevelUpCelebration = false
     @State private var showLevelUpBanner = false
+    // Set when the level sheet asks to level up; the celebration is presented
+    // from the sheet's onDismiss so we never stack a fullScreenCover on top of
+    // a sheet that is still animating out (that race could wedge the UI).
+    @State private var wantsCelebrationAfterSheet = false
 
     @Query(sort: \DTTaskItem.createdAt, order: .reverse)
     private var tasks: [DTTaskItem]
@@ -286,12 +290,19 @@ struct InsightsView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showIdentityLevelSheet) {
+        .sheet(isPresented: $showIdentityLevelSheet, onDismiss: {
+            guard wantsCelebrationAfterSheet else { return }
+            wantsCelebrationAfterSheet = false
+            preparePendingLevelUpIfNeeded()
+            showLevelUpCelebration = true
+        }) {
             InsightsIdentityLevelSheet(
                 snapshot: identitySnapshot,
                 onLevelUp: {
-                    preparePendingLevelUpIfNeeded()
-                    showLevelUpCelebration = true
+                    // Flag + dismiss; the celebration fires in onDismiss once the
+                    // sheet has fully gone away.
+                    wantsCelebrationAfterSheet = true
+                    showIdentityLevelSheet = false
                 }
             )
             .presentationDetents([.medium, .large])
@@ -898,8 +909,9 @@ struct InsightsView: View {
             if subscription.isPro {
                 analyticsCards
             } else {
+                // No scroll-reveal here: the teaser is a rasterized (drawingGroup)
+                // layer, so a live transition would force it to re-flatten.
                 lockedAnalytics
-                    .insightsCardReveal()
             }
 
             // Exam planner.
@@ -940,17 +952,46 @@ struct InsightsView: View {
         .insightsCardReveal()
     }
 
+    // The frozen analytics used only behind the Pro lock: same real numbers,
+    // but with no per-card scroll-reveal so the whole stack is static and can
+    // be flattened into a single GPU layer.
+    @ViewBuilder
+    private var frozenAnalyticsCards: some View {
+        InsightsDataDashboard(
+            focusSessions: filteredFocusSessions,
+            tasks: filteredTasks,
+            accent: insightsAccent,
+            allFocusSessions: focusSessions,
+            friends: localFriends,
+            myName: resolvedUserName,
+            myStreak: progression.currentStreak,
+            myLevel: storedIdentityLevel,
+            revealOnScroll: false
+        )
+
+        InsightsStreakCalendarCard(
+            tasks: filteredTasks,
+            focusSessions: filteredFocusSessions,
+            accent: insightsAccent
+        )
+    }
+
     // Real analytics, softly frosted behind a light Pro lock — the screen looks
     // the same (numbers/charts visible), just a gentle "soft premium" blur.
+    //
+    // The frosted layer is rasterized once via `.drawingGroup()`: the blur is
+    // baked into a single Metal texture instead of re-running a full-tree
+    // Gaussian blur on every scroll frame (that was the scroll jank / GPU load).
     private var lockedAnalytics: some View {
         let gold = Color(arenaHex: AppArenaPalette.gold)
         let isEN = appLanguageIsEnglish()
 
         return ZStack {
             VStack(spacing: 14) {
-                analyticsCards
+                frozenAnalyticsCards
             }
             .blur(radius: 6)
+            .drawingGroup()
             .disabled(true)
             .allowsHitTesting(false)
 
@@ -1320,6 +1361,18 @@ extension View {
                 .opacity(phase.isIdentity ? 1 : 0)
                 .offset(y: phase.isIdentity ? 0 : (phase.value > 0 ? 44 : -16))
                 .scaleEffect(phase.isIdentity ? 1 : 0.98)
+        }
+    }
+
+    /// Reveal only when `enabled`. The locked/blurred analytics teaser passes
+    /// `false` so the subtree carries no live scroll-transition — that lets it
+    /// rasterize once (`.drawingGroup()`) instead of re-blurring every frame.
+    @ViewBuilder
+    func insightsReveal(_ enabled: Bool) -> some View {
+        if enabled {
+            insightsCardReveal()
+        } else {
+            self
         }
     }
 }

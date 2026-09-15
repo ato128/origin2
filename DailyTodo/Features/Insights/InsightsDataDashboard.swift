@@ -24,6 +24,10 @@ struct InsightsDataDashboard: View {
     var myStreak: Int = 0
     var myLevel: Int = 1
 
+    // When false (locked/blurred teaser) the per-card scroll-reveal is skipped
+    // so the whole stack can be rasterized once — no per-frame blur churn.
+    var revealOnScroll: Bool = true
+
     private let green = Color(arenaHex: AppArenaPalette.green)
 
     @State private var showFocusDetail = false
@@ -31,15 +35,15 @@ struct InsightsDataDashboard: View {
     var body: some View {
         VStack(spacing: 14) {
             focusHeroCard
-                .insightsCardReveal()
+                .insightsReveal(revealOnScroll)
 
             if let hours = productiveHours {
                 productiveHoursCard(hours)
-                    .insightsCardReveal()
+                    .insightsReveal(revealOnScroll)
             }
 
             tasksCard
-                .insightsCardReveal()
+                .insightsReveal(revealOnScroll)
         }
         .sheet(isPresented: $showFocusDetail) {
             InsightsFocusHistorySheet(

@@ -510,7 +510,7 @@
 "ph_appearance_caps" = "GÖRÜNÜM";
 "ph_w_appearance_app" = "Uygulama";
 "ph_w_appearance_icon" = "ikonu";
-"ph_appearance_sub" = "Ana ekran ikonunu değiştir. Gold & Chrome Updo Pro'ya özel.";
+"ph_appearance_sub" = "Ana ekran ikonunu değiştir. Gold & Chrome Updo Premium'a özel.";
 "ph_app_icon_title" = "Uygulama İkonu";
 "ph_app_icon_variants" = "Çelik · Gold · Chrome";
 "ph_live_style_title" = "Live Activity Stili";
@@ -587,7 +587,7 @@
 "crew_title_accent" = "Alan";
 "iplc_after_price" = "sonra 129,99 ₺/ay";
 "crew_see_friends_close" = "Arkadaşlarını yakından gör";
-"crew_friends_locked_sub" = "Kim odakta, serisi & seviyesi kaç — Updo Pro ile aç";
+"crew_friends_locked_sub" = "Kim odakta, serisi & seviyesi kaç — Updo Premium ile aç";
 "crew_share_my_stats" = "İstatistiğimi paylaş";
 "crew_stats_shared_on" = "Arkadaşların seri, seviye ve odak durumunu görür";
 "crew_stats_shared_off" = "İstatistiğin kimseye gözükmüyor";
@@ -605,7 +605,7 @@
 /* Insights — streak broken & restore */
 "ins_streak_broken_title" = "Seri kırıldı";
 "ins_streak_broken_sub" = "%d günlük serini kaybettin · seviye 1 düştü";
-"ins_restore_with_pro" = "Updo Pro ile geri getir";
+"ins_restore_with_pro" = "Updo Premium ile geri getir";
 "ins_restore_with_count" = "Seri'yi geri getir (bu ay %d/%d)";
 "ins_restore_exhausted" = "Bu ayki kurtarma hakkın bitti";
 
@@ -632,7 +632,7 @@
 /* Friend detail — comparison */
 "fd_compare_caps" = "KIYAS";
 "fd_compare_title" = "Sen &";
-"fd_compare_locked" = "Arkadaşınla seri, seviye ve focus kıyası — Updo Pro ile";
+"fd_compare_locked" = "Arkadaşınla seri, seviye ve focus kıyası — Updo Premium ile";
 "fd_compare_empty" = "Arkadaşın istatistiklerini paylaşmıyor.";
 "fd_cmp_streak" = "SERİ";
 "fd_cmp_level" = "SEVİYE";
@@ -725,7 +725,7 @@
 /* Home — streak restore card */
 "hv_streak_broken_title" = "%d günlük serin yandı";
 "hv_streak_broken_sub_pro" = "Bu ay %d kurtarma hakkın kaldı — seviyen de geri gelir.";
-"hv_streak_broken_sub_free" = "Updo Pro seriyi ayda 3 kez geri getirebilir.";
+"hv_streak_broken_sub_free" = "Updo Premium seriyi ayda 3 kez geri getirebilir.";
 "hv_streak_restore_cta" = "Kurtar";
 
 /* Home — weekly summary card (Sundays) */
@@ -1580,7 +1580,7 @@
 "af_matched_active" = "Eşleşmiş focus aktif";
 "ai_focus_summary" = "Son 7 gün focus: %1$d dk, %2$d oturum";
 "ai_limit_full" = "Limit doldu";
-"ai_go_pro_lc" = "Pro'ya geç";
+"ai_go_pro_lc" = "Premium AI'a geç";
 "af_host_running" = "%@ host olarak oturumu yürütüyor";
 
 /* Focus screens */
@@ -2238,10 +2238,10 @@
 "ob_mk_workspace" = "ÇALIŞMA ÇEVREN";
 "ob_mk_members" = "ÜYE";
 "ob_mk_crews" = "Crewler";
-"ob_sc_see_pro" = "Updo Pro'yu Gör";
+"ob_sc_see_pro" = "Updo Premium'u Gör";
 "ob_widget_title" = "Gelişimini widget'lardan takip et";
 "ob_widget_sub" = "Programını, serini, odak dakikalarını ve haftalık hedefini ana ekranından tek bakışta gör.";
-"ob_widget_cta" = "Updo Pro'yu Keşfet";
+"ob_widget_cta" = "Updo Premium'u Keşfet";
 "ob_sc_more_prompt" = "Daha fazlasına erişmek ister misin?";
 
 /* Home — Getting Started / activation card */

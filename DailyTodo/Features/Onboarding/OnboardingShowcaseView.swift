@@ -3,16 +3,18 @@
 //  DailyTodo
 //
 //  The "sell the app" stage of onboarding. After the student is personalized,
-//  this walks them through the five pillars of Updo — each shown as a faithful,
-//  hand-built Arena mockup inside a premium device frame, with the app's own
-//  typography (monospaced eyebrow · black title · italic-serif accent word).
+//  this walks them through the five pillars of Updo — each shown as a REAL
+//  screenshot inside the real gold iPhone frame (Apple device art, pre-composited
+//  in the asset catalog), centered on the page over a soft premium colour cloud.
 //
-//  Pure design-system reuse: ArenaBackground, AppArenaPalette, ArenaLargeTitle.
-//  No screenshots — every screen is recreated so it stays localized & crisp.
+//  Screenshots are per-language (`ob_shot_<key>_<en|tr>`); TR falls back to EN
+//  until Turkish captures ship. Copy uses the app's own typography (monospaced
+//  eyebrow · black title · italic-serif accent word).
 //  Ends by presenting the Paywall, then calls `onFinish` to enter the app.
 //
 
 import SwiftUI
+import UIKit
 
 struct OnboardingShowcaseView: View {
 
@@ -20,6 +22,7 @@ struct OnboardingShowcaseView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var index = 0
+    @State private var scrolledID: Int? = 0
     @State private var showWidgetPromo = false
     @State private var appeared = false
 
@@ -43,20 +46,17 @@ struct OnboardingShowcaseView: View {
                     .padding(.horizontal, 22)
                     .padding(.top, 8)
 
-                // The device frame stays put; only the screen content swipes
-                // *inside* it. Keeping the glow outside the paging container means
-                // it never gets clipped at the top/bottom of the phone.
-                PhoneFrame(glow: page.accent) {
-                    TabView(selection: $index) {
-                        ForEach(Array(pages.enumerated()), id: \.offset) { i, model in
-                            ShowcaseMockScreen(kind: model.kind, accent: model.accent)
-                                .tag(i)
-                        }
-                    }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
+                // Real gold-framed screenshots, centered, paging inside a soft
+                // premium colour cloud that shifts to each page's accent. The
+                // cloud sits *behind* the phones so it never clips at the edges.
+                ZStack {
+                    ShowcaseColorCloud(accent: page.accent, soft: page.accentSoft)
+                        .animation(.easeInOut(duration: 0.55), value: index)
+
+                    phonePager
                 }
                 .frame(maxHeight: .infinity)
-                .padding(.top, 18)
+                .padding(.top, 14)
 
                 // Copy block — cross-fades per page.
                 copyBlock
@@ -80,6 +80,59 @@ struct OnboardingShowcaseView: View {
             // uygulamaya döner, kademeli olarak showcase'e "düşmez".
             OnboardingWidgetPromoView(onFinish: onFinish)
         }
+    }
+
+    // MARK: - Phone pager (premium paged carousel)
+
+    private var phonePager: some View {
+        ScrollView(.horizontal) {
+            LazyHStack(spacing: 0) {
+                ForEach(Array(pages.enumerated()), id: \.offset) { i, model in
+                    framedPhone(model)
+                        .containerRelativeFrame(.horizontal)
+                        .scrollTransition(.interactive(timingCurve: .easeInOut)) { content, phase in
+                            content
+                                .opacity(reduceMotion ? (phase.isIdentity ? 1 : 0.4) : 1 - abs(phase.value) * 0.55)
+                                .scaleEffect(reduceMotion ? 1 : 1 - abs(phase.value) * 0.16)
+                                .rotation3DEffect(
+                                    .degrees(reduceMotion ? 0 : phase.value * -11),
+                                    axis: (x: 0, y: 1, z: 0), perspective: 0.5
+                                )
+                                .offset(y: reduceMotion ? 0 : abs(phase.value) * 16)
+                        }
+                        .id(i)
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.paging)
+        .scrollPosition(id: $scrolledID, anchor: .center)
+        .scrollIndicators(.hidden)
+        // Let the phone's glow/shadow spill past the scroll bounds instead of
+        // being hard-clipped at the top/bottom edge.
+        .scrollClipDisabled()
+        .onChange(of: scrolledID) { _, new in
+            guard let new, new != index else { return }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { index = new }
+        }
+    }
+
+    /// The screenshot layered UNDER the real gold frame overlay (same crop, so
+    /// `scaledToFit` registers them exactly) — the bezel covers the screen edge,
+    /// so it seats perfectly with no seam.
+    private func framedPhone(_ model: ShowcasePageModel) -> some View {
+        ZStack {
+            Image(showcaseImageName(model.shotKey))
+                .resizable()
+                .scaledToFit()
+
+            Image("ob_frame_gold")
+                .resizable()
+                .scaledToFit()
+        }
+        .padding(.horizontal, 52)
+        .shadow(color: .black.opacity(0.5), radius: 28, y: 18)
+        .shadow(color: model.accent.opacity(0.26), radius: 34)
     }
 
     // MARK: - Top row (progress + skip)
@@ -136,8 +189,10 @@ struct OnboardingShowcaseView: View {
             if isLast {
                 showWidgetPromo = true
             } else {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                    index += 1
+                // Drive the paged scroll; the scroll position's onChange syncs
+                // `index` (cloud, copy, dots) with the same spring.
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                    scrolledID = index + 1
                 }
             }
         } label: {
@@ -167,7 +222,7 @@ struct OnboardingShowcaseView: View {
 // MARK: - Page model
 
 struct ShowcasePageModel {
-    let kind: ShowcaseMockKind
+    let shotKey: String          // asset base: ob_shot_<shotKey>_<lang>
     let eyebrowKey: String
     let titleKey: String
     let accentKey: String
@@ -176,32 +231,42 @@ struct ShowcasePageModel {
     let accentSoft: Color
 
     static let all: [ShowcasePageModel] = [
-        .init(kind: .home,
+        .init(shotKey: "home",
               eyebrowKey: "ob_home_eyebrow", titleKey: "ob_home_title",
               accentKey: "ob_home_accent", benefitKey: "ob_home_benefit",
               accent: Color(arenaHex: AppArenaPalette.cyan),
               accentSoft: Color(arenaHex: AppArenaPalette.blue)),
-        .init(kind: .week,
+        .init(shotKey: "week",
               eyebrowKey: "ob_week_eyebrow", titleKey: "ob_week_title",
               accentKey: "ob_week_accent", benefitKey: "ob_week_benefit",
               accent: Color(arenaHex: AppArenaPalette.coral),
               accentSoft: Color(arenaHex: AppArenaPalette.gold)),
-        .init(kind: .focus,
-              eyebrowKey: "ob_focus_eyebrow", titleKey: "ob_focus_title",
-              accentKey: "ob_focus_accent", benefitKey: "ob_focus_benefit",
-              accent: Color(arenaHex: AppArenaPalette.purple),
-              accentSoft: Color(arenaHex: AppArenaPalette.cyan)),
-        .init(kind: .crew,
+        // Social before Focus — mirrors the real tab-bar order.
+        .init(shotKey: "social",
               eyebrowKey: "ob_crew_eyebrow", titleKey: "ob_crew_title",
               accentKey: "ob_crew_accent", benefitKey: "ob_crew_benefit",
               accent: Color(arenaHex: AppArenaPalette.blue),
               accentSoft: Color(arenaHex: AppArenaPalette.purpleSoft)),
-        .init(kind: .insights,
+        .init(shotKey: "focus",
+              eyebrowKey: "ob_focus_eyebrow", titleKey: "ob_focus_title",
+              accentKey: "ob_focus_accent", benefitKey: "ob_focus_benefit",
+              accent: Color(arenaHex: AppArenaPalette.purple),
+              accentSoft: Color(arenaHex: AppArenaPalette.cyan)),
+        .init(shotKey: "profile",
               eyebrowKey: "ob_ins_eyebrow", titleKey: "ob_ins_title",
               accentKey: "ob_ins_accent", benefitKey: "ob_ins_benefit",
               accent: Color(arenaHex: AppArenaPalette.green),
               accentSoft: Color(arenaHex: AppArenaPalette.cyan))
     ]
+}
+
+/// Language-aware asset name: prefers the current language's capture, always
+/// falls back to English (the guaranteed set) when a localized one is missing.
+func showcaseImageName(_ key: String) -> String {
+    let en = "ob_screen_\(key)_en"
+    guard !appLanguageIsEnglish() else { return en }
+    let tr = "ob_screen_\(key)_tr"
+    return UIImage(named: tr) != nil ? tr : en
 }
 
 // MARK: - Button style
@@ -214,38 +279,40 @@ private struct ShowcaseScaleStyle: ButtonStyle {
     }
 }
 
-// MARK: - Device frame
+// MARK: - Colour cloud
 
-private struct PhoneFrame<Content: View>: View {
-    var glow: Color
-    @ViewBuilder var content: Content
+/// A soft WWDC-style colour cloud behind the framed phone — a few big blurred
+/// blooms in the page's accent that give the page a premium, glowing depth.
+/// Static (no repeating animation); the per-page colour cross-fades via the
+/// caller's `.animation(value: index)`.
+private struct ShowcaseColorCloud: View {
+    var accent: Color
+    var soft: Color
+
+    private var purple: Color { Color(arenaHex: AppArenaPalette.purple) }
 
     var body: some View {
-        content
-            .frame(width: 234, height: 488)
-            .background(Color.black)
-            .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
-            .overlay(alignment: .top) {
-                // Dynamic-island pill.
-                Capsule()
-                    .fill(Color.black)
-                    .frame(width: 78, height: 22)
-                    .padding(.top, 9)
-            }
-            .overlay(
-                RoundedRectangle(cornerRadius: 44, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [UpdoTheme.filmy(0.32), UpdoTheme.filmy(0.06)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 5
-                    )
-            )
-            // Symmetric colored halo (no big vertical offset, so it reads evenly
-            // around all four sides) + a soft grounding shadow underneath.
-            .shadow(color: glow.opacity(0.30), radius: 34)
-            .shadow(color: .black.opacity(0.45), radius: 22, y: 16)
+        ZStack {
+            Circle()
+                .fill(accent.opacity(0.34))
+                .frame(width: 300, height: 300)
+                .blur(radius: 72)
+                .offset(x: -46, y: -70)
+
+            Circle()
+                .fill(purple.opacity(0.28))
+                .frame(width: 290, height: 290)
+                .blur(radius: 84)
+                .offset(x: 64, y: 30)
+
+            Circle()
+                .fill(soft.opacity(0.26))
+                .frame(width: 250, height: 250)
+                .blur(radius: 78)
+                .offset(x: 10, y: 128)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(false)
     }
 }
 

@@ -508,7 +508,7 @@
 "ph_appearance_caps" = "APPEARANCE";
 "ph_w_appearance_app" = "App";
 "ph_w_appearance_icon" = "icon";
-"ph_appearance_sub" = "Change your home screen icon. Gold & Chrome are Updo Pro exclusive.";
+"ph_appearance_sub" = "Change your home screen icon. Gold & Chrome are Updo Premium exclusive.";
 "ph_app_icon_title" = "App Icon";
 "ph_app_icon_variants" = "Steel · Gold · Chrome";
 "ph_live_style_title" = "Live Activity Style";
@@ -585,7 +585,7 @@
 "crew_title_accent" = "Crew";
 "iplc_after_price" = "then 129.99 ₺/mo";
 "crew_see_friends_close" = "See your friends up close";
-"crew_friends_locked_sub" = "Who's focusing, their streak & level — unlock with Updo Pro";
+"crew_friends_locked_sub" = "Who's focusing, their streak & level — unlock with Updo Premium";
 "crew_share_my_stats" = "Share my stats";
 "crew_stats_shared_on" = "Friends can see your streak, level and focus status";
 "crew_stats_shared_off" = "Your stats are hidden from everyone";
@@ -603,7 +603,7 @@
 /* Insights — streak broken & restore */
 "ins_streak_broken_title" = "Streak broken";
 "ins_streak_broken_sub" = "You lost your %d-day streak · dropped 1 level";
-"ins_restore_with_pro" = "Restore with Updo Pro";
+"ins_restore_with_pro" = "Restore with Updo Premium";
 "ins_restore_with_count" = "Restore streak (%d/%d this month)";
 "ins_restore_exhausted" = "No restores left this month";
 
@@ -630,7 +630,7 @@
 /* Friend detail — comparison */
 "fd_compare_caps" = "HEAD TO HEAD";
 "fd_compare_title" = "You &";
-"fd_compare_locked" = "Compare streak, level and focus with your friend — with Updo Pro";
+"fd_compare_locked" = "Compare streak, level and focus with your friend — with Updo Premium";
 "fd_compare_empty" = "Your friend isn't sharing their stats.";
 "fd_cmp_streak" = "STREAK";
 "fd_cmp_level" = "LEVEL";
@@ -723,7 +723,7 @@
 /* Home — streak restore card */
 "hv_streak_broken_title" = "Your %d-day streak broke";
 "hv_streak_broken_sub_pro" = "%d restores left this month — your level comes back too.";
-"hv_streak_broken_sub_free" = "Updo Pro can restore your streak 3× a month.";
+"hv_streak_broken_sub_free" = "Updo Premium can restore your streak 3× a month.";
 "hv_streak_restore_cta" = "Restore";
 
 /* Home — weekly summary card (Sundays) */
@@ -1578,7 +1578,7 @@
 "af_matched_active" = "Matched focus active";
 "ai_focus_summary" = "Last 7 days focus: %1$d min, %2$d sessions";
 "ai_limit_full" = "Limit reached";
-"ai_go_pro_lc" = "go Pro";
+"ai_go_pro_lc" = "go Premium AI";
 "af_host_running" = "%@ is running the session as host";
 
 /* Focus screens */
@@ -2237,10 +2237,10 @@
 "ob_mk_workspace" = "YOUR WORKSPACE";
 "ob_mk_members" = "MEMBERS";
 "ob_mk_crews" = "Crews";
-"ob_sc_see_pro" = "See Updo Pro";
+"ob_sc_see_pro" = "See Updo Premium";
 "ob_widget_title" = "Track your progress from widgets";
 "ob_widget_sub" = "See your schedule, streak, focus minutes and weekly goal at a glance — right from your home screen.";
-"ob_widget_cta" = "Discover Updo Pro";
+"ob_widget_cta" = "Discover Updo Premium";
 "ob_sc_more_prompt" = "Want access to even more?";
 
 /* Home — Getting Started / activation card */
