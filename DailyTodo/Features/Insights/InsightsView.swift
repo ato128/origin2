@@ -323,7 +323,12 @@ struct InsightsView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
-            syncIdentityProgressState()
+            // Defer: syncIdentityProgressState() writes SwiftData (incl. the
+            // @Query sort key updatedAt). Running it synchronously inside the
+            // appear/update transaction mutates a query being read in the same
+            // cycle — a "changes during view update" crash on iOS 26/27. Hopping
+            // to the next runloop tick makes it safe.
+            DispatchQueue.main.async { syncIdentityProgressState() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openSettingsHub)) { _ in
             // App tour son adımı: gerçek app-icon/Live Activity/widget ekranını aç.
@@ -332,10 +337,10 @@ struct InsightsView: View {
             }
         }
         .onChange(of: focusSessions.count) { _, _ in
-            syncIdentityProgressState()
+            DispatchQueue.main.async { syncIdentityProgressState() }
         }
         .onChange(of: filteredTasks.filter(\.isDone).count) { _, _ in
-            syncIdentityProgressState()
+            DispatchQueue.main.async { syncIdentityProgressState() }
         }
         .overlay(alignment: .top) {
             if showLevelUpBanner, let pending = pendingLevelUp {
@@ -990,8 +995,14 @@ struct InsightsView: View {
             VStack(spacing: 14) {
                 frozenAnalyticsCards
             }
-            .blur(radius: 6)
+            // Soft premium frost: pad first so the blur bleeds into transparent
+            // margin (edges FADE instead of hard-clipping), then rasterize ONCE
+            // (drawingGroup → no per-frame Gaussian blur), then pull the layout
+            // back with negative padding. CPU-light, no materials → no crash.
+            .padding(22)
+            .blur(radius: 15)
             .drawingGroup()
+            .padding(-22)
             .disabled(true)
             .allowsHitTesting(false)
 
@@ -1166,53 +1177,56 @@ struct InsightsView: View {
     }
 
     private func completeLevelUpDirectly(to newLevel: Int) {
-        guard let currentUserIDString else {
-            showLevelUpCelebration = false
-            return
-        }
-
-        let safeLevel = min(max(newLevel, 1), InsightsIdentityLevelSystem.maxLevel)
-
-        if let pending = identityLevelUpStates.first(where: {
-            $0.ownerUserID == currentUserIDString &&
-            $0.isPending &&
-            $0.pendingLevel == safeLevel
-        }) {
-            pending.isPending = false
-            pending.completedAt = Date()
-        }
-
-        if let state = identityProgressStates.first(where: {
-            $0.ownerUserID == currentUserIDString
-        }) {
-            state.level = safeLevel
-            state.currentLevel = safeLevel
-            state.totalXP = 0
-            state.focusSessions = identitySnapshot.focusSessions
-            state.completedTasks = identitySnapshot.completedTasks
-            state.streakDays = identitySnapshot.streakDays
-            state.updatedAt = Date()
-        } else {
-            let state = IdentityProgressState(
-                ownerUserID: currentUserIDString,
-                level: safeLevel,
-                totalXP: 0,
-                focusSessions: identitySnapshot.focusSessions,
-                completedTasks: identitySnapshot.completedTasks,
-                streakDays: identitySnapshot.streakDays,
-                currentLevel: safeLevel
-            )
-
-            modelContext.insert(state)
-        }
-
-        try? modelContext.save()
-
+        // Dismiss the celebration FIRST. The SwiftData writes below republish the
+        // @Query and re-render InsightsView synchronously; running them while the
+        // fullScreenCover is still presented re-evaluates its captured content
+        // mid-flight — a crash on iOS 26/27 ("… before returning to profile").
+        // Dismiss, then defer the writes to the next runloop tick.
         showLevelUpCelebration = false
         showIdentityLevelSheet = false
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            syncIdentityProgressState()
+        guard let currentUserIDString else { return }
+        let safeLevel = min(max(newLevel, 1), InsightsIdentityLevelSystem.maxLevel)
+
+        DispatchQueue.main.async {
+            if let pending = identityLevelUpStates.first(where: {
+                $0.ownerUserID == currentUserIDString &&
+                $0.isPending &&
+                $0.pendingLevel == safeLevel
+            }) {
+                pending.isPending = false
+                pending.completedAt = Date()
+            }
+
+            if let state = identityProgressStates.first(where: {
+                $0.ownerUserID == currentUserIDString
+            }) {
+                state.level = safeLevel
+                state.currentLevel = safeLevel
+                state.totalXP = 0
+                state.focusSessions = identitySnapshot.focusSessions
+                state.completedTasks = identitySnapshot.completedTasks
+                state.streakDays = identitySnapshot.streakDays
+                state.updatedAt = Date()
+            } else {
+                let state = IdentityProgressState(
+                    ownerUserID: currentUserIDString,
+                    level: safeLevel,
+                    totalXP: 0,
+                    focusSessions: identitySnapshot.focusSessions,
+                    completedTasks: identitySnapshot.completedTasks,
+                    streakDays: identitySnapshot.streakDays,
+                    currentLevel: safeLevel
+                )
+
+                modelContext.insert(state)
+            }
+
+            try? modelContext.save()
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                syncIdentityProgressState()
+            }
         }
     }
 

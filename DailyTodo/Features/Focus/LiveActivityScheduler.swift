@@ -9,6 +9,7 @@ import Foundation
 import SwiftData
 import BackgroundTasks
 import ActivityKit
+import UIKit
 
 @MainActor
 final class LiveActivityScheduler {
@@ -19,6 +20,9 @@ final class LiveActivityScheduler {
     private let taskID = "com.atakan.DailyTodo.liveactivity.refresh"
     private var timer: Timer?
     private var didRegisterBGTask = false   // ← YENİ
+    /// The app's ONE SwiftData container — the BG task reuses this instead of
+    /// opening a second one on the same store (double-open = lock/crash hazard).
+    private var storedContainer: ModelContainer?
 
     // Burayı SENİN gerçek App Group id'in ile birebir aynı yap
     private let appGroupID = "group.com.atakan.updo"
@@ -38,6 +42,7 @@ final class LiveActivityScheduler {
     }
 
     func startForegroundLoop(container: ModelContainer) {
+        storedContainer = container
         timer?.invalidate()
 
         let context = ModelContext(container)
@@ -59,6 +64,7 @@ final class LiveActivityScheduler {
     }
 
     func rescheduleBackgroundTask(container: ModelContainer) {
+        storedContainer = container
         let context = ModelContext(container)
         scheduleBGTaskForNextEvent(context: context)
     }
@@ -123,54 +129,28 @@ final class LiveActivityScheduler {
         }
 
         Task { @MainActor in
-            guard let groupURL = FileManager.default.containerURL(
-                forSecurityApplicationGroupIdentifier: appGroupID
-            ) else {
-                Log.debug("❌ App Group container bulunamadı")
+            // Device locked → the SwiftData store (protected data) is unavailable.
+            // Opening/reading it here is the classic 0xdead10cc background crash;
+            // skip entirely and let the next scheduled run handle it.
+            guard UIApplication.shared.isProtectedDataAvailable else {
+                Log.debug("🔒 BG task skipped — protected data unavailable (device locked)")
                 task.setTaskCompleted(success: false)
                 return
             }
 
-            let supportURL = groupURL.appendingPathComponent("Library/Application Support")
-
-            do {
-                try FileManager.default.createDirectory(
-                    at: supportURL,
-                    withIntermediateDirectories: true
-                )
-            } catch {
-                Log.debug("❌ App Support create error:", error.localizedDescription)
-            }
-
-            let storeURL = supportURL.appendingPathComponent("default.store")
-
-            let schema = Schema([
-                DTTaskItem.self,
-                EventItem.self,
-                FocusSessionRecord.self
-            ])
-
-            let configuration = ModelConfiguration(
-                schema: schema,
-                url: storeURL
-            )
-
-            do {
-                let container = try ModelContainer(
-                    for: schema,
-                    configurations: [configuration]
-                )
-
-                let context = ModelContext(container)
-
-                self.tick(context: context)
-                self.scheduleBGTaskForNextEvent(context: context)
-
-                task.setTaskCompleted(success: true)
-            } catch {
-                Log.debug("❌ BG ModelContainer error:", error.localizedDescription)
+            // Reuse the app's ONE container. Never open a second ModelContainer on
+            // the same store file (double-open = lock contention / corruption /
+            // crash). If it isn't set yet (rare), just reschedule and bail.
+            guard let container = storedContainer else {
+                Log.debug("⚪️ BG task: no container yet — skipping")
                 task.setTaskCompleted(success: false)
+                return
             }
+
+            let context = ModelContext(container)
+            tick(context: context)
+            scheduleBGTaskForNextEvent(context: context)
+            task.setTaskCompleted(success: true)
         }
     }
 
