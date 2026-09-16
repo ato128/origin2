@@ -12,34 +12,45 @@ struct EmailVerificationView: View {
 
     @State private var isChecking = false
     @State private var isResending = false
+    @State private var heroIn = false
+
+    private var cyan: Color { Color(arenaHex: AppArenaPalette.cyan) }
+    private var blue: Color { Color(arenaHex: AppArenaPalette.blue) }
+    private var purple: Color { Color(arenaHex: AppArenaPalette.purple) }
+    private var coral: Color { Color(arenaHex: AppArenaPalette.coral) }
+    private var pink: Color { Color(arenaHex: "#FF4FA3") }
 
     private var emailText: String {
-        session.pendingVerificationEmail ?? "email adresin"
+        session.pendingVerificationEmail ?? (appLanguageIsEnglish() ? "your email" : "email adresin")
     }
 
     var body: some View {
         ZStack {
-            verificationBackground
+            // Adaptive field (light/dark) — glows tuned to the sticker's cyan / pink / coral palette.
+            ArenaBackground(primaryGlow: cyan, secondaryGlow: pink, warmGlow: coral, intensity: 0.95)
 
             VStack(spacing: 0) {
-                Spacer(minLength: 44)
+                Spacer(minLength: 40)
 
-                VStack(spacing: 24) {
-                    iconSection
+                VStack(spacing: 22) {
+                    emblem
+                        .opacity(heroIn ? 1 : 0)
+                        .offset(y: heroIn ? 0 : 16)
 
-                    VStack(spacing: 12) {
-                        Text("Emailini onayla")
-                            .font(.system(size: 34, weight: .black, design: .rounded))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                            .multilineTextAlignment(.center)
+                    VStack(spacing: 10) {
+                        eyebrow
+                        titleBlock
 
                         Text(tr("ev_subtitle"))
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(UpdoTheme.filmy(0.62))
+                            .font(.system(size: 15.5, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.6))
                             .multilineTextAlignment(.center)
                             .lineSpacing(3)
-                            .padding(.horizontal, 12)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 24)
                     }
+                    .opacity(heroIn ? 1 : 0)
+                    .offset(y: heroIn ? 0 : 12)
 
                     emailCard
 
@@ -48,108 +59,75 @@ struct EmailVerificationView: View {
                     }
                 }
 
-                Spacer(minLength: 28)
+                Spacer(minLength: 22)
 
-                VStack(spacing: 12) {
-                    Button {
-                        Task {
-                            isChecking = true
-                            await session.refreshEmailVerificationStatus()
-                            isChecking = false
-                        }
-                    } label: {
-                        primaryButtonContent(
-                            title: isChecking || session.isLoading ? "Kontrol ediliyor..." : tr("ev_confirmed_continue"),
-                            systemImage: "checkmark.circle.fill",
-                            isLoading: isChecking || session.isLoading
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isChecking || isResending || session.isLoading)
-
-                    Button {
-                        Task {
-                            isResending = true
-                            await session.resendVerificationEmail()
-                            isResending = false
-                        }
-                    } label: {
-                        secondaryButtonContent(
-                            title: isResending ? tr("ev_sending") : tr("ev_resend"),
-                            systemImage: "paperplane.fill",
-                            isLoading: isResending
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isChecking || isResending || session.isLoading)
-
-                    Button {
-                        session.signOut()
-                    } label: {
-                        Text(tr("ev_different_account"))
-                            .font(.system(size: 14, weight: .black, design: .rounded))
-                            .foregroundStyle(UpdoTheme.filmy(0.48))
-                            .frame(height: 42)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isChecking || isResending || session.isLoading)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
+                actions
             }
         }
-        .preferredColorScheme(.dark)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.84).delay(0.05)) { heroIn = true }
+        }
         .task {
             await session.refreshEmailVerificationStatus()
         }
     }
 
-    private var iconSection: some View {
+    // MARK: - Emblem
+
+    private var emblem: some View {
         ZStack {
-            Circle()
-                .fill(Color(arenaHex: "#1593FF").opacity(0.16))
-                .frame(width: 160, height: 160)
-                .blur(radius: 8)
+            // Colour cloud in the emblem's own graffiti palette bleeding onto the screen.
+            Circle().fill(cyan.opacity(0.32)).frame(width: 176, height: 176).blur(radius: 60).offset(x: -30, y: -22)
+            Circle().fill(pink.opacity(0.26)).frame(width: 150, height: 150).blur(radius: 56).offset(x: 42, y: -2)
+            Circle().fill(blue.opacity(0.22)).frame(width: 150, height: 150).blur(radius: 58).offset(x: 6, y: 52)
 
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(arenaHex: "#1593FF").opacity(0.30),
-                            Color(arenaHex: "#7C3AED").opacity(0.24),
-                            UpdoTheme.filmy(0.06)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 118, height: 118)
-                .overlay(
-                    Circle()
-                        .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
-                )
-                .shadow(color: Color(arenaHex: "#7C3AED").opacity(0.24), radius: 24, y: 12)
+            Image("mail_verify_emblem")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 172, height: 172)
+                .shadow(color: cyan.opacity(0.38), radius: 22, y: 8)
+        }
+        .scaleEffect(heroIn ? 1 : 0.84)
+    }
 
-            Image(systemName: "envelope.badge.shield.half.filled")
-                .font(.system(size: 46, weight: .black))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            Color(arenaHex: "#2DD4FF"),
-                            Color(arenaHex: "#7C3AED")
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+    // MARK: - Title
+
+    private var eyebrow: some View {
+        HStack(spacing: 8) {
+            Rectangle().fill(cyan.opacity(0.75)).frame(width: 18, height: 1)
+            Text(tr("ev_eyebrow"))
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .tracking(2.8)
+                .foregroundStyle(cyan)
+            Rectangle().fill(cyan.opacity(0.75)).frame(width: 18, height: 1)
         }
     }
+
+    private var titleBlock: some View {
+        VStack(spacing: 1) {
+            Text(tr("ev_title"))
+                .font(.system(size: 33, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+
+            Text(tr("ev_title_accent"))
+                .font(.system(size: 30, weight: .regular, design: .serif))
+                .italic()
+                .foregroundStyle(
+                    LinearGradient(colors: [cyan, purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+        }
+        .multilineTextAlignment(.center)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+    }
+
+    // MARK: - Cards
 
     private var emailCard: some View {
         HStack(spacing: 13) {
             Image(systemName: "envelope.fill")
                 .font(.system(size: 17, weight: .black))
-                .foregroundStyle(Color(arenaHex: "#2DD4FF"))
+                .foregroundStyle(cyan)
                 .frame(width: 42, height: 42)
                 .background(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
@@ -157,7 +135,7 @@ struct EmailVerificationView: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(appLanguageIsEnglish() ? "EMAIL PENDING CONFIRMATION" : "ONAY BEKLEYEN EMAIL")
+                Text(tr("ev_pending_caps"))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.4)
                     .foregroundStyle(UpdoTheme.filmy(0.42))
@@ -208,6 +186,64 @@ struct EmailVerificationView: View {
         .padding(.horizontal, 24)
     }
 
+    // MARK: - Actions
+
+    private var actions: some View {
+        VStack(spacing: 12) {
+            Text(tr("ev_spam_tip"))
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(UpdoTheme.filmy(0.4))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
+                .padding(.bottom, 2)
+
+            Button {
+                Task {
+                    isChecking = true
+                    await session.refreshEmailVerificationStatus()
+                    isChecking = false
+                }
+            } label: {
+                primaryButtonContent(
+                    title: isChecking || session.isLoading ? tr("ev_checking") : tr("ev_confirmed_continue"),
+                    systemImage: "checkmark.circle.fill",
+                    isLoading: isChecking || session.isLoading
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isChecking || isResending || session.isLoading)
+
+            Button {
+                Task {
+                    isResending = true
+                    await session.resendVerificationEmail()
+                    isResending = false
+                }
+            } label: {
+                secondaryButtonContent(
+                    title: isResending ? tr("ev_sending") : tr("ev_resend"),
+                    systemImage: "paperplane.fill",
+                    isLoading: isResending
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isChecking || isResending || session.isLoading)
+
+            Button {
+                session.signOut()
+            } label: {
+                Text(tr("ev_different_account"))
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(UpdoTheme.filmy(0.48))
+                    .frame(height: 42)
+            }
+            .buttonStyle(.plain)
+            .disabled(isChecking || isResending || session.isLoading)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 30)
+    }
+
     private func primaryButtonContent(
         title: String,
         systemImage: String,
@@ -225,7 +261,7 @@ struct EmailVerificationView: View {
             Text(title)
                 .font(.system(size: 17, weight: .black, design: .rounded))
         }
-        .foregroundStyle(UpdoTheme.textPrimary)
+        .foregroundStyle(UpdoTheme.onAccent)
         .frame(maxWidth: .infinity)
         .frame(height: 58)
         .background(
@@ -244,7 +280,7 @@ struct EmailVerificationView: View {
         )
         .overlay(
             Capsule()
-                .stroke(UpdoTheme.filmy(0.14), lineWidth: 1)
+                .stroke(Color.white.opacity(0.16), lineWidth: 1)
         )
         .shadow(color: Color(arenaHex: "#7C3AED").opacity(0.26), radius: 18, y: 9)
     }
@@ -257,7 +293,7 @@ struct EmailVerificationView: View {
         HStack(spacing: 10) {
             if isLoading {
                 ProgressView()
-                    .tint(Color(arenaHex: "#2DD4FF"))
+                    .tint(cyan)
             } else {
                 Image(systemName: systemImage)
                     .font(.system(size: 15, weight: .black))
@@ -266,7 +302,7 @@ struct EmailVerificationView: View {
             Text(title)
                 .font(.system(size: 15, weight: .black, design: .rounded))
         }
-        .foregroundStyle(Color(arenaHex: "#2DD4FF"))
+        .foregroundStyle(cyan)
         .frame(maxWidth: .infinity)
         .frame(height: 54)
         .background(
@@ -277,51 +313,5 @@ struct EmailVerificationView: View {
                         .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
                 )
         )
-    }
-
-    private var verificationBackground: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    Color(arenaHex: "#05060D"),
-                    Color(arenaHex: "#070713"),
-                    Color(arenaHex: "#07040C")
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(Color(arenaHex: "#1593FF").opacity(0.12))
-                .frame(width: 300, height: 300)
-                .blur(radius: 110)
-                .offset(x: 170, y: -250)
-
-            Circle()
-                .fill(Color(arenaHex: "#7C3AED").opacity(0.18))
-                .frame(width: 340, height: 340)
-                .blur(radius: 120)
-                .offset(x: -185, y: 480)
-
-            Circle()
-                .fill(Color(arenaHex: "#FF5A44").opacity(0.075))
-                .frame(width: 270, height: 270)
-                .blur(radius: 100)
-                .offset(x: 175, y: 260)
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.16),
-                    Color.black.opacity(0),
-                    Color.black.opacity(0.44)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        }
     }
 }

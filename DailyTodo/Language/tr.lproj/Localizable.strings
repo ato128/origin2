@@ -1970,7 +1970,13 @@
 "su_name_short" = "İsim çok kısa.";
 "su_valid_email" = "Geçerli email gir.";
 "su_signup_failed" = "Kayıt oluşturulamadı.";
-"ev_subtitle" = "Updo hesabını aktifleştirmek için sana gönderdiğimiz bağlantıya bas.";
+"ev_eyebrow" = "SON ADIM";
+"ev_title" = "Postanı";
+"ev_title_accent" = "kontrol et";
+"ev_subtitle" = "Sana az önce bir mail gönderdik — Updo hesabını aktifleştirmek için içindeki bağlantıya dokun.";
+"ev_pending_caps" = "ONAY BEKLEYEN ADRES";
+"ev_spam_tip" = "Mail görünmüyorsa spam ya da tanıtımlar klasörüne bakmayı unutma.";
+"ev_checking" = "Kontrol ediliyor...";
 "ev_confirmed_continue" = "Onayladım, devam et";
 "ev_sending" = "Gönderiliyor...";
 "ev_resend" = "Maili tekrar gönder";

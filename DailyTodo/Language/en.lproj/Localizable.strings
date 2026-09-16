@@ -1968,7 +1968,13 @@
 "su_name_short" = "Name is too short.";
 "su_valid_email" = "Enter a valid email.";
 "su_signup_failed" = "Couldn't create the account.";
-"ev_subtitle" = "Tap the link we sent you to activate your Updo account.";
+"ev_eyebrow" = "ALMOST THERE";
+"ev_title" = "Check your";
+"ev_title_accent" = "inbox";
+"ev_subtitle" = "We just sent you an email — tap the link inside to activate your Updo account.";
+"ev_pending_caps" = "AWAITING CONFIRMATION";
+"ev_spam_tip" = "Don't see it? Check your spam or promotions folder.";
+"ev_checking" = "Checking...";
 "ev_confirmed_continue" = "I've confirmed, continue";
 "ev_sending" = "Sending...";
 "ev_resend" = "Resend email";

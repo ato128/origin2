@@ -15,6 +15,7 @@ struct AuthView: View {
     @State private var appleNonce: String?
     @State private var isSocialWorking = false
     @State private var authError: String?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
@@ -34,7 +35,6 @@ struct AuthView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
         }
-        .preferredColorScheme(.dark)
         .sheet(item: $activeSheet) { sheet in
             NavigationStack {
                 switch sheet {
@@ -202,10 +202,10 @@ private extension AuthView {
             } onCompletion: { result in
                 handleAppleCompletion(result)
             }
-            .signInWithAppleButtonStyle(.white)
+            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
             .frame(height: 54)
             .clipShape(Capsule())
-            .shadow(color: .black.opacity(0.28), radius: 12, y: 5)
+            .shadow(color: UpdoTheme.cardShadow(0.28), radius: 12, y: 5)
 
             // Google — same weight, white capsule with the real multi-color mark.
             Button(action: startGoogleSignIn) {
@@ -219,7 +219,8 @@ private extension AuthView {
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(Capsule().fill(.white))
-                .shadow(color: .black.opacity(0.28), radius: 12, y: 5)
+                .overlay(Capsule().strokeBorder(Color.black.opacity(colorScheme == .dark ? 0 : 0.10), lineWidth: 1))
+                .shadow(color: UpdoTheme.cardShadow(0.28), radius: 12, y: 5)
             }
             .buttonStyle(AuthPressButtonStyle())
 
@@ -345,56 +346,14 @@ private enum AuthArenaPalette {
 // MARK: - Background
 
 private struct AuthArenaBackground: View {
+    // Adaptive light/dark field, glows in the Updo palette (blue / purple / coral).
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    Color(arenaHex: AuthArenaPalette.backgroundTop),
-                    Color(arenaHex: AuthArenaPalette.backgroundMid),
-                    Color(arenaHex: AuthArenaPalette.backgroundBottom)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(Color(arenaHex: AuthArenaPalette.appBlue).opacity(0.12))
-                .frame(width: 280, height: 280)
-                .blur(radius: 100)
-                .offset(x: 170, y: -250)
-
-            Circle()
-                .fill(Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.18))
-                .frame(width: 330, height: 330)
-                .blur(radius: 115)
-                .offset(x: -180, y: 500)
-
-            Circle()
-                .fill(Color(arenaHex: AuthArenaPalette.coral).opacity(0.075))
-                .frame(width: 280, height: 280)
-                .blur(radius: 105)
-                .offset(x: 170, y: 300)
-
-            Circle()
-                .fill(Color(arenaHex: AuthArenaPalette.gold).opacity(0.050))
-                .frame(width: 240, height: 240)
-                .blur(radius: 95)
-                .offset(x: -170, y: -180)
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.18),
-                    Color.black.opacity(0.0),
-                    Color.black.opacity(0.44)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        }
+        ArenaBackground(
+            primaryGlow: Color(arenaHex: AuthArenaPalette.appBlue),
+            secondaryGlow: Color(arenaHex: AuthArenaPalette.appPurple),
+            warmGlow: Color(arenaHex: AuthArenaPalette.coral),
+            intensity: 1.0
+        )
     }
 }
 
@@ -607,7 +566,6 @@ struct ProfileSetupView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 22)
         }
-        .preferredColorScheme(.dark)
         .animation(.easeInOut(duration: 0.3), value: step)
         .onAppear {
             if username.isEmpty {
