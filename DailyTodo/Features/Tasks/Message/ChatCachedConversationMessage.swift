@@ -10,7 +10,10 @@ import SwiftData
 
 @Model
 final class ChatCachedConversationMessage {
-    @Attribute(.unique)
+    // NOTE: intentionally NOT @Attribute(.unique). A unique constraint makes
+    // SwiftData's persistent-history count SQL crash on iOS 27 (HistoryObserver
+    // → CoreData newSQLStatementForRequest throws → SIGABRT). Uniqueness is
+    // enforced manually: callers fetch by cacheKey and update-or-insert (upsert).
     var cacheKey: String
 
     var ownerUserID: UUID
