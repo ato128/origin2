@@ -24,6 +24,8 @@ struct OnboardingShowcaseView: View {
     @State private var index = 0
     @State private var scrolledID: Int? = 0
     @State private var showWidgetPromo = false
+    @State private var showInvite = false
+    @State private var pendingWidget = false
     @State private var appeared = false
 
     private let pages = ShowcasePageModel.all
@@ -75,9 +77,18 @@ struct OnboardingShowcaseView: View {
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) { appeared = true }
         }
+        // Akış: showcase → DAVET → widget → uygulama. Önce davet ekranı; kapanınca
+        // (cover-üstüne-cover yarışı olmadan, dismiss sonrası) widget tanıtımı.
+        .fullScreenCover(isPresented: $showInvite, onDismiss: {
+            if pendingWidget { pendingWidget = false; showWidgetPromo = true }
+        }) {
+            OnboardingInviteView(onFinish: {
+                pendingWidget = true
+                showInvite = false
+            })
+        }
+        // Son adım: widget tanıtımı → bittiğinde uygulamaya girilir.
         .fullScreenCover(isPresented: $showWidgetPromo) {
-            // onFinish (= enterApp) doğrudan çağrılır: onboarding kökü tek seferde
-            // uygulamaya döner, kademeli olarak showcase'e "düşmez".
             OnboardingWidgetPromoView(onFinish: onFinish)
         }
     }
@@ -150,7 +161,7 @@ struct OnboardingShowcaseView: View {
 
             Button {
                 HapticManager.shared.navigation()
-                showWidgetPromo = true
+                showInvite = true
             } label: {
                 Text(tr("common_skip"))
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
@@ -187,7 +198,7 @@ struct OnboardingShowcaseView: View {
         Button {
             HapticManager.shared.action()
             if isLast {
-                showWidgetPromo = true
+                showInvite = true
             } else {
                 // Drive the paged scroll; the scroll position's onChange syncs
                 // `index` (cloud, copy, dots) with the same spring.
@@ -313,6 +324,236 @@ private struct ShowcaseColorCloud: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(false)
+    }
+}
+
+// MARK: - Referral invite (post-showcase)
+//
+// Referral (Model B): invite friends who are new to Updo. When 3 newly-installed
+// friends add you, the backend grants 1 month free Updo Premium (gold). No codes.
+//   • progress — X/3 pips + Share + "maybe later".
+//   • earned   — celebrate the free month, then upsell Premium AI.
+// (Kept in this file because Features/Onboarding uses explicit pbxproj membership.)
+
+struct OnboardingInviteView: View {
+    var onFinish: () -> Void = {}
+
+    @EnvironmentObject var session: SessionStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var status: ReferralBackendClient.Status?
+    @State private var appeared = false
+    @State private var heroIn = false
+    @State private var showPremiumAI = false
+
+    private var gold: Color { Color(arenaHex: AppArenaPalette.gold) }
+    private var coral: Color { Color(arenaHex: AppArenaPalette.coral) }
+    private var cyan: Color { Color(arenaHex: AppArenaPalette.cyan) }
+    private var blue: Color { Color(arenaHex: AppArenaPalette.blue) }
+
+    private var qualified: Int { min(status?.qualified ?? 0, needed) }
+    private var needed: Int { status?.needed ?? 3 }
+    private var rewardGranted: Bool { status?.rewardGranted ?? false }
+    private var link: String { status?.link ?? "https://updo.me" }
+
+    private var shareText: String {
+        var text = tr("ob_invite_share_text") + link
+        if let username = session.currentUser?.username,
+           !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            text += "\n@\(username)"
+        }
+        return text
+    }
+
+    var body: some View {
+        ZStack {
+            // Background glow reflects the emblem art (rocket cyan/coral/orange,
+            // logo cyan/blue) — the "photo colours bleed onto the screen".
+            ArenaBackground(
+                primaryGlow: cyan,
+                secondaryGlow: rewardGranted ? blue : coral,
+                warmGlow: rewardGranted ? cyan : gold,
+                intensity: 0.95
+            )
+
+            VStack(spacing: 0) {
+                topBar
+                Spacer(minLength: 8)
+                hero
+                    .opacity(heroIn ? 1 : 0)
+                    .offset(y: heroIn ? 0 : 18)
+                Spacer(minLength: 8)
+                actions
+                    .opacity(heroIn ? 1 : 0)
+                    .offset(y: heroIn ? 0 : 12)
+            }
+            .opacity(appeared ? 1 : 0)
+        }
+        // Adaptive — respects the app's light/dark theme.
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.5)) { appeared = true }
+            withAnimation(.spring(response: 0.62, dampingFraction: 0.84).delay(0.08)) { heroIn = true }
+        }
+        .task { status = try? await ReferralBackendClient.shared.status() }
+        .fullScreenCover(isPresented: $showPremiumAI, onDismiss: { onFinish() }) {
+            PaywallView(context: "referral_premium_ai")
+        }
+    }
+
+    private var topBar: some View {
+        HStack {
+            Spacer()
+            Button {
+                HapticManager.shared.navigation()
+                onFinish()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(UpdoTheme.filmy(0.92))
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(UpdoTheme.filmy(0.14)))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+    }
+
+    private var hero: some View {
+        VStack(spacing: 18) {
+            badge
+
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Rectangle().fill(gold).frame(width: 20, height: 1)
+                    Text(rewardGranted ? tr("ob_invite_reward_eyebrow") : tr("ob_invite_eyebrow"))
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.4)
+                        .foregroundStyle(gold)
+                    Rectangle().fill(gold).frame(width: 20, height: 1)
+                }
+
+                Text(rewardGranted ? tr("ob_invite_reward_title") : tr("ob_invite_title"))
+                    .font(.system(size: 32, weight: .black))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .multilineTextAlignment(.center)
+
+                Text(rewardGranted ? tr("ob_invite_reward_accent") : tr("ob_invite_accent"))
+                    .font(.system(size: 27, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(
+                        LinearGradient(colors: [gold, coral], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .multilineTextAlignment(.center)
+            }
+
+            Text(rewardGranted ? tr("ob_invite_reward_sub") : tr("ob_invite_sub"))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(UpdoTheme.filmy(0.6))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 30)
+
+            if !rewardGranted {
+                progressPips.padding(.top, 4)
+            }
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private var badge: some View {
+        ZStack {
+            // Colour reflection from the emblem art — soft blurred blooms in the
+            // image's own palette bleeding onto the screen behind it.
+            if rewardGranted {
+                Circle().fill(cyan.opacity(0.34)).frame(width: 200, height: 200).blur(radius: 62)
+                Circle().fill(blue.opacity(0.22)).frame(width: 150, height: 150).blur(radius: 54).offset(y: 26)
+            } else {
+                Circle().fill(cyan.opacity(0.30)).frame(width: 150, height: 150).blur(radius: 52).offset(x: -34, y: -26)
+                Circle().fill(coral.opacity(0.26)).frame(width: 150, height: 150).blur(radius: 52).offset(x: 42, y: 4)
+                Circle().fill(gold.opacity(0.24)).frame(width: 140, height: 140).blur(radius: 52).offset(x: 4, y: 54)
+            }
+
+            Image(rewardGranted ? "ob_invite_logo" : "ob_invite_rocket")
+                .resizable()
+                .scaledToFit()
+                .frame(width: rewardGranted ? 176 : 158, height: rewardGranted ? 176 : 158)
+                .shadow(color: cyan.opacity(0.40), radius: 22, y: 6)
+        }
+        .scaleEffect(heroIn ? 1 : 0.82)
+    }
+
+    private var progressPips: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                ForEach(0..<needed, id: \.self) { i in
+                    Circle()
+                        .fill(i < qualified
+                              ? AnyShapeStyle(LinearGradient(colors: [gold, coral], startPoint: .top, endPoint: .bottom))
+                              : AnyShapeStyle(UpdoTheme.filmy(0.14)))
+                        .frame(width: 14, height: 14)
+                        .overlay(Circle().stroke(i < qualified ? gold.opacity(0.5) : UpdoTheme.filmy(0.18), lineWidth: 1))
+                        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: qualified)
+                }
+            }
+            Text(tr("ob_invite_progress", qualified, needed))
+                .font(.system(size: 12, weight: .black, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(UpdoTheme.filmy(0.5))
+        }
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        VStack(spacing: 12) {
+            if rewardGranted {
+                Button {
+                    HapticManager.shared.action()
+                    showPremiumAI = true
+                } label: {
+                    primaryLabel(icon: "sparkles", title: tr("ob_invite_discover_ai"))
+                }
+                .buttonStyle(.plain)
+                secondaryButton(tr("common_continue")) { onFinish() }
+            } else {
+                ShareLink(item: shareText) {
+                    primaryLabel(icon: "square.and.arrow.up", title: tr("ob_invite_share"))
+                }
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded { HapticManager.shared.action() })
+
+                secondaryButton(tr("common_continue")) { onFinish() }
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.bottom, 40)
+    }
+
+    private func primaryLabel(icon: String, title: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon).font(.system(size: 15, weight: .black))
+            Text(title).font(.system(size: 17, weight: .black))
+        }
+        .foregroundStyle(.black)
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .background(
+            Capsule()
+                .fill(LinearGradient(colors: [gold, coral], startPoint: .leading, endPoint: .trailing))
+                .shadow(color: gold.opacity(0.4), radius: 16, y: 8)
+        )
+    }
+
+    private func secondaryButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(UpdoTheme.filmy(0.55))
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+        }
+        .buttonStyle(.plain)
     }
 }
 

@@ -2241,6 +2241,20 @@
 "ob_widget_title" = "Track your progress from widgets";
 "ob_widget_sub" = "See your schedule, streak, focus minutes and weekly goal at a glance — right from your home screen.";
 "ob_widget_cta" = "Discover Updo Premium";
+
+"ob_invite_eyebrow" = "INVITE";
+"ob_invite_title" = "Invite 3 friends";
+"ob_invite_accent" = "1 month Premium, free";
+"ob_invite_sub" = "When 3 friends new to Updo add you, you unlock 1 month of Updo Premium — on us.";
+"ob_invite_progress" = "%d / %d friends joined";
+"ob_invite_share" = "Invite friends";
+"ob_invite_skip" = "Maybe later";
+"ob_invite_share_text" = "Join me on Updo — focus, plan and build streaks with friends! Add me 👉 ";
+"ob_invite_reward_eyebrow" = "CONGRATS";
+"ob_invite_reward_title" = "1 month Premium";
+"ob_invite_reward_accent" = "is yours 🎉";
+"ob_invite_reward_sub" = "Now discover Updo Premium AI — your unlimited AI coach, planner and more.";
+"ob_invite_discover_ai" = "Discover Updo Premium AI";
 "ob_sc_more_prompt" = "Want access to even more?";
 
 /* Home — Getting Started / activation card */

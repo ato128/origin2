@@ -2242,6 +2242,20 @@
 "ob_widget_title" = "Gelişimini widget'lardan takip et";
 "ob_widget_sub" = "Programını, serini, odak dakikalarını ve haftalık hedefini ana ekranından tek bakışta gör.";
 "ob_widget_cta" = "Updo Premium'u Keşfet";
+
+"ob_invite_eyebrow" = "DAVET ET";
+"ob_invite_title" = "3 arkadaş davet et";
+"ob_invite_accent" = "1 ay Premium hediye";
+"ob_invite_sub" = "Updo'yu ilk kez indiren 3 arkadaşın seni eklediğinde 1 ay Updo Premium senin — bedava.";
+"ob_invite_progress" = "%d / %d arkadaş katıldı";
+"ob_invite_share" = "Arkadaşları davet et";
+"ob_invite_skip" = "Şimdilik geç";
+"ob_invite_share_text" = "Updo'ya katıl — odak, plan ve arkadaşlarınla seri yap! Beni ekle 👉 ";
+"ob_invite_reward_eyebrow" = "TEBRİKLER";
+"ob_invite_reward_title" = "1 ay Premium senin";
+"ob_invite_reward_accent" = "hediye edildi 🎉";
+"ob_invite_reward_sub" = "Bir de Updo Premium AI'ı keşfet — sınırsız AI koçun, planlayıcın ve daha fazlası.";
+"ob_invite_discover_ai" = "Updo Premium AI'ı keşfet";
 "ob_sc_more_prompt" = "Daha fazlasına erişmek ister misin?";
 
 /* Home — Getting Started / activation card */

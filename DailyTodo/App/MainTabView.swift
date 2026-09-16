@@ -85,6 +85,7 @@ struct MainTabView: View {
 
     @State private var tab: AppTab = .tasks
     @State private var pendingChatRoute: PendingChatRoute?
+    @State private var showReferralReward = false
 
     private var activeTab: AppTab { forcedTab ?? tab }
 
@@ -106,6 +107,10 @@ struct MainTabView: View {
                 pendingChatDestination(route)
             }
         }
+        // Referral reward earned (3 new-install friends) → refresh Premium and
+        // celebrate + upsell Premium AI. Extracted to a modifier to keep this
+        // (already large) body type-checkable.
+        .modifier(ReferralRewardPresenter(isPresented: $showReferralReward, session: session))
         .onAppear {
             Log.debug("MAIN TAB CURRENT USER:", session.currentUser?.id.uuidString ?? "nil")
 
@@ -880,5 +885,27 @@ extension View {
     /// Attach at the app root so social banners float above all content.
     func socialBannerOverlay() -> some View {
         modifier(SocialBannerHostModifier())
+    }
+}
+
+// MARK: - Referral reward presenter
+
+/// Presents the referral celebration (+ Premium AI upsell) when the backend
+/// grants the free month, and refreshes the RevenueCat entitlement. Kept in a
+/// modifier so MainTabView's body stays type-checkable.
+private struct ReferralRewardPresenter: ViewModifier {
+    @Binding var isPresented: Bool
+    let session: SessionStore
+
+    func body(content: Content) -> some View {
+        content
+            .fullScreenCover(isPresented: $isPresented) {
+                OnboardingInviteView(onFinish: { isPresented = false })
+                    .environmentObject(session)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .referralRewardGranted)) { _ in
+                Task { await SubscriptionManager.shared.refresh() }
+                isPresented = true
+            }
     }
 }

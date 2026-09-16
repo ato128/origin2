@@ -129,6 +129,7 @@ struct CrewHomeView: View {
     @State private var communityScope: CrewCommunityScope = .department
     @State private var leaderboardRange: CrewLeaderboardRange = .week
     @State private var showRequestsSheet: Bool = false
+    @State private var showReferralInvite: Bool = false
 
     init(
         initialTab: CrewTabMode,
@@ -205,6 +206,8 @@ struct CrewHomeView: View {
                     }
 
                     if mode == .social || !FeatureFlags.communityEnabled {
+                        referralEntryCard
+
                         CrewSocialContent(
                             selectedTab: $socialTab,
                             summary: summary,
@@ -255,6 +258,50 @@ struct CrewHomeView: View {
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(28)
         }
+        .fullScreenCover(isPresented: $showReferralInvite) {
+            OnboardingInviteView(onFinish: { showReferralInvite = false })
+        }
+    }
+
+    // MARK: - Referral entry (invite 3 new friends → 1 month Premium)
+
+    private var referralEntryCard: some View {
+        let gold = Color(arenaHex: AppArenaPalette.gold)
+        return Button {
+            HapticManager.shared.action()
+            showReferralInvite = true
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(gold.opacity(0.16)).frame(width: 40, height: 40)
+                    Image(systemName: "gift.fill")
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(gold)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tr("ob_invite_title"))
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text(tr("ob_invite_accent"))
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.filmy(0.55))
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(UpdoTheme.filmy(0.35))
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(UpdoTheme.filmy(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(gold.opacity(0.22), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

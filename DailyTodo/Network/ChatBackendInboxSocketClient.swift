@@ -319,6 +319,12 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
                             case "friend_removed":
                                 postFriendRemovedEvent(payload: event.payload)
 
+                            // Referral reward: 3 new-install friends reached → 1
+                            // month Premium granted server-side. Trigger the
+                            // in-app celebration + entitlement refresh.
+                            case "referral_reward_granted":
+                                NotificationCenter.default.post(name: .referralRewardGranted, object: nil)
+
             default:
                 break
             }

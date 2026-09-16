@@ -616,4 +616,7 @@ extension Notification.Name {
     static let friendRequestReceived = Notification.Name("friendRequestReceived")
     static let friendRequestAccepted = Notification.Name("friendRequestAccepted")
     static let friendRemoved = Notification.Name("friendRemoved")
+
+    // Referral: 3 new-install friends reached → 1 month Premium was granted.
+    static let referralRewardGranted = Notification.Name("referralRewardGranted")
 }
