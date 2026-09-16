@@ -8,6 +8,7 @@
 
 
 import SwiftUI
+import SwiftData
 
 // MARK: - Crew Arena Palette
 

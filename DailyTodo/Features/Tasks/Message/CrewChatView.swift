@@ -5,6 +5,7 @@
 //  Created by Atakan Ortaç on 15.03.2026.
 //
 import SwiftUI
+import SwiftData
 import Combine
 import PhotosUI
 import UIKit
