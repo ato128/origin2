@@ -102,6 +102,15 @@ struct DailyTodoApp: App {
                 )
             }
 
+            // iOS 26/27 SwiftData bug: the HistoryObserver crashes (CoreData SQL
+            // generator throws in newSQLStatementForRequest → uncaught NSException
+            // → SIGABRT) while draining accumulated persistent history shortly
+            // after launch. We never rely on cross-process/persistent history, so
+            // purge ALL of it here — before any @Query starts observing. try? so it
+            // never blocks launch.
+            let historyPurgeContext = ModelContext(container)
+            try? historyPurgeContext.deleteHistory(HistoryDescriptor<DefaultHistoryTransaction>())
+
             FocusCompletionRecorder.shared.configure(container: container)
 
             let context = ModelContext(container)
