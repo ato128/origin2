@@ -951,7 +951,8 @@ struct UpdoAIView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + (undo == nil ? 2 : 6)) {
             guard token == toastToken else { return }   // superseded by a newer toast
             withAnimation(.easeOut(duration: 0.22)) { showToast = false }
-            undoAction = nil
+            // NOTE: keep `undoAction` alive past the toast — the user can still type
+            // "geri al" a bit later. It's replaced by the next action or on undo.
         }
     }
 
@@ -999,6 +1000,18 @@ struct UpdoAIView: View {
     /// paid LLM for real conversation.
     private func routeUserInput(_ text: String) {
         guard let uid = currentUserID else { return }
+
+        // 0-undo. Son aksiyondan sonra "geri al / geri sil / iptal / undo" yazınca
+        //         gerçekten geri al (toast butonuna basmaya gerek yok).
+        if undoAction != nil, isUndoPhrase(text) {
+            undoAction?()
+            undoAction = nil
+            toastToken += 1
+            withAnimation(.easeOut(duration: 0.2)) { showToast = false }
+            chatStore.appendLocalExchange(userText: text, assistantText: aiUsesTurkish ? "Geri aldım. ✅" : "Undone. ✅")
+            hapticResponse.notificationOccurred(.success)
+            return
+        }
 
         // 0a. Bekleyen plan kartını "ekle / evet" yazınca GERÇEKTEN ekle
         //     (kullanıcı kart butonuna basmak yerine yazabilir).
@@ -1408,7 +1421,9 @@ struct UpdoAIView: View {
             let t = aiFold(title(it))
             var score = 0
             if t == q { score = 100 }
-            else if t.contains(q) || q.contains(t) { score = 60 + min(q.count, t.count) }
+            else if (t.contains(q) || q.contains(t)) && min(t.count, q.count) >= 3 {
+                score = 60 + min(q.count, t.count)
+            }
             else {
                 let tTokens = Set(t.split(separator: " ").map(String.init))
                 var stemHits = 0
@@ -1632,6 +1647,18 @@ struct UpdoAIView: View {
             if !items.isEmpty { return (msg.id, items) }
         }
         return nil
+    }
+
+    /// "geri al", "geri sil", "iptal", "undo"… — an undo request (only acted on
+    /// when there's actually a pending undo). Tolerant of the "geri sl" typo.
+    private func isUndoPhrase(_ text: String) -> Bool {
+        let f = aiFold(text)
+        let exact: Set<String> = [
+            "geri al", "geri al bunu", "geri alalim", "geriye al", "geri",
+            "geri sl", "geri sil", "geri sil bunu", "iptal", "iptal et", "vazgec",
+            "undo", "undo it", "cancel", "revert"
+        ]
+        return exact.contains(f)
     }
 
     private func isAddConfirmation(_ text: String) -> Bool {

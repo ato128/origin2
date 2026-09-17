@@ -48,14 +48,20 @@ enum UpdoAICommandInterpreter {
             .union(trMove).union(enMove)
     }
 
-    // Words that mean "this is a question / negation / statement", never a command.
+    // Words that mean "this is a question / negation / statement / descriptive
+    // sentence", never a clean command. If ANY appears we bail to the LLM so it can
+    // UNDERSTAND the sentence first (ChatGPT/Claude-style) instead of this parser
+    // grabbing a keyword and producing garbage ("ders olarak değil ekle…" → junk).
     private static let stopWords: Set<String> = [
         "mi", "mu", "misin", "misiniz", "misind", "miyim",
         "nereye", "nerede", "nereden", "nasil", "neden", "niye", "nicin", "hangi",
         "kim", "kac", "yapma", "etme", "yapmasana", "olmaz",
         "gozukmuyor", "gorunmuyor", "goremiyorum", "gozukmedi", "gelmedi", "gozukmuyo",
         "diyorum", "diyor", "dedim", "dedin", "dedi", "demistim", "sanirim", "galiba", "herhalde",
-        "how", "why", "where", "which", "dont", "don't", "not"
+        // Negation + descriptive / meta-instruction markers → conversational, LLM'e ait.
+        "degil", "olarak", "goreyim", "gorelim", "gorunsun", "gozuksun", "yerine",
+        "olsun", "istiyorum", "isterim", "gibi", "sanki", "yani", "ama", "fakat", "ancak",
+        "how", "why", "where", "which", "dont", "don't", "not", "instead", "rather", "want", "as"
     ]
 
     // Time-of-day hints (ignored in the title; "akşam/gece" push a <12 hour to PM).
@@ -124,9 +130,9 @@ enum UpdoAICommandInterpreter {
         let tokens = tokenize(fold(text))
         let originalWords = tokenize(text)
 
-        // Commands are short imperatives. One word is too ambiguous; long sentences
-        // are conversation.
-        guard tokens.count >= 2, tokens.count <= 9 else { return nil }
+        // Commands are short imperatives. One word is too ambiguous; anything longer
+        // than a terse command is a sentence → let the LLM understand it.
+        guard tokens.count >= 2, tokens.count <= 7 else { return nil }
 
         // Any question/negation/statement marker → not a command.
         if tokens.contains(where: { stopWords.contains($0) }) { return nil }
@@ -135,7 +141,10 @@ enum UpdoAICommandInterpreter {
         // ekle", "bunları haftaya koy") aren't literal add-commands — the user
         // means the AI's proposal, which the plan card handles. Send to the LLM.
         let referenceStems = ["dedik", "dedig", "soyled", "bunlar", "sunlar", "onlar",
-                              "yukar", "seklinde", "onerd", "hepsi", "plani", "planlari", "program"]
+                              "yukar", "seklinde", "onerd", "hepsi", "plani", "planlari", "program",
+                              // Az önce yapılan işe atıf ("yeni koyduğumuz dersi sil",
+                              // "eklediğimizi kaldır", "sonuncuyu sil") — LLM bağlamı bilir.
+                              "koydu", "ekledig", "eklediklerim", "sonuncu", "sondaki", "demin"]
         if tokens.contains(where: { tok in referenceStems.contains { tok.hasPrefix($0) } }) { return nil }
 
         // Multi-item ("pzt 9 mat, salı 10 fizik ekle"): 2+ distinct day words mean
@@ -483,7 +492,12 @@ enum UpdoAICommandInterpreter {
             let t = fold(title(item))
             var score = 0
             if t == q { score = 100 }
-            else if t.contains(q) || q.contains(t) { score = 60 + min(q.count, t.count) }
+            // Substring match — but only when the shorter side is ≥3 chars, so a
+            // 1–2 letter title (e.g. a task literally named "N") can't match any
+            // query that merely CONTAINS that letter → no more "Silindi: N".
+            else if (t.contains(q) || q.contains(t)) && min(t.count, q.count) >= 3 {
+                score = 60 + min(q.count, t.count)
+            }
             else {
                 let tTokens = Set(t.split(separator: " ").map(String.init))
                 let overlap = qTokens.intersection(tTokens).count
