@@ -33,6 +33,9 @@ struct UpdoAIView: View {
     @State private var showClearAlert = false
     @State private var showToast = false
     @State private var toastText = ""
+    // Safety net: an AI action can be undone from the toast for a few seconds.
+    @State private var undoAction: (() -> Void)? = nil
+    @State private var toastToken = 0
     @State private var emptyStateAppeared = false
     @State private var executedActionIDs: Set<UUID> = []
     @State private var dismissedActionIDs: Set<UUID> = []
@@ -884,7 +887,6 @@ struct UpdoAIView: View {
                 Button {
                     addPlanItems(items)
                     withAnimation(.easeInOut(duration: 0.18)) { _ = executedActionIDs.insert(msgID) }
-                    triggerToast(tr("ai_tasks_added"))
                 } label: {
                     Text(tr("common_add"))
                         .font(.subheadline.weight(.semibold))
@@ -907,12 +909,27 @@ struct UpdoAIView: View {
     // MARK: - Toast
 
     private var toastBanner: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
             Text(toastText)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(UpdoTheme.textPrimary)
+
+            if let undo = undoAction {
+                Rectangle().fill(UpdoTheme.filmy(0.18)).frame(width: 1, height: 16)
+                Button {
+                    undo()
+                    undoAction = nil
+                    toastToken += 1
+                    withAnimation(.easeOut(duration: 0.2)) { showToast = false }
+                } label: {
+                    Text(aiUsesTurkish ? "Geri al" : "Undo")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(UpdoTheme.cyan)
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
@@ -923,11 +940,18 @@ struct UpdoAIView: View {
         )
     }
 
-    private func triggerToast(_ text: String) {
+    /// Shows the confirmation toast. When `undo` is supplied a "Geri al / Undo"
+    /// button rides along and the toast lingers longer so the user can reverse it.
+    private func triggerToast(_ text: String, undo: (() -> Void)? = nil) {
         toastText = text
+        undoAction = undo
+        toastToken += 1
+        let token = toastToken
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { showToast = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + (undo == nil ? 2 : 6)) {
+            guard token == toastToken else { return }   // superseded by a newer toast
             withAnimation(.easeOut(duration: 0.22)) { showToast = false }
+            undoAction = nil
         }
     }
 
@@ -982,7 +1006,6 @@ struct UpdoAIView: View {
             addPlanItems(pending.items)
             _ = executedActionIDs.insert(pending.msgID)
             chatStore.appendLocalExchange(userText: text, assistantText: tr("ai_tasks_added"))
-            triggerToast(tr("ai_tasks_added"))
             hapticResponse.notificationOccurred(.success)
             return
         }
@@ -1002,6 +1025,14 @@ struct UpdoAIView: View {
         // 0c. Uygulama-içi navigasyon (hafta / analiz / crew).
         if let nav = detectNavigation(text) {
             handleNavigation(nav, userText: text)
+            return
+        }
+
+        // 0d. Sınav çalışma planı isteği → aralıklı tekrar planını YERELDE üret (0 token).
+        if let exam = examPlanRequest(text) {
+            let reply = generateExamPlan(for: exam)
+            chatStore.appendLocalExchange(userText: text, assistantText: reply)
+            hapticResponse.notificationOccurred(.success)
             return
         }
 
@@ -1087,14 +1118,28 @@ struct UpdoAIView: View {
                 return aiUsesTurkish ? "Eklenecek bir görev bulamadım." : "No tasks to add."
             }
             addPlanItems(items)
-            triggerToast(tr("ai_tasks_added"))
             return tr("ai_tasks_added")
+
+        case "add_lessons":
+            let added = addLessonItems(tool.args)
+            guard added > 0 else {
+                return aiUsesTurkish ? "Eklenecek bir ders bulamadım." : "No lessons to add."
+            }
+            return aiUsesTurkish
+                ? (added == 1 ? "Dersi haftana ekledim. 📚" : "\(added) dersi haftana ekledim. 📚")
+                : (added == 1 ? "Added the lesson to your week. 📚" : "Added \(added) lessons to your week. 📚")
+
+        case "edit_item":
+            return editItem(tool.args)
+
+        case "plan_exam":
+            return planExamTool(tool.args)
 
         case "complete_task":
             return runInterpreterCommand(titleArg: tool.args["title"], verbTR: "tamamla", verbEN: "complete")
 
         case "delete_task":
-            return runInterpreterCommand(titleArg: tool.args["title"], verbTR: "sil", verbEN: "delete")
+            return deleteTaskWithUndo(tool.args["title"])
 
         case "open_screen":
             return openScreenByName((tool.args["screen"] as? String) ?? "week")
@@ -1133,6 +1178,363 @@ struct UpdoAIView: View {
             let dur = d["durationMinutes"] as? Int
             return UpdoAIPlanItem(title: title, dueDate: due, durationMinutes: dur)
         }
+    }
+
+    /// Deletes a task via the interpreter but snapshots it first, so the removed
+    /// task can be re-created with one "Geri al / Undo" tap (Gmail-style — safer
+    /// than a confirm dialog). Event/exam deletions still apply, just without undo.
+    private func deleteTaskWithUndo(_ titleArg: Any?) -> String {
+        let before = store.items.map { t in (
+            id: t.persistentModelID, title: t.title, dueDate: t.dueDate, notes: t.notes,
+            taskType: t.taskType, colorName: t.colorName, courseName: t.courseName,
+            weekDate: t.scheduledWeekDate, weekDur: t.scheduledWeekDurationMinutes,
+            workoutDur: t.workoutDurationMinutes
+        ) }
+        let reply = runInterpreterCommand(titleArg: titleArg, verbTR: "sil", verbEN: "delete")
+        let afterIDs = Set(store.items.map { $0.persistentModelID })
+        if let s = before.first(where: { !afterIDs.contains($0.id) }) {
+            triggerToast(aiUsesTurkish ? "Silindi" : "Deleted", undo: {
+                store.add(
+                    title: s.title, dueDate: s.dueDate, notes: s.notes, taskType: s.taskType,
+                    colorName: s.colorName, courseName: s.courseName,
+                    scheduledWeekDate: s.weekDate, scheduledWeekDurationMinutes: s.weekDur,
+                    workoutDurationMinutes: s.workoutDur
+                )
+            })
+        }
+        return reply
+    }
+
+    /// Adds weekly LESSONS (calendar slots on a specific weekday + clock time) to
+    /// the week — the "ders" counterpart of `add_tasks`. Backend sends weekday as
+    /// 1=Mon…7=Sun; EventItem uses 0=Mon…6=Sun. Mirrors the local interpreter's
+    /// `makeAddEvent` (insert + widget sync + reminder). Returns how many landed.
+    private func addLessonItems(_ args: [String: Any]) -> Int {
+        guard let raw = args["lessons"] as? [[String: Any]] else { return 0 }
+
+        let uid = currentUserID
+        let existing = ((try? modelContext.fetch(FetchDescriptor<EventItem>())) ?? [])
+            .filter { $0.ownerUserID == uid || $0.ownerUserID == nil }
+
+        var inserted: [EventItem] = []
+        for d in raw {
+            guard let rawTitle = (d["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !rawTitle.isEmpty,
+                  let start = parseClockToMinute(d["startTime"]) else { continue }
+
+            let isoWeekday = (d["weekday"] as? Int) ?? ((d["weekday"] as? String).flatMap { Int($0) } ?? 1)
+            let modelWeekday = max(0, min(6, isoWeekday - 1))
+            let duration = max(15, (d["durationMinutes"] as? Int) ?? 60)
+            let title = String(rawTitle.prefix(1).uppercased() + rawTitle.dropFirst())
+
+            // Çift kayıt koruması: aynı gün + aynı saat + aynı ad → tekrar ekleme.
+            let dup = existing.contains {
+                $0.weekday == modelWeekday && $0.startMinute == start && aiFold($0.title) == aiFold(title)
+            } || inserted.contains {
+                $0.weekday == modelWeekday && $0.startMinute == start && aiFold($0.title) == aiFold(title)
+            }
+            if dup { continue }
+
+            let ev = EventItem(
+                ownerUserID: uid, title: title,
+                weekday: modelWeekday, startMinute: start,
+                durationMinute: duration,
+                scheduledDate: nextDate(forModelWeekday: modelWeekday),
+                colorHex: "#3B82F6"
+            )
+            modelContext.insert(ev)
+            let scheduled = ev
+            Task {
+                await NotificationManager.shared.schedule(for: scheduled, minutesBefore: 10)
+                await NotificationManager.shared.schedule(for: scheduled, minutesBefore: 0)
+            }
+            inserted.append(ev)
+        }
+        guard !inserted.isEmpty else { return 0 }
+        try? modelContext.save()
+        WidgetAppSync.refreshFromSwiftData(context: modelContext)
+
+        // Undo: remove exactly what we just added (+ cancel its reminders).
+        let toUndo = inserted
+        triggerToast(aiUsesTurkish ? "Haftana eklendi" : "Added to your week", undo: {
+            for ev in toUndo {
+                Task { await NotificationManager.shared.cancel(for: ev) }
+                modelContext.delete(ev)
+            }
+            try? modelContext.save()
+            WidgetAppSync.refreshFromSwiftData(context: modelContext)
+        })
+        return inserted.count
+    }
+
+    /// "18:00" / "9.30" / "9" → minutes-of-day, or nil if not a plausible clock.
+    private func parseClockToMinute(_ value: Any?) -> Int? {
+        guard let s = (value as? String)?.trimmingCharacters(in: .whitespaces), !s.isEmpty else { return nil }
+        let parts = s.split(whereSeparator: { $0 == ":" || $0 == "." }).map(String.init)
+        guard let h = Int(parts[0]), (0...23).contains(h) else { return nil }
+        let m = parts.count > 1 ? (Int(parts[1]) ?? 0) : 0
+        guard (0...59).contains(m) else { return nil }
+        return h * 60 + m
+    }
+
+    /// Next calendar date (incl. today) whose model weekday (0=Mon…6=Sun) matches.
+    private func nextDate(forModelWeekday w: Int) -> Date {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        for offset in 0...7 {
+            if let d = cal.date(byAdding: .day, value: offset, to: today),
+               (cal.component(.weekday, from: d) + 5) % 7 == w { return d }
+        }
+        return today
+    }
+
+    /// Edits/moves an existing LESSON (EventItem) or TASK — the missing third verb
+    /// next to add/delete. Only the fields present in `args` change; a lesson is
+    /// mutated in place (+ reminder reschedule), a task via the store so its
+    /// metadata is preserved. Returns a confirmation for the chat.
+    private func editItem(_ args: [String: Any]) -> String {
+        guard let query = (args["query"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !query.isEmpty else {
+            return aiUsesTurkish ? "Neyi düzenleyeyim anlayamadım." : "Couldn't tell what to edit."
+        }
+
+        let newWeekday = (args["newWeekday"] as? Int).map { max(0, min(6, $0 - 1)) }
+        let newStart = parseClockToMinute(args["newStartTime"])
+        let newDuration = (args["newDurationMinutes"] as? Int).map { max(15, $0) }
+        let rawNewTitle = (args["newTitle"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let newTitle = (rawNewTitle?.isEmpty == false)
+            ? String(rawNewTitle!.prefix(1).uppercased() + rawNewTitle!.dropFirst()) : nil
+        let newDate: Date? = {
+            guard let s = args["newDate"] as? String, !s.isEmpty else { return nil }
+            let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+            return f.date(from: String(s.prefix(10)))
+        }()
+
+        guard newWeekday != nil || newStart != nil || newDuration != nil || newTitle != nil || newDate != nil else {
+            return aiUsesTurkish ? "Ne değiştireyim belirtmedin." : "You didn't say what to change."
+        }
+
+        let uid = currentUserID
+        let allEvents = (try? modelContext.fetch(FetchDescriptor<EventItem>())) ?? []
+        let events = allEvents.filter { $0.ownerUserID == uid || $0.ownerUserID == nil }
+        let eventHit = fuzzyBest(query, events) { $0.title }
+        let taskHit = fuzzyBest(query, store.items) { $0.title }
+
+        // Route by the kind of change: lesson-shaped fields → lesson; a date → task.
+        let lessonOnly = (newWeekday != nil || newStart != nil) && newDate == nil
+        let taskOnly = newDate != nil && newWeekday == nil && newStart == nil
+        let editEvent = lessonOnly ? (eventHit != nil)
+            : taskOnly ? false
+            : (eventHit != nil)   // ambiguous (rename/duration only) → prefer a matched lesson
+
+        if editEvent, let ev = eventHit {
+            // Snapshot for undo.
+            let prevWeekday = ev.weekday, prevStart = ev.startMinute
+            let prevDuration = ev.durationMinute, prevTitle = ev.title, prevDate = ev.scheduledDate
+
+            if let w = newWeekday { ev.weekday = w; ev.scheduledDate = nextDate(forModelWeekday: w) }
+            if let s = newStart { ev.startMinute = s }
+            if let d = newDuration { ev.durationMinute = d }
+            if let t = newTitle { ev.title = t }
+            try? modelContext.save()
+            WidgetAppSync.refreshFromSwiftData(context: modelContext)
+            let evc = ev
+            Task {
+                await NotificationManager.shared.cancel(for: evc)
+                await NotificationManager.shared.schedule(for: evc, minutesBefore: 10)
+                await NotificationManager.shared.schedule(for: evc, minutesBefore: 0)
+            }
+            triggerToast(aiUsesTurkish ? "Güncellendi" : "Updated", undo: {
+                evc.weekday = prevWeekday; evc.startMinute = prevStart
+                evc.durationMinute = prevDuration; evc.title = prevTitle; evc.scheduledDate = prevDate
+                try? modelContext.save()
+                WidgetAppSync.refreshFromSwiftData(context: modelContext)
+                Task {
+                    await NotificationManager.shared.cancel(for: evc)
+                    await NotificationManager.shared.schedule(for: evc, minutesBefore: 10)
+                    await NotificationManager.shared.schedule(for: evc, minutesBefore: 0)
+                }
+            })
+            return aiUsesTurkish ? "«\(ev.title)» güncellendi. ✅" : "Updated \"\(ev.title)\". ✅"
+        }
+
+        if let task = taskHit {
+            // Snapshot for undo.
+            let prevTitle = task.title, prevDue = task.dueDate
+            let prevWeekDate = task.scheduledWeekDate, prevWeekDur = task.scheduledWeekDurationMinutes
+            let tid = task.persistentModelID
+
+            if newTitle != nil {
+                store.update(
+                    itemID: tid,
+                    title: newTitle ?? task.title,
+                    dueDate: newDate ?? task.dueDate,
+                    notes: task.notes,
+                    taskType: task.taskType,
+                    colorName: task.colorName,
+                    courseName: task.courseName,
+                    scheduledWeekDate: newDate ?? task.scheduledWeekDate,
+                    scheduledWeekDurationMinutes: newDuration ?? task.scheduledWeekDurationMinutes,
+                    workoutDurationMinutes: task.workoutDurationMinutes
+                )
+            } else if let d = newDate {
+                store.reschedule(task, to: d)
+            }
+            let name = newTitle ?? task.title
+            triggerToast(aiUsesTurkish ? "Güncellendi" : "Updated", undo: {
+                guard let t = store.items.first(where: { $0.persistentModelID == tid }) else { return }
+                store.update(
+                    itemID: tid, title: prevTitle, dueDate: prevDue,
+                    notes: t.notes, taskType: t.taskType, colorName: t.colorName, courseName: t.courseName,
+                    scheduledWeekDate: prevWeekDate, scheduledWeekDurationMinutes: prevWeekDur,
+                    workoutDurationMinutes: t.workoutDurationMinutes
+                )
+            })
+            return aiUsesTurkish ? "«\(name)» güncellendi. ✅" : "Updated \"\(name)\". ✅"
+        }
+
+        return aiUsesTurkish ? "«\(query)» diye bir ders/görev bulamadım." : "Couldn't find \"\(query)\"."
+    }
+
+    /// Fuzzy title match (fold + exact/contains/token overlap), score-thresholded.
+    /// Mirrors the interpreter's matcher so AI edits hit the right item despite
+    /// typos or Turkish suffixes.
+    private func fuzzyBest<T>(_ query: String, _ items: [T], _ title: (T) -> String) -> T? {
+        let q = aiFold(query)
+        guard !q.isEmpty else { return nil }
+        let qTokens = Set(q.split(separator: " ").map(String.init))
+        var best: (item: T, score: Int)? = nil
+        for it in items {
+            let t = aiFold(title(it))
+            var score = 0
+            if t == q { score = 100 }
+            else if t.contains(q) || q.contains(t) { score = 60 + min(q.count, t.count) }
+            else {
+                let tTokens = Set(t.split(separator: " ").map(String.init))
+                var stemHits = 0
+                for qt in qTokens where qt.count >= 4 {
+                    if tTokens.contains(where: { $0.count >= 4 && ($0.hasPrefix(qt) || qt.hasPrefix($0) || $0.commonPrefix(with: qt).count >= 4) }) {
+                        stemHits += 1
+                    }
+                }
+                score = max(qTokens.intersection(tTokens).count, stemHits) * 25
+            }
+            if score >= 25, best == nil || score > best!.score { best = (it, score) }
+        }
+        return best?.item
+    }
+
+    // MARK: - Exam study plan (spaced repetition)
+
+    /// LLM `plan_exam` entry: resolve the exam (by name or nearest) then build.
+    private func planExamTool(_ args: [String: Any]) -> String {
+        let title = (args["examTitle"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let exam = resolveExam(named: title) else {
+            return aiUsesTurkish
+                ? "Yaklaşan bir sınav bulamadım. Önce sınavı ekleyelim mi?"
+                : "No upcoming exam found. Want to add one first?"
+        }
+        return generateExamPlan(for: exam)
+    }
+
+    /// Finds the exam to plan for: fuzzy match on a given name (title or course),
+    /// else the nearest upcoming one.
+    private func resolveExam(named title: String?) -> ExamItem? {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let upcoming = ((try? modelContext.fetch(FetchDescriptor<ExamItem>())) ?? [])
+            .filter { ($0.ownerUserID == currentUserID || $0.ownerUserID == nil) && $0.examDate >= today }
+            .sorted { $0.examDate < $1.examDate }
+        guard !upcoming.isEmpty else { return nil }
+        if let t = title, !t.isEmpty {
+            if let hit = fuzzyBest(t, upcoming, { $0.title.isEmpty ? $0.courseName : $0.title }) { return hit }
+            if let hit = fuzzyBest(t, upcoming, { $0.courseName }) { return hit }
+        }
+        return upcoming.first
+    }
+
+    /// Builds a spaced-repetition study plan working back from the exam date and
+    /// adds the sessions to the week as exam-study tasks (linked to the exam, so
+    /// deleting the exam cleans them up). Idempotent per day + undoable.
+    private func generateExamPlan(for exam: ExamItem) -> String {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let examDay = cal.startOfDay(for: exam.examDate)
+        let n = cal.dateComponents([.day], from: today, to: examDay).day ?? 0
+        let subject = exam.courseName.isEmpty ? exam.title : exam.courseName
+
+        guard n >= 1 else {
+            return aiUsesTurkish
+                ? "«\(subject)» sınavı bugün veya geçmiş — plan çıkaramadım."
+                : "That exam is today or past — can't build a plan."
+        }
+
+        let offsets = spacedOffsets(daysUntil: n)
+        let dur = exam.preferredStudyMinutes > 0 ? exam.preferredStudyMinutes : 45
+        // Idempotency: don't stack a second session on a day this exam already has.
+        let existingDates = Set(store.items
+            .filter { $0.linkedExamID == exam.id }
+            .compactMap { $0.dueDate.map { cal.startOfDay(for: $0) } })
+        let beforeIDs = Set(store.items.map { $0.persistentModelID })
+
+        for (i, off) in offsets.enumerated() {
+            guard let date = cal.date(byAdding: .day, value: off, to: today) else { continue }
+            if existingDates.contains(cal.startOfDay(for: date)) { continue }
+            let kind: String
+            if i == 0 { kind = aiUsesTurkish ? "konu çalış" : "learn" }
+            else if off == n - 1 { kind = aiUsesTurkish ? "final tekrar" : "final review" }
+            else { kind = aiUsesTurkish ? "tekrar" : "review" }
+            store.addExamStudyTask(exam: exam, title: "\(subject) — \(kind)", suggestedMinutes: dur, dueDate: date)
+        }
+
+        let added = store.items.filter { !beforeIDs.contains($0.persistentModelID) }
+        guard !added.isEmpty else {
+            return aiUsesTurkish ? "«\(subject)» için plan zaten hazır görünüyor." : "A plan for \(subject) already exists."
+        }
+        let addedIDs = Set(added.map { $0.persistentModelID })
+        triggerToast(aiUsesTurkish ? "Sınav planı eklendi" : "Exam plan added", undo: {
+            for t in store.items where addedIDs.contains(t.persistentModelID) { store.delete(t) }
+        })
+
+        let count = added.count
+        return aiUsesTurkish
+            ? "«\(subject)» sınavına \(n) gün var. \(count) seanslık aralıklı tekrar planı hazırlayıp haftana ekledim 📚 — sınava yaklaştıkça tekrarlar sıklaşıyor. İstersen «geri al»."
+            : "\(n) days to your \(subject) exam. I built a \(count)-session spaced-repetition plan and added it to your week 📚 — reviews get denser as the exam nears."
+    }
+
+    /// Day offsets (from today) for spaced study sessions: widening gaps early
+    /// (the spacing effect) with a guaranteed final review the day before, capped
+    /// so the plan stays realistic.
+    private func spacedOffsets(daysUntil n: Int) -> [Int] {
+        guard n >= 1 else { return [] }
+        if n <= 3 { return Array(0..<n) }            // short runway → study each day up to the eve
+        var offsets: [Int] = []
+        var day = 0, gap = 2
+        while day <= n - 1 {
+            offsets.append(day)
+            day += gap
+            gap += 1                                  // gaps widen: 2,3,4,5…
+        }
+        var set = Set(offsets)
+        set.insert(n - 1)                             // always a final review the day before
+        var sorted = set.sorted()
+        if sorted.count > 8 { sorted = Array(sorted.prefix(7)) + [sorted.last!] }
+        return sorted
+    }
+
+    /// Token-free detector: an exam study-plan request → the exam to plan for, or
+    /// nil if it isn't one (or no upcoming exam). Lets "sınav planı yap" run locally.
+    private func examPlanRequest(_ text: String) -> ExamItem? {
+        let tokens = aiTokens(text)
+        guard !tokens.isEmpty else { return nil }
+        let stop: Set<String> = ["mi","mu","misin","nasil","neden","niye","hangi","kac","ne","how","why","what","when"]
+        if tokens.contains(where: { stop.contains($0) }) { return nil }
+        let examStems = ["sinav","final","vize","quiz","butunleme","midterm","exam"]
+        let planStems = ["plan","program","hazirla","calisma","calis"]
+        let hasExam = tokens.contains { t in examStems.contains { t.hasPrefix($0) } }
+        let hasPlan = tokens.contains { t in planStems.contains { t.hasPrefix($0) } }
+        guard hasExam, hasPlan else { return nil }
+        return resolveExam(named: text)
     }
 
     private func runInterpreterCommand(titleArg: Any?, verbTR: String, verbEN: String) -> String {
@@ -1187,12 +1589,22 @@ struct UpdoAIView: View {
     }
 
     private func addPlanItems(_ items: [UpdoAIPlanItem]) {
-        let today = Calendar.current.startOfDay(for: Date())
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let existing = store.items
+        let beforeIDs = Set(existing.map { $0.persistentModelID })
+
         for item in items {
             // "Haftaya ekle": tarih verilmişse onu kullan; verilmemişse bugüne koy —
             // böylece görev haftada MUTLAKA görünür (WeekView `scheduledWeekDate ??
             // dueDate` ile yerleştiriyor; ikisi de nil ise görünmüyordu).
             let weekDate = item.dueDate ?? today
+            // Çift kayıt koruması: aynı başlık, aynı gün, hâlâ açıksa tekrar ekleme.
+            let dup = existing.contains { t in
+                !t.isDone && aiFold(t.title) == aiFold(item.title)
+                && ((t.scheduledWeekDate ?? t.dueDate).map { cal.isDate($0, inSameDayAs: weekDate) } ?? false)
+            }
+            if dup { continue }
             store.add(
                 title: item.title,
                 dueDate: weekDate,
@@ -1200,6 +1612,16 @@ struct UpdoAIView: View {
                 scheduledWeekDurationMinutes: item.durationMinutes
             )
         }
+
+        let added = store.items.filter { !beforeIDs.contains($0.persistentModelID) }
+        guard !added.isEmpty else {
+            triggerToast(aiUsesTurkish ? "Zaten ekliydi" : "Already added")
+            return
+        }
+        let addedIDs = Set(added.map { $0.persistentModelID })
+        triggerToast(tr("ai_tasks_added"), undo: {
+            for t in store.items where addedIDs.contains(t.persistentModelID) { store.delete(t) }
+        })
     }
 
     /// En son, henüz eklenmemiş/kapatılmamış plan kartı olan asistan mesajı.

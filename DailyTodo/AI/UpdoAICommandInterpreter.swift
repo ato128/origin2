@@ -138,6 +138,12 @@ enum UpdoAICommandInterpreter {
                               "yukar", "seklinde", "onerd", "hepsi", "plani", "planlari", "program"]
         if tokens.contains(where: { tok in referenceStems.contains { tok.hasPrefix($0) } }) { return nil }
 
+        // Multi-item ("pzt 9 mat, salı 10 fizik ekle"): 2+ distinct day words mean
+        // several lessons/tasks at once, which this single-item parser would garble
+        // into one wrong slot. Defer to the LLM — its add_lessons handles a whole
+        // weekly timetable cleanly. (One day = still a clean single command.)
+        if tokens.filter({ dayParse($0) != nil }).count >= 2 { return nil }
+
         // Exactly one intent verb anywhere → action. (Exact match already rejects
         // "ekledim"/"ekleme"; stop-words reject questions/statements. Position is
         // NOT required, so "Fizik dersi koy 21 ile 22.30" works.)
