@@ -213,7 +213,11 @@ struct InsightsView: View {
             stableBackground
 
             if showTopBlur {
-                ArenaHeaderScrim(height: 128, materialHeight: 82)
+                // Clean gradient fade only (materialHeight: 0) — the .ultraThinMaterial
+                // band read as a faint smudge behind the "Profil" title on scroll, and
+                // materials are a render risk on iOS 27. The gradient keeps the small
+                // title legible without any blur.
+                ArenaHeaderScrim(height: 122, materialHeight: 0)
                     .ignoresSafeArea(edges: .top)
                     .transition(.opacity)
             }
@@ -957,88 +961,154 @@ struct InsightsView: View {
         .insightsCardReveal()
     }
 
-    // The frozen analytics used only behind the Pro lock: same real numbers,
-    // but with no per-card scroll-reveal so the whole stack is static and can
-    // be flattened into a single GPU layer.
-    @ViewBuilder
-    private var frozenAnalyticsCards: some View {
-        InsightsDataDashboard(
-            focusSessions: filteredFocusSessions,
-            tasks: filteredTasks,
-            accent: insightsAccent,
-            allFocusSessions: focusSessions,
-            friends: localFriends,
-            myName: resolvedUserName,
-            myStreak: progression.currentStreak,
-            myLevel: storedIdentityLevel,
-            revealOnScroll: false
-        )
+    // Premium teaser for the Pro analytics. Deliberately a DESIGNED preview card —
+    // NOT the real heavy dashboard, and with NO `.drawingGroup()` / material /
+    // Gaussian blur. Those flatten the analytics into an offscreen Metal texture,
+    // and on iOS 27 tearing that layer down (which happens the instant Pro unlocks
+    // and `contentSection` swaps this out) crashes in the render server. This card
+    // is pure static SwiftUI shapes: light, crash-free, and reads as premium.
+    private var lockedAnalytics: some View {
+        let gold = Color(arenaHex: AppArenaPalette.gold)
+        let accent = insightsAccent
+        let isEN = appLanguageIsEnglish()
 
-        InsightsStreakCalendarCard(
-            tasks: filteredTasks,
-            focusSessions: filteredFocusSessions,
-            accent: insightsAccent
+        return VStack(alignment: .leading, spacing: 16) {
+            // Header — icon + title + Pro pill.
+            HStack(spacing: 11) {
+                Image(systemName: "chart.bar.xaxis.ascending")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(accent)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(accent.opacity(0.14))
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isEN ? "Analytics" : "Analizler")
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+
+                    Text(isEN ? "Your progress, measured" : "İlerlemen, ölçülerle")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.filmy(0.55))
+                }
+
+                Spacer(minLength: 0)
+
+                lockedProPill(gold: gold)
+            }
+
+            lockedPreviewChart(accent: accent)
+
+            VStack(alignment: .leading, spacing: 10) {
+                lockedFeatureRow(icon: "clock.badge.checkmark",
+                                 text: isEN ? "Focus trend & weekly hours" : "Odak trendi & haftalık saat",
+                                 accent: accent)
+                lockedFeatureRow(icon: "checklist",
+                                 text: isEN ? "Task completion rate" : "Görev tamamlama oranı",
+                                 accent: accent)
+                lockedFeatureRow(icon: "flame.fill",
+                                 text: isEN ? "Streak calendar" : "Seri takvimi",
+                                 accent: accent)
+                lockedFeatureRow(icon: "person.2.fill",
+                                 text: isEN ? "Friend leaderboard" : "Arkadaş kıyaslaması",
+                                 accent: accent)
+            }
+
+            Button {
+                HapticManager.shared.action()
+                showPremium = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.open.fill").font(.system(size: 14, weight: .black))
+                    Text(isEN ? "Unlock with Pro" : "Pro ile aç")
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    Capsule().fill(
+                        LinearGradient(colors: [gold, accent], startPoint: .leading, endPoint: .trailing)
+                    )
+                )
+                .shadow(color: gold.opacity(0.34), radius: 16, y: 6)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(AppArenaPalette.surfaceColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [accent.opacity(0.34), gold.opacity(0.26)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+                .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 8)
         )
     }
 
-    // Real analytics, softly frosted behind a light Pro lock — the screen looks
-    // the same (numbers/charts visible), just a gentle "soft premium" blur.
-    //
-    // The frosted layer is rasterized once via `.drawingGroup()`: the blur is
-    // baked into a single Metal texture instead of re-running a full-tree
-    // Gaussian blur on every scroll frame (that was the scroll jank / GPU load).
-    private var lockedAnalytics: some View {
-        let gold = Color(arenaHex: AppArenaPalette.gold)
-        let isEN = appLanguageIsEnglish()
+    private func lockedProPill(gold: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "crown.fill").font(.system(size: 9, weight: .black))
+            Text("PRO")
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(1.2)
+        }
+        .foregroundStyle(.black)
+        .padding(.horizontal, 10)
+        .frame(height: 23)
+        .background(
+            Capsule().fill(
+                LinearGradient(colors: [gold, Color(arenaHex: AppArenaPalette.goldSoft)],
+                               startPoint: .leading, endPoint: .trailing)
+            )
+        )
+    }
 
-        return ZStack {
-            VStack(spacing: 14) {
-                frozenAnalyticsCards
-            }
-            // Soft premium frost: pad first so the blur bleeds into transparent
-            // margin (edges FADE instead of hard-clipping), then rasterize ONCE
-            // (drawingGroup → no per-frame Gaussian blur), then pull the layout
-            // back with negative padding. CPU-light, no materials → no crash.
-            .padding(22)
-            .blur(radius: 15)
-            .drawingGroup()
-            .padding(-22)
-            .disabled(true)
-            .allowsHitTesting(false)
+    private func lockedFeatureRow(icon: String, text: String, accent: Color) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(accent)
+                .frame(width: 20)
 
-            // Compact, elegant unlock — no heavy scrim, content stays visible.
-            VStack(spacing: 8) {
-                Text(isEN ? "Analytics · Pro" : "Analizler · Pro")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.6)
-                    .foregroundStyle(UpdoTheme.filmy(0.7))
+            Text(text)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(UpdoTheme.filmy(0.82))
 
-                Button {
-                    HapticManager.shared.action()
-                    showPremium = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "lock.fill").font(.system(size: 13, weight: .black))
-                        Text(isEN ? "Unlock with Pro" : "Pro ile aç")
-                            .font(.system(size: 14.5, weight: .black, design: .rounded))
-                    }
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 20).frame(height: 44)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(colors: [gold, insightsAccent], startPoint: .leading, endPoint: .trailing)
-                        )
+            Spacer(minLength: 0)
+        }
+    }
+
+    // Static mock mini bar chart — pure shapes, no blur / drawingGroup / material.
+    private func lockedPreviewChart(accent: Color) -> some View {
+        let heights: [CGFloat] = [0.34, 0.56, 0.44, 0.72, 0.5, 0.86, 0.64]
+
+        return HStack(alignment: .bottom, spacing: 8) {
+            ForEach(heights.indices, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(
+                        LinearGradient(colors: [accent, accent.opacity(0.30)],
+                                       startPoint: .top, endPoint: .bottom)
                     )
-                    .shadow(color: .black.opacity(0.28), radius: 12, y: 5)
-                    .shadow(color: gold.opacity(0.35), radius: 18, y: 0)
-                }
-                .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: max(10, 74 * heights[i]))
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            HapticManager.shared.action()
-            showPremium = true
+        .frame(height: 74, alignment: .bottom)
+        .padding(.top, 2)
+        .overlay(alignment: .topTrailing) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 10, weight: .black))
+                .foregroundStyle(UpdoTheme.filmy(0.38))
         }
     }
 

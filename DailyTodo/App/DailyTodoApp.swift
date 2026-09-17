@@ -37,20 +37,44 @@ struct DailyTodoApp: App {
 
     init() {
         do {
-            guard let groupURL = FileManager.default.containerURL(
-                forSecurityApplicationGroupIdentifier: appGroupID
-            ) else {
-                fatalError("App Group container bulunamadı")
-            }
+            let fm = FileManager.default
 
-            let supportURL = groupURL.appendingPathComponent("Library/Application Support")
-
-            try FileManager.default.createDirectory(
-                at: supportURL,
-                withIntermediateDirectories: true
+            // --- SwiftData store lives in the app's OWN sandbox (iOS 27 crash fix) ---
+            // It used to live in the shared APP GROUP container, but nothing else reads
+            // it (widgets + notification service use UserDefaults, not SwiftData). A
+            // shared / app-group store makes CoreData turn on CROSS-PROCESS persistent-
+            // history tracking, and on iOS 27 the history-count query is broken:
+            // HistoryObserver → NSSQLGenerator newSQLStatementForRequest throws an
+            // uncaught NSException → SIGABRT after almost every save (level-up, premium
+            // purchase, chat writes…). A single-process store in the sandbox never arms
+            // that machinery, so the crash can't happen.
+            let appSupport = try fm.url(
+                for: .applicationSupportDirectory, in: .userDomainMask,
+                appropriateFor: nil, create: true
             )
+            let storeURL = appSupport.appendingPathComponent("default.store")
 
-            let storeURL = supportURL.appendingPathComponent("default.store")
+            // One-time migration: copy the existing app-group store (and its SQLite
+            // WAL/SHM sidecars) into the sandbox so no local data is lost. Copy — not
+            // move — so the old store stays behind as a safety backup. Runs only once,
+            // while the new store does not exist yet.
+            if !fm.fileExists(atPath: storeURL.path),
+               let groupURL = fm.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) {
+                let oldStore = groupURL
+                    .appendingPathComponent("Library/Application Support")
+                    .appendingPathComponent("default.store")
+                if fm.fileExists(atPath: oldStore.path) {
+                    for suffix in ["", "-wal", "-shm"] {
+                        let src = URL(fileURLWithPath: oldStore.path + suffix)
+                        let dst = URL(fileURLWithPath: storeURL.path + suffix)
+                        if fm.fileExists(atPath: src.path) {
+                            do { try fm.copyItem(at: src, to: dst) }
+                            catch { Log.debug("⚠️ store migrate copy failed (\(suffix)):", error) }
+                        }
+                    }
+                    Log.debug("📦 Migrated SwiftData store out of the app group → sandbox")
+                }
+            }
 
             let schema = Schema([
                 DTTaskItem.self,
