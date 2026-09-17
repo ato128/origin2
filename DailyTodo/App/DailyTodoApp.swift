@@ -101,7 +101,19 @@ struct DailyTodoApp: App {
                 CrewFocusSession.self,
                 CrewFocusRecord.self,
                 FriendRequest.self,
-                ChatCachedConversationMessage.self
+                ChatCachedConversationMessage.self,
+                // CRITICAL: every @Model that is ever inserted MUST be registered
+                // here. These four were written/queried (IdentityLevelUpState on
+                // level-up; the CrewTask* on crew task comment/poll/reaction) but
+                // were MISSING from the schema — so their entity was absent from the
+                // CoreData model, and persistent-history processing threw
+                // "unimplemented SQL generation … <Name> is not a valid entity name"
+                // → NSInvalidArgumentException → hard crash (the real root cause of
+                // the "iOS 27" level-up / profile crashes; it crashes on iOS 26 too).
+                IdentityLevelUpState.self,
+                CrewTaskComment.self,
+                CrewTaskPoll.self,
+                CrewTaskReaction.self
             ])
 
             let configuration = ModelConfiguration(
