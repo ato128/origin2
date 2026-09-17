@@ -10,6 +10,59 @@ import SwiftUI
 import SwiftData
 import Combine
 
+// Blurred real-analytics backdrop for the locked (free) state. Extracted + Equatable
+// so it rasterizes ONCE and is NOT rebuilt when InsightsView re-renders on every
+// scroll frame (scrollOffset state) — that per-frame re-raster was the jank. Cheap
+// equality on the data counts is enough: nothing changes during a scroll, so the
+// drawingGroup stays cached and the page scrolls butter-smooth.
+private struct LockedAnalyticsBackdrop: View, Equatable {
+    let focusSessions: [FocusSessionRecord]
+    let tasks: [DTTaskItem]
+    let allFocusSessions: [FocusSessionRecord]
+    let friends: [Friend]
+    let myName: String
+    let myStreak: Int
+    let myLevel: Int
+    let accent: Color
+
+    static func == (lhs: LockedAnalyticsBackdrop, rhs: LockedAnalyticsBackdrop) -> Bool {
+        lhs.focusSessions.count == rhs.focusSessions.count &&
+        lhs.tasks.count == rhs.tasks.count &&
+        lhs.allFocusSessions.count == rhs.allFocusSessions.count &&
+        lhs.friends.count == rhs.friends.count &&
+        lhs.myStreak == rhs.myStreak &&
+        lhs.myLevel == rhs.myLevel &&
+        lhs.myName == rhs.myName
+    }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            InsightsDataDashboard(
+                focusSessions: focusSessions,
+                tasks: tasks,
+                accent: accent,
+                allFocusSessions: allFocusSessions,
+                friends: friends,
+                myName: myName,
+                myStreak: myStreak,
+                myLevel: myLevel,
+                revealOnScroll: false
+            )
+
+            InsightsStreakCalendarCard(
+                tasks: tasks,
+                focusSessions: focusSessions,
+                accent: accent
+            )
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 440, alignment: .top)
+        .clipped()
+        .blur(radius: 22)
+        .drawingGroup()
+    }
+}
+
 struct InsightsView: View {
     @EnvironmentObject var session: SessionStore
     @Environment(\.locale) private var locale
@@ -918,8 +971,9 @@ struct InsightsView: View {
             if subscription.isPro {
                 analyticsCards
             } else {
-                // No scroll-reveal here: the teaser is a rasterized (drawingGroup)
-                // layer, so a live transition would force it to re-flatten.
+                // Free: real analytics frosted behind a floating unlock module.
+                // The frost is a one-time raster (drawingGroup), so no per-card
+                // scroll-reveal here — it would fight the flatten.
                 lockedAnalytics
             }
 
@@ -961,36 +1015,87 @@ struct InsightsView: View {
         .insightsCardReveal()
     }
 
-    // Premium teaser for the Pro analytics. Deliberately a DESIGNED preview card —
-    // NOT the real heavy dashboard, and with NO `.drawingGroup()` / material /
-    // Gaussian blur. Those flatten the analytics into an offscreen Metal texture,
-    // and on iOS 27 tearing that layer down (which happens the instant Pro unlocks
-    // and `contentSection` swaps this out) crashes in the render server. This card
-    // is pure static SwiftUI shapes: light, crash-free, and reads as premium.
+    // Locked (free) analytics: the REAL analytics cards, blurred directly (the
+    // "old" frosted-cards look), dimmed darker, with the floating unlock module on
+    // top (features card → Updo emblem → "Premium ile aç").
+    //
+    // Smoothness: the blurred cards live in a separate Equatable backdrop view
+    // (`LockedAnalyticsBackdrop`). InsightsView re-renders on EVERY scroll frame
+    // (scrollOffset state) — that was re-rasterizing the heavy blurred dashboard
+    // each frame → the jank. Equatable makes SwiftUI skip it while scrolling, so
+    // the `.drawingGroup()` raster is built once and reused → butter-smooth.
     private var lockedAnalytics: some View {
         let gold = Color(arenaHex: AppArenaPalette.gold)
         let accent = insightsAccent
         let isEN = appLanguageIsEnglish()
 
-        return VStack(alignment: .leading, spacing: 16) {
-            // Header — icon + title + Pro pill.
+        return ZStack {
+            LockedAnalyticsBackdrop(
+                focusSessions: filteredFocusSessions,
+                tasks: filteredTasks,
+                allFocusSessions: focusSessions,
+                friends: localFriends,
+                myName: resolvedUserName,
+                myStreak: progression.currentStreak,
+                myLevel: storedIdentityLevel,
+                accent: accent
+            )
+            .equatable()
+            .allowsHitTesting(false)
+
+            // Darker dim over the blurred cards ("blur koyu olsun biraz daha").
+            Color.black.opacity(0.34)
+                .allowsHitTesting(false)
+
+            // Floating unlock module: features card → Updo emblem → unlock.
+            VStack(spacing: 14) {
+                lockedFeatureCard(accent: accent, gold: gold, isEN: isEN)
+
+                Image("updo_lock_emblem")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 96, height: 96)
+                    .shadow(color: accent.opacity(0.42), radius: 18, y: 6)
+
+                unlockButton(accent: accent, gold: gold, isEN: isEN)
+            }
+            .padding(18)
+        }
+        .frame(height: 440)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [accent.opacity(0.32), gold.opacity(0.24)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 8)
+    }
+
+    private func lockedFeatureCard(accent: Color, gold: Color, isEN: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 11) {
                 Image(systemName: "chart.bar.xaxis.ascending")
-                    .font(.system(size: 16, weight: .black))
+                    .font(.system(size: 15, weight: .black))
                     .foregroundStyle(accent)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 36, height: 36)
                     .background(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .fill(accent.opacity(0.14))
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(accent.opacity(0.15))
                     )
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(isEN ? "Analytics" : "Analizler")
-                        .font(.system(size: 17, weight: .black))
+                        .font(.system(size: 16, weight: .black))
                         .foregroundStyle(UpdoTheme.textPrimary)
 
-                    Text(isEN ? "Your progress, measured" : "İlerlemen, ölçülerle")
-                        .font(.system(size: 12, weight: .semibold))
+                    Text(isEN ? "Unlock your full picture" : "Tüm ilerlemeni gör")
+                        .font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(UpdoTheme.filmy(0.55))
                 }
 
@@ -999,9 +1104,7 @@ struct InsightsView: View {
                 lockedProPill(gold: gold)
             }
 
-            lockedPreviewChart(accent: accent)
-
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 9) {
                 lockedFeatureRow(icon: "clock.badge.checkmark",
                                  text: isEN ? "Focus trend & weekly hours" : "Odak trendi & haftalık saat",
                                  accent: accent)
@@ -1015,44 +1118,40 @@ struct InsightsView: View {
                                  text: isEN ? "Friend leaderboard" : "Arkadaş kıyaslaması",
                                  accent: accent)
             }
-
-            Button {
-                HapticManager.shared.action()
-                showPremium = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "lock.open.fill").font(.system(size: 14, weight: .black))
-                    Text(isEN ? "Unlock with Pro" : "Pro ile aç")
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                }
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(
-                    Capsule().fill(
-                        LinearGradient(colors: [gold, accent], startPoint: .leading, endPoint: .trailing)
-                    )
-                )
-                .shadow(color: gold.opacity(0.34), radius: 16, y: 6)
-            }
-            .buttonStyle(.plain)
         }
-        .padding(18)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(AppArenaPalette.surfaceColor)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(AppArenaPalette.surfaceColor.opacity(0.97))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [accent.opacity(0.34), gold.opacity(0.26)],
-                                startPoint: .topLeading, endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(UpdoTheme.filmy(0.08), lineWidth: 1)
                 )
-                .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 8)
+                .shadow(color: UpdoTheme.cardShadow(0.20), radius: 12, y: 5)
         )
+    }
+
+    private func unlockButton(accent: Color, gold: Color, isEN: Bool) -> some View {
+        Button {
+            HapticManager.shared.action()
+            showPremium = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.open.fill").font(.system(size: 15, weight: .black))
+                Text(isEN ? "Unlock with Premium" : "Premium ile aç")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+            }
+            .foregroundStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(
+                Capsule().fill(
+                    LinearGradient(colors: [gold, accent], startPoint: .leading, endPoint: .trailing)
+                )
+            )
+            .shadow(color: gold.opacity(0.36), radius: 18, y: 7)
+        }
+        .buttonStyle(.plain)
     }
 
     private func lockedProPill(gold: Color) -> some View {
@@ -1085,30 +1184,6 @@ struct InsightsView: View {
                 .foregroundStyle(UpdoTheme.filmy(0.82))
 
             Spacer(minLength: 0)
-        }
-    }
-
-    // Static mock mini bar chart — pure shapes, no blur / drawingGroup / material.
-    private func lockedPreviewChart(accent: Color) -> some View {
-        let heights: [CGFloat] = [0.34, 0.56, 0.44, 0.72, 0.5, 0.86, 0.64]
-
-        return HStack(alignment: .bottom, spacing: 8) {
-            ForEach(heights.indices, id: \.self) { i in
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(
-                        LinearGradient(colors: [accent, accent.opacity(0.30)],
-                                       startPoint: .top, endPoint: .bottom)
-                    )
-                    .frame(maxWidth: .infinity)
-                    .frame(height: max(10, 74 * heights[i]))
-            }
-        }
-        .frame(height: 74, alignment: .bottom)
-        .padding(.top, 2)
-        .overlay(alignment: .topTrailing) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 10, weight: .black))
-                .foregroundStyle(UpdoTheme.filmy(0.38))
         }
     }
 
