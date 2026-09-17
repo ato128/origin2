@@ -10,11 +10,12 @@ import SwiftUI
 import SwiftData
 import Combine
 
-// Blurred real-analytics backdrop for the locked (free) state. Extracted + Equatable
-// so it rasterizes ONCE and is NOT rebuilt when InsightsView re-renders on every
-// scroll frame (scrollOffset state) — that per-frame re-raster was the jank. Cheap
-// equality on the data counts is enough: nothing changes during a scroll, so the
-// drawingGroup stays cached and the page scrolls butter-smooth.
+// Real-analytics backdrop for the locked (free) state. The frost itself is Apple's
+// `.ultraThinMaterial` (a GPU backdrop blur composited every frame for free — the
+// smooth "Apple blur" the user asked for), applied OVER this view in `lockedAnalytics`.
+// This view just holds the real cards; it's Equatable so InsightsView's per-scroll-frame
+// re-render (scrollOffset state) does NOT re-evaluate the heavy dashboard body. Cheap
+// equality on the data counts is enough: nothing changes during a scroll → butter-smooth.
 private struct LockedAnalyticsBackdrop: View, Equatable {
     let focusSessions: [FocusSessionRecord]
     let tasks: [DTTaskItem]
@@ -58,7 +59,9 @@ private struct LockedAnalyticsBackdrop: View, Equatable {
         .frame(maxWidth: .infinity)
         .frame(height: 440, alignment: .top)
         .clipped()
-        .blur(radius: 22)
+        // Flatten the heavy dashboard into ONE cached texture (Equatable keeps it
+        // from rebuilding on scroll) → the compositor blends a single flat layer
+        // each frame instead of dozens of sublayers → no jank.
         .drawingGroup()
     }
 }
@@ -1015,15 +1018,15 @@ struct InsightsView: View {
         .insightsCardReveal()
     }
 
-    // Locked (free) analytics: the REAL analytics cards, blurred directly (the
-    // "old" frosted-cards look), dimmed darker, with the floating unlock module on
-    // top (features card → Updo emblem → "Premium ile aç").
+    // Locked (free) analytics: the REAL analytics cards frosted with Apple's
+    // `.ultraThinMaterial` (the "old" frosted-cards look the user showed — a GPU
+    // backdrop blur, so it's smooth and never janks), with the floating unlock
+    // module on top (features card → Updo emblem → "Premium ile aç").
     //
-    // Smoothness: the blurred cards live in a separate Equatable backdrop view
-    // (`LockedAnalyticsBackdrop`). InsightsView re-renders on EVERY scroll frame
-    // (scrollOffset state) — that was re-rasterizing the heavy blurred dashboard
-    // each frame → the jank. Equatable makes SwiftUI skip it while scrolling, so
-    // the `.drawingGroup()` raster is built once and reused → butter-smooth.
+    // Smoothness has two parts: (1) the frost is Material, composited on the GPU
+    // every frame for free — not a per-frame Gaussian re-raster; (2) the real cards
+    // live in an Equatable backdrop view so InsightsView's per-scroll-frame re-render
+    // (scrollOffset state) skips re-evaluating the heavy dashboard body → butter-smooth.
     private var lockedAnalytics: some View {
         let gold = Color(arenaHex: AppArenaPalette.gold)
         let accent = insightsAccent
@@ -1043,13 +1046,19 @@ struct InsightsView: View {
             .equatable()
             .allowsHitTesting(false)
 
-            // Darker dim over the blurred cards ("blur koyu olsun biraz daha").
-            Color.black.opacity(0.34)
+            // Apple's frosted glass over the real cards — GPU backdrop blur, smooth.
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .allowsHitTesting(false)
+
+            // Darkened scrim — user wants the blur blacked-out (still lets a hint of
+            // card color through, but reads as a deep dark frosted panel).
+            Color.black.opacity(0.5)
                 .allowsHitTesting(false)
 
             // Floating unlock module: features card → Updo emblem → unlock.
             VStack(spacing: 14) {
-                lockedFeatureCard(accent: accent, gold: gold, isEN: isEN)
+                lockedFeatureCard(accent: accent, isEN: isEN)
 
                 Image("updo_lock_emblem")
                     .resizable()
@@ -1077,7 +1086,7 @@ struct InsightsView: View {
         .shadow(color: UpdoTheme.cardShadow(0.22), radius: 16, y: 8)
     }
 
-    private func lockedFeatureCard(accent: Color, gold: Color, isEN: Bool) -> some View {
+    private func lockedFeatureCard(accent: Color, isEN: Bool) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 11) {
                 Image(systemName: "chart.bar.xaxis.ascending")
@@ -1100,8 +1109,6 @@ struct InsightsView: View {
                 }
 
                 Spacer(minLength: 0)
-
-                lockedProPill(gold: gold)
             }
 
             VStack(alignment: .leading, spacing: 9) {
@@ -1119,16 +1126,7 @@ struct InsightsView: View {
                                  accent: accent)
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(AppArenaPalette.surfaceColor.opacity(0.97))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(UpdoTheme.filmy(0.08), lineWidth: 1)
-                )
-                .shadow(color: UpdoTheme.cardShadow(0.20), radius: 12, y: 5)
-        )
+        .padding(.horizontal, 4)
     }
 
     private func unlockButton(accent: Color, gold: Color, isEN: Bool) -> some View {
@@ -1152,24 +1150,6 @@ struct InsightsView: View {
             .shadow(color: gold.opacity(0.36), radius: 18, y: 7)
         }
         .buttonStyle(.plain)
-    }
-
-    private func lockedProPill(gold: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: "crown.fill").font(.system(size: 9, weight: .black))
-            Text("PRO")
-                .font(.system(size: 10, weight: .black, design: .monospaced))
-                .tracking(1.2)
-        }
-        .foregroundStyle(.black)
-        .padding(.horizontal, 10)
-        .frame(height: 23)
-        .background(
-            Capsule().fill(
-                LinearGradient(colors: [gold, Color(arenaHex: AppArenaPalette.goldSoft)],
-                               startPoint: .leading, endPoint: .trailing)
-            )
-        )
     }
 
     private func lockedFeatureRow(icon: String, text: String, accent: Color) -> some View {

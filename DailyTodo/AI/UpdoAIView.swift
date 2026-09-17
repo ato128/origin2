@@ -274,6 +274,24 @@ struct UpdoAIView: View {
                     secondaryGlow: Color(arenaHex: "#2DD4FF"),
                     warmGlow: Color(arenaHex: "#FF5A44")
                 )
+                // Living purple/blue backlight (Gemini-style) + a soft bottom
+                // grounding. Attached as an overlay on the full-screen background so
+                // it can NEVER affect the chat's layout — the message list sits
+                // exactly as before. Pure GPU (gradients only), no jank.
+                .overlay {
+                    ZStack {
+                        // Apple-style darkening rising from the very bottom — grounds
+                        // the composer. A plain gradient (no blur) → essentially free.
+                        LinearGradient(
+                            colors: [.clear, .clear, Color.black.opacity(0.34)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        // Ambient light on top of the grounding so the glow reads.
+                        AIChatAmbientGlow(isActive: chatStore.isSending || !inputText.isEmpty)
+                    }
+                    .allowsHitTesting(false)
+                }
                 .ignoresSafeArea()
 
                 messagesScrollView
@@ -1460,5 +1478,75 @@ private struct FocusHistorySheet: View {
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+// MARK: - Ambient Blue Glow (Gemini-style, GPU-only, zero jank)
+
+/// A living blue backlight for the chat. It is deliberately built from *radial
+/// gradients only* — no `.blur()` filter and no `.drawingGroup()`, so nothing is
+/// re-rasterized. Only `opacity`, `scaleEffect` and `offset` animate, and those are
+/// pure layer transforms the compositor does for free (the same trick Apple uses in
+/// its own apps) → it stays glassy-smooth even while the list scrolls.
+///
+/// Behaviour:
+/// • On appear the TOP light drifts up toward the nav bar and settles, then breathes.
+/// • While the user is typing or the AI is streaming (`isActive`), the BOTTOM light
+///   swells and brightens gently — present, never distracting — and calms when idle.
+private struct AIChatAmbientGlow: View {
+    let isActive: Bool
+
+    @State private var entered = false
+    @State private var breathe = false
+
+    // Orb's own palette — a soft purple up top, cyan-blue down low.
+    private let topGlow = Color(arenaHex: "#8B5CF6")    // orb purple
+    private let bottomGlow = Color(arenaHex: "#2DD4FF") // orb cyan-blue
+
+    var body: some View {
+        ZStack {
+            // Top light — a gentle purple halo easing toward the bar on enter, then
+            // breathing. Kept dim so it reads as ambiance, not a glassy band.
+            glowBlob(color: topGlow, size: 540, centerOpacity: 0.13)
+                .offset(y: entered ? -330 : -470)
+                .opacity(entered ? 1 : 0)
+                .scaleEffect(breathe ? 1.06 : 0.97)
+                .animation(.easeOut(duration: 1.35), value: entered)
+                .animation(.easeInOut(duration: 5.5).repeatForever(autoreverses: true), value: breathe)
+
+            // Bottom light — the main blue glow; reacts to typing / streaming gently.
+            glowBlob(color: bottomGlow, size: 470, centerOpacity: isActive ? 0.30 : 0.12)
+                .offset(y: 372)
+                .scaleEffect(isActive ? 1.10 : 0.98)
+                .animation(.easeInOut(duration: 0.85), value: isActive)
+                .scaleEffect(breathe ? 1.04 : 0.99)
+                .animation(.easeInOut(duration: 4.5).repeatForever(autoreverses: true), value: breathe)
+        }
+        // Fill the offered space so the fixed-size blobs never dictate the layout
+        // width (otherwise the 520pt circle pushes the whole chat sideways).
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .allowsHitTesting(false)
+        .onAppear {
+            entered = true
+            breathe = true
+        }
+    }
+
+    private func glowBlob(color: Color, size: CGFloat, centerOpacity: Double) -> some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [
+                        color.opacity(centerOpacity),
+                        color.opacity(centerOpacity * 0.42),
+                        .clear
+                    ],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: size / 2
+                )
+            )
+            .frame(width: size, height: size)
     }
 }
