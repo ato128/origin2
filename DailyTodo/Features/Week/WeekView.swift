@@ -1706,7 +1706,10 @@ private struct CalendarSheet: View {
 
     private var weekdayHeader: some View {
         HStack(spacing: 4) {
-            ForEach(weekdaySymbols, id: \.self) { sym in
+            // Index-based id: Turkish weekday letters repeat (P = Pzt/Per/Paz,
+            // C = Cum/Cmt), so id: \.self would collide → "ID occurs multiple
+            // times, undefined results" (garbled header).
+            ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, sym in
                 Text(sym)
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(0.8)
@@ -1755,7 +1758,9 @@ private struct CalendarSheet: View {
                     .monospacedDigit()
 
                 HStack(spacing: 2) {
-                    ForEach(colors.prefix(3), id: \.self) { hex in
+                    // Index-based id: a day can have two events of the same colour,
+                    // and id: \.self on duplicate hex strings collides.
+                    ForEach(Array(colors.prefix(3).enumerated()), id: \.offset) { _, hex in
                         Circle()
                             .fill(colorFromHex(hex))
                             .frame(width: 3.5, height: 3.5)
