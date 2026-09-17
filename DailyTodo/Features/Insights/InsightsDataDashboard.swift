@@ -813,11 +813,18 @@ struct InsightsStreakCalendarCard: View {
                 let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
 
                 LazyVGrid(columns: columns, spacing: 6) {
+                    // The blank leading cells and the day cells live in ONE grid, so
+                    // their ForEach ids must not collide. Blanks take ids
+                    // 0..<leadingBlanks; days are offset to start AFTER the blanks
+                    // (leadingBlanks..<leadingBlanks+daysInMonth) — otherwise both
+                    // ranges start at 0 and SwiftUI warns "id used by multiple child
+                    // views… undefined results" (garbled layout / crash).
                     ForEach(0..<leadingBlanks, id: \.self) { _ in
                         Color.clear.frame(height: 30)
                     }
 
-                    ForEach(0..<daysInMonth, id: \.self) { offset in
+                    ForEach(leadingBlanks..<(leadingBlanks + daysInMonth), id: \.self) { gridIndex in
+                        let offset = gridIndex - leadingBlanks
                         dayCell(number: offset + 1, state: states[offset],
                                 isToday: offset + 1 == cal.component(.day, from: today))
                     }
