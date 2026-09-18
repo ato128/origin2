@@ -508,7 +508,7 @@ struct UpdoAIView: View {
             )
 
         if msg.role == "assistant" {
-            let items = UpdoAIPlanParser.parse(msg.text)
+            let items = cachedPlan(msg.text)
             if items.count >= 2
                 && !executedActionIDs.contains(msg.id)
                 && !dismissedActionIDs.contains(msg.id)
@@ -978,6 +978,22 @@ struct UpdoAIView: View {
         if Self.richTextCache.count > 300 { Self.richTextCache.removeAll(keepingCapacity: true) }
         Self.richTextCache[s] = attr
         return Text(attr)
+    }
+
+    /// Action-plan parsing, memoized. `UpdoAIPlanParser.parse` folds + splits every
+    /// line of a message; `messageRow` runs it for EVERY visible assistant message,
+    /// and the whole view body re-evaluates on every streamed token — so during a
+    /// long chat this was an uncached O(messages × tokens) string-crunch that made
+    /// the app "start lagging after chatting a while". Assistant text is immutable
+    /// once committed, so caching by string turns those re-parses into dictionary hits.
+    private static var planCache: [String: [UpdoAIPlanItem]] = [:]
+
+    private func cachedPlan(_ text: String) -> [UpdoAIPlanItem] {
+        if let cached = Self.planCache[text] { return cached }
+        let items = UpdoAIPlanParser.parse(text)
+        if Self.planCache.count > 300 { Self.planCache.removeAll(keepingCapacity: true) }
+        Self.planCache[text] = items
+        return items
     }
 
     private func sendMessage() {

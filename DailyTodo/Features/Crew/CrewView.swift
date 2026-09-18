@@ -86,6 +86,9 @@ struct CrewView: View {
                     Task {
                         await removePendingRequest(request)
                     }
+                },
+                onRefresh: {
+                    await reloadBackendFriends(force: true)
                 }
             )
             .navigationBarHidden(true)

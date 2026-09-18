@@ -123,6 +123,7 @@ struct CrewHomeView: View {
     let onOpenFriend: (UUID) -> Void
     let onAcceptRequest: (UUID) -> Void
     let onRemoveRequest: (UUID) -> Void
+    let onRefresh: () async -> Void
 
     @State private var mode: CrewHomeMode = .social
     @State private var socialTab: CrewSocialTab
@@ -146,7 +147,8 @@ struct CrewHomeView: View {
         onOpenCrew: @escaping (UUID) -> Void,
         onOpenFriend: @escaping (UUID) -> Void,
         onAcceptRequest: @escaping (UUID) -> Void,
-        onRemoveRequest: @escaping (UUID) -> Void
+        onRemoveRequest: @escaping (UUID) -> Void,
+        onRefresh: @escaping () async -> Void = {}
     ) {
         self.initialTab = initialTab
         self.summary = summary
@@ -163,6 +165,7 @@ struct CrewHomeView: View {
         self.onOpenFriend = onOpenFriend
         self.onAcceptRequest = onAcceptRequest
         self.onRemoveRequest = onRemoveRequest
+        self.onRefresh = onRefresh
 
         switch initialTab {
         case .crews:
@@ -245,6 +248,12 @@ struct CrewHomeView: View {
                 .padding(.top, 4)
                 .padding(.bottom, 18)
             }
+            // Pull-to-refresh: pulling the social list down re-fetches friends,
+            // requests and presence from the backend. This is the deterministic
+            // recovery path when a live socket event was missed (e.g. app was
+            // backgrounded when a request got accepted) — the friend appears
+            // without the old "quit & reopen" workaround.
+            .refreshable { await onRefresh() }
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showRequestsSheet) {
