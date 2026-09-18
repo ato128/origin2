@@ -354,7 +354,9 @@ struct OnboardingInviteView: View {
     private var qualified: Int { min(status?.qualified ?? 0, needed) }
     private var needed: Int { status?.needed ?? 3 }
     private var rewardGranted: Bool { status?.rewardGranted ?? false }
-    private var link: String { status?.link ?? "https://updo.me" }
+    // updo.me landing page isn't built yet → share the App Store link directly.
+    // (When updo.me ships with referral attribution, restore `status?.link ??`.)
+    private var link: String { AppLinks.appStore }
 
     private var shareText: String {
         var text = tr("ob_invite_share_text") + link
