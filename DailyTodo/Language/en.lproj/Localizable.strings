@@ -1557,6 +1557,12 @@
 "ai_empty_sub" = "Your study assistant. Personalized plans,\nanalysis and suggestions.";
 "ai_chip_week" = "Plan this week";
 "ai_chip_history" = "My focus history";
+"ai_chip_scan" = "Scan schedule";
+"ai_scan_title" = "Scan your timetable";
+"ai_scan_sub" = "Send a photo, I'll add it to your week";
+"ai_scan_ask_photos" = "Send me your timetable photos (up to 4) and I'll add them to your week 📸";
+"ai_scan_working" = "Reading your schedule…";
+"ai_scan_added" = "Added %d lesson(s) to your week: %@ ✅";
 "ai_plan_ready" = "Plan ready — Add to your week?";
 "ai_tasks_added" = "Tasks added";
 "ai_no_sessions" = "No completed sessions in the last 7 days. They'll appear here once you start your first session.";
@@ -1995,6 +2001,7 @@
 "byo_invalid_format" = "The key must start with \"sk-\".";
 "byo_privacy" = "Your key is stored only in this device's Keychain; we never keep it on our servers — it's used solely to reach OpenAI on each request.";
 "hv_chip_plan" = "Today's plan";
+"hv_chip_scan" = "Scan schedule";
 "hv_chip_add" = "Add task";
 "hv_chip_motivation" = "Motivation";
 "hv_chip_exam" = "Study for exam";

@@ -14,6 +14,7 @@ struct EditEventView: View {
     @Environment(\.locale) private var locale
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var friendStore: FriendStore
+    @EnvironmentObject var studentStore: StudentStore
 
     private let colorPalette: [(nameKey: String, hex: String)] = [
         ("event_color_blue", "#3B82F6"),
@@ -103,6 +104,9 @@ struct EditEventView: View {
                         Task {
                             await resyncSharedWeek()
                         }
+
+                        // Removing a lesson's last event drops it from active courses.
+                        Task { await studentStore.syncScheduleCourses() }
 
                         dismiss()
                     } catch {
@@ -615,6 +619,9 @@ struct EditEventView: View {
             Task {
                 await resyncSharedWeek()
             }
+
+            // A renamed lesson updates the active-courses list too.
+            Task { await studentStore.syncScheduleCourses() }
         } catch {
             Log.debug("Edit save error:", error)
         }

@@ -31,7 +31,13 @@ final class SocialStatsStore: ObservableObject {
         let ids = Array(Set(userIDs))
         guard !ids.isEmpty else { return }
 
-        if !force, let last = lastRefresh, Date().timeIntervalSince(last) < 30 { return }
+        // The 30s throttle only suppresses REDUNDANT refreshes of users we've
+        // already cached. If any requested user is still missing (e.g. opening a
+        // specific friend's profile), always fetch — otherwise an earlier crew/
+        // insights refresh would starve the friend's stats for 30s and the
+        // comparison card would sit empty.
+        let hasMissing = ids.contains { stats[$0] == nil }
+        if !force, !hasMissing, let last = lastRefresh, Date().timeIntervalSince(last) < 30 { return }
         guard !inFlight else { return }
 
         inFlight = true

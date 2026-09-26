@@ -462,6 +462,9 @@ struct WeeklyScheduleEditorView: View {
 
         WidgetAppSync.refreshFromSwiftData(context: context)
         rescheduleAndSync(with: remaining)
+
+        // A lesson whose last event is gone drops off the active-courses list.
+        Task { await studentStore.syncScheduleCourses() }
     }
 
     private func saveScannedCourses(_ kept: [ScannedScheduleCourse]) {
@@ -469,13 +472,17 @@ struct WeeklyScheduleEditorView: View {
 
         let palette = ["#22D3EE", "#8B5CF6", "#F59E0B", "#34D399", "#F472B6", "#60A5FA", "#F97316"]
 
-        for (index, course) in kept.enumerated() {
-            studentStore.addCourse(
-                name: course.name,
-                code: course.code,
-                colorHex: palette[index % palette.count],
-                sourceType: "ai_scan"
-            )
+        // Supabase-backed so scanned lessons survive the next remote reload —
+        // a local addCourse row is wiped by replaceLocalCourses.
+        Task {
+            for (index, course) in kept.enumerated() {
+                await studentStore.addCourseAndSync(
+                    name: course.name,
+                    code: course.code,
+                    colorHex: palette[index % palette.count],
+                    sourceType: "ai_scan"
+                )
+            }
         }
 
         let parsed = kept.map { course in

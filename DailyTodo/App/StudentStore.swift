@@ -613,6 +613,58 @@ final class StudentStore: ObservableObject {
         }
     }
 
+    /// Keeps the "active courses" list in step with the weekly schedule so a
+    /// lesson that arrives via a photo scan or the Week editor's add/remove
+    /// shows up as an active course — and drops off when its last event is gone.
+    ///
+    /// Every distinct event title is a course. Courses go through
+    /// `addCourseAndSync`/`deleteCourseAndSync` (Supabase-backed) on purpose: a
+    /// plain local `addCourse` row is wiped by `replaceLocalCourses` on the next
+    /// remote reload, which is exactly why scanned lessons used to disappear.
+    /// Only schedule-derived courses (`schedule`/`ai_scan`) are auto-removed —
+    /// anything you added by hand stays put.
+    func syncScheduleCourses() async {
+        guard let currentUserID else { return }
+
+        let events = ((try? context.fetch(FetchDescriptor<EventItem>())) ?? [])
+            .filter { $0.ownerUserID == currentUserID }
+
+        // First event per (case-insensitive) title carries the display name + color.
+        var titleDisplay: [String: String] = [:]
+        var titleColor: [String: String] = [:]
+        for ev in events {
+            let name = ev.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { continue }
+            let key = name.lowercased()
+            if titleDisplay[key] == nil {
+                titleDisplay[key] = name
+                titleColor[key] = ev.colorHex
+            }
+        }
+
+        // 1) Add a course for every schedule title we don't already track (by
+        //    name only, so we never duplicate a hand-added course).
+        for (key, name) in titleDisplay {
+            let exists = courses.contains { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+            if !exists {
+                await addCourseAndSync(
+                    name: name,
+                    code: "",
+                    colorHex: titleColor[key] ?? "#3B82F6",
+                    sourceType: "schedule"
+                )
+            }
+        }
+
+        // 2) Drop schedule-derived courses whose last event was removed.
+        let autoSourced: Set<String> = ["schedule", "ai_scan"]
+        for course in courses where autoSourced.contains(course.sourceType) {
+            if titleDisplay[course.name.lowercased()] == nil {
+                await deleteCourseAndSync(course)
+            }
+        }
+    }
+
     func forceRestoreCoursesFromOnboardingDrafts(_ drafts: [OnboardingCourseDraft]) {
         guard let currentUserID else {
             Log.debug("❌ forceRestoreCourses failed: currentUserID nil")

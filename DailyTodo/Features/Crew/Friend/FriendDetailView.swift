@@ -238,7 +238,9 @@ struct FriendDetailView: View {
             playEntrance()
 
             if let friendUserID = friend.backendUserID {
-                socialStats.refresh(userIDs: [friendUserID], isPro: subscription.isPro)
+                // Force so opening a specific profile always fetches that friend,
+                // even if a crew/insights refresh ran within the throttle window.
+                socialStats.refresh(userIDs: [friendUserID], isPro: subscription.isPro, force: true)
             }
         }
         .task {

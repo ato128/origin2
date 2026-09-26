@@ -69,6 +69,7 @@ struct HomeView: View {
     // Inline "what do you want to do today?" chat bar on the neutral card.
     @State var aiQuickInput = ""
     @State var aiSeedPrompt: String? = nil
+    @State var aiAutoScan = false
     @FocusState var aiQuickFocused: Bool
     @AppStorage("updoChallengeAcceptedDayV1") var challengeAcceptedDay: Int = -1
     @AppStorage("challengeStreakCountV1") var challengeStreakCount: Int = 0
@@ -177,9 +178,10 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $showMessages) {
             MessagesView()
         }
-        .fullScreenCover(isPresented: $showUpdoAI, onDismiss: { aiSeedPrompt = nil }) {
+        .fullScreenCover(isPresented: $showUpdoAI, onDismiss: { aiSeedPrompt = nil; aiAutoScan = false }) {
             UpdoAIView(
                 seedPrompt: aiSeedPrompt,
+                autoStartScan: aiAutoScan,
                 onDismissAndOpenWeek: {
                     showUpdoAI = false
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { onOpenWeek() }
@@ -500,6 +502,9 @@ private extension HomeView {
                 HStack(spacing: 8) {
                     heroChip(icon: "sparkles", title: tr("hv_chip_plan")) {
                         openAIChat(seed: tr("hv_seed_plan"))
+                    }
+                    heroChip(icon: "doc.text.viewfinder", title: tr("hv_chip_scan")) {
+                        openAIChatScan()
                     }
                     heroChip(icon: "plus", title: tr("hv_chip_add")) {
                         onAddTask()

@@ -1559,6 +1559,12 @@
 "ai_empty_sub" = "Çalışma asistanın. Sana özel plan,\nanaliz ve öneriler.";
 "ai_chip_week" = "Bu haftayı düzenle";
 "ai_chip_history" = "Focus geçmişim";
+"ai_chip_scan" = "Ders tara";
+"ai_scan_title" = "Ders programını tara";
+"ai_scan_sub" = "Fotoğrafını at, haftana ekleyeyim";
+"ai_scan_ask_photos" = "Ders programının fotoğraflarını at (en fazla 4), haftana ekleyeyim 📸";
+"ai_scan_working" = "Programını okuyorum…";
+"ai_scan_added" = "Haftana %d ders ekledim: %@ ✅";
 "ai_plan_ready" = "Plan hazır — Haftaya eklensin mi?";
 "ai_tasks_added" = "Görevler eklendi";
 "ai_no_sessions" = "Son 7 gün içinde tamamlanmış oturum bulunamadı. İlk oturumu başlattığında burada görünecek.";
@@ -1997,6 +2003,7 @@
 "byo_invalid_format" = "Anahtar \"sk-\" ile başlamalı.";
 "byo_privacy" = "Anahtarın yalnızca bu cihazın Keychain'inde saklanır; sunucularımızda tutulmaz, her istekte sadece OpenAI'a iletmek için kullanılır.";
 "hv_chip_plan" = "Bugünkü planım";
+"hv_chip_scan" = "Ders tara";
 "hv_chip_add" = "Görev ekle";
 "hv_chip_motivation" = "Motivasyon";
 "hv_chip_exam" = "Sınava çalış";

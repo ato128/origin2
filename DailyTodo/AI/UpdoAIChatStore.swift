@@ -229,6 +229,16 @@ final class UpdoAIChatStore: ObservableObject {
         }
     }
 
+    /// Appends an assistant-only line locally (no network, no credit spend).
+    /// Used by the schedule-scan flow to talk the user through "send photos →
+    /// added to your week".
+    func appendAssistant(_ text: String) {
+        messages.append(AIMessage(role: "assistant", text: text, timestamp: .now))
+        lastPreviewText = text
+        UserDefaults.standard.set(text, forKey: previewKey)
+        persist()
+    }
+
     /// Appends a user message + an assistant confirmation locally, without any
     /// network call or credit spend. Used by the token-free command interpreter.
     func appendLocalExchange(userText: String, assistantText: String) {

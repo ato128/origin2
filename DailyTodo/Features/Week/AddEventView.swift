@@ -840,19 +840,20 @@ struct AddEventView: View {
         let code = manualCourseCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard !name.isEmpty else { return }
 
-        studentStore.addCourse(
+        // Supabase-backed so the course survives the next remote reload
+        // (a plain local addCourse row is wiped by replaceLocalCourses).
+        Task { await studentStore.addCourseAndSync(
             name: name,
             code: code,
             colorHex: selectedColorHex,
             sourceType: "manual"
-        )
+        ) }
 
         title = name
         courseCode = code
         manualCourseName = ""
         manualCourseCode = ""
         showManualCourse = false
-        studentStore.reload()
         Haptics.notify(.success)
     }
 
@@ -949,6 +950,9 @@ struct AddEventView: View {
                     events: currentUserEventsFromContext()
                 )
             }
+
+            // A new lesson on the schedule becomes an active course.
+            Task { await studentStore.syncScheduleCourses() }
         } catch {
             Log.debug("Save error:", error)
         }

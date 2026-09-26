@@ -963,8 +963,19 @@ extension HomeView {
     func openAIChat(seed: String?) {
         let trimmed = seed?.trimmingCharacters(in: .whitespacesAndNewlines)
         aiSeedPrompt = (trimmed?.isEmpty == false) ? trimmed : nil
+        aiAutoScan = false
         aiQuickInput = ""
         aiQuickFocused = false
+        showUpdoAI = true
+    }
+
+    /// Opens Updo AI straight into the schedule photo-scan flow (Home shortcut).
+    func openAIChatScan() {
+        aiSeedPrompt = nil
+        aiAutoScan = true
+        aiQuickInput = ""
+        aiQuickFocused = false
+        HapticManager.shared.navigation()
         showUpdoAI = true
     }
 

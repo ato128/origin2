@@ -7,9 +7,13 @@ import SwiftUI
 import SwiftData
 import Combine
 import Supabase
+import PhotosUI
 
 struct UpdoAIView: View {
     var seedPrompt: String? = nil
+    /// When opened from the Home "Ders tara" shortcut, kicks off the photo-scan
+    /// flow automatically (asks for photos → scans → "added to your week").
+    var autoStartScan: Bool = false
     let onDismissAndOpenWeek: () -> Void
     let onDismissAndAddTask: () -> Void
 
@@ -41,6 +45,14 @@ struct UpdoAIView: View {
     @State private var dismissedActionIDs: Set<UUID> = []
     @State private var showPaywall = false
     @State private var showBYOKeySheet = false
+
+    // Schedule scan (photo → weekly courses), driven from inside the chat.
+    @State private var scanPickerItems: [PhotosPickerItem] = []
+    @State private var showScanPicker = false
+    @State private var isScanning = false
+    @State private var pendingScannedCourses: [ScannedScheduleCourse] = []
+    @State private var showScanPreview = false
+    @State private var didAutoStartScan = false
 
     private let hapticSend = UIImpactFeedbackGenerator(style: .light)
     private let hapticResponse = UINotificationFeedbackGenerator()
@@ -248,9 +260,12 @@ struct UpdoAIView: View {
         let prompt: String
         /// true ise sohbete metin göndermez; sınav planlayıcı ekranını açar.
         var opensExamPlanner: Bool = false
+        /// true ise ders programı fotoğraf-tarama akışını başlatır.
+        var opensScan: Bool = false
     }
 
     private let suggestions = [
+        Suggestion(icon: "doc.text.viewfinder", title: tr("ai_scan_title"), subtitle: tr("ai_scan_sub"), prompt: "", opensScan: true),
         Suggestion(icon: "calendar.badge.clock", title: tr("ai_exam_plan"), subtitle: tr("ai_exam_plan_sub"), prompt: "", opensExamPlanner: true),
         Suggestion(icon: "checklist", title: tr("ai_plan_week"), subtitle: tr("ai_task_focus_sug"), prompt: tr("ai_plan_week")),
         Suggestion(icon: "chart.bar.fill", title: tr("ai_focus_analysis"), subtitle: tr("ai_review_7days"), prompt: tr("ai_show_analysis"))
@@ -359,11 +374,27 @@ struct UpdoAIView: View {
         .sheet(isPresented: $showPaywall) {
             PaywallView(context: "ai_exhausted")
         }
+        .sheet(isPresented: $showScanPreview) {
+            ScheduleScanPreviewSheet(courses: pendingScannedCourses) { kept in
+                saveScannedFromChat(kept)
+            }
+        }
+        .photosPicker(
+            isPresented: $showScanPicker,
+            selection: $scanPickerItems,
+            maxSelectionCount: 4,
+            matching: .images
+        )
+        .onChange(of: scanPickerItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await runScheduleScan() }
+        }
         .onAppear {
             hapticSend.prepare()
             hapticResponse.prepare()
             Task { await credits.refreshIfStale() }
             sendSeedIfNeeded()
+            autoStartScanIfNeeded()
         }
     }
 
@@ -380,6 +411,111 @@ struct UpdoAIView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             sendQuickMessage(seed)
         }
+    }
+
+    // MARK: - Schedule Scan (photo → weekly courses)
+
+    /// Fires when opened from the Home "Ders tara" shortcut.
+    private func autoStartScanIfNeeded() {
+        guard autoStartScan, !didAutoStartScan else { return }
+        didAutoStartScan = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { beginScheduleScan() }
+    }
+
+    /// Coach asks for the timetable photos, then opens the picker.
+    private func beginScheduleScan() {
+        guard !isScanning else { return }
+        chatStore.appendAssistant(tr("ai_scan_ask_photos"))
+        showScanPicker = true
+        Analytics.shared.track("ai_schedule_scan_started")
+    }
+
+    /// Loads the picked images, runs the vision scan, and either previews the
+    /// result or explains what went wrong — all as coach messages.
+    @MainActor
+    private func runScheduleScan() async {
+        let items = scanPickerItems
+        scanPickerItems = []
+        guard !items.isEmpty else { return }
+
+        var images: [UIImage] = []
+        for item in items.prefix(4) {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                images.append(image)
+            }
+        }
+
+        guard !images.isEmpty else {
+            chatStore.appendAssistant(tr("css_scan_err_generic"))
+            return
+        }
+
+        isScanning = true
+        chatStore.appendAssistant(tr("ai_scan_working"))
+
+        do {
+            let courses = try await ScheduleScanClient.scan(images)
+            isScanning = false
+            if courses.isEmpty {
+                chatStore.appendAssistant(tr("css_scan_none"))
+            } else {
+                pendingScannedCourses = courses
+                showScanPreview = true
+            }
+        } catch {
+            isScanning = false
+            chatStore.appendAssistant(error.localizedDescription)
+        }
+    }
+
+    /// Commits the confirmed courses: weekly events + Supabase-backed active
+    /// courses, then reports "added to your week" back in the chat.
+    private func saveScannedFromChat(_ kept: [ScannedScheduleCourse]) {
+        guard !kept.isEmpty else { return }
+
+        let palette = ["#22D3EE", "#8B5CF6", "#F59E0B", "#34D399", "#F472B6", "#60A5FA", "#F97316"]
+
+        let parsed = kept.map { course in
+            ParsedCourse(
+                code: course.code,
+                name: course.name,
+                slots: course.slots.map {
+                    ParsedCourseSlot(
+                        weekday: $0.weekday,
+                        startMinute: $0.startMinute,
+                        durationMinute: $0.durationMinute,
+                        room: $0.room
+                    )
+                }
+            )
+        }
+
+        studentStore.createScheduleEvents(from: parsed)
+        WidgetAppSync.refreshFromSwiftData(context: modelContext)
+
+        Task {
+            for (index, course) in kept.enumerated() {
+                await studentStore.addCourseAndSync(
+                    name: course.name,
+                    code: course.code,
+                    colorHex: palette[index % palette.count],
+                    sourceType: "ai_scan"
+                )
+            }
+            await NotificationManager.shared.rescheduleAll(events: currentUserEventsFromContext())
+        }
+
+        let names = kept.map { $0.name }.joined(separator: ", ")
+        chatStore.appendAssistant(tr("ai_scan_added", kept.count, names))
+        HapticManager.shared.success()
+        Analytics.shared.track("ai_schedule_scan_saved", properties: ["count": kept.count])
+    }
+
+    private func currentUserEventsFromContext() -> [EventItem] {
+        guard let currentUserID else { return [] }
+        let all = (try? modelContext.fetch(FetchDescriptor<EventItem>())) ?? []
+        return all.filter { $0.ownerUserID == currentUserID }
     }
 
     // MARK: - Toolbar Items
@@ -663,7 +799,8 @@ struct UpdoAIView: View {
             VStack(spacing: 10) {
                 ForEach(suggestions) { s in
                     Button {
-                        if s.opensExamPlanner { showExamPlanner = true }
+                        if s.opensScan { beginScheduleScan() }
+                        else if s.opensExamPlanner { showExamPlanner = true }
                         else { sendQuickMessage(s.prompt) }
                     } label: {
                         HStack(spacing: 13) {
@@ -721,6 +858,7 @@ struct UpdoAIView: View {
     private var smartChipsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
+                smartChip(icon: "doc.text.viewfinder", label: tr("ai_chip_scan")) { beginScheduleScan() }
                 smartChip(icon: "calendar", label: tr("ai_chip_week"), action: onDismissAndOpenWeek)
                 smartChip(icon: "plus.circle.fill", label: tr("hv_add_task"), action: onDismissAndAddTask)
                 smartChip(icon: "timer", label: tr("ai_chip_history")) { showFocusHistory = true }
@@ -810,10 +948,22 @@ struct UpdoAIView: View {
                 } else {
                     // iMessage-style capsule: field with send button inside, trailing
                     HStack(alignment: .bottom, spacing: 4) {
+                        // Always-available schedule scan (works mid-chat too).
+                        Button { beginScheduleScan() } label: {
+                            Image(systemName: "doc.text.viewfinder")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(UpdoTheme.cyan)
+                                .frame(width: 32, height: 32)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 4)
+                        .padding(.bottom, 4)
+                        .accessibilityLabel(tr("ai_chip_scan"))
+
                         TextField(tr("ai_input_placeholder"), text: $inputText, axis: .vertical)
                             .font(.body)
                             .lineLimit(1...5)
-                            .padding(.leading, 14)
+                            .padding(.leading, 4)
                             .padding(.vertical, 8)
 
                         Button(action: sendMessage) {
