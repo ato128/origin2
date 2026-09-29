@@ -1335,9 +1335,83 @@ struct UpdoAIView: View {
                 ? "Not aldım, bunu aklımda tutacağım. 👍 İstersen buna göre bir plan çıkaralım."
                 : "Noted — I'll keep that in mind. 👍 Want a plan around it?"
 
+        // ── READ tools (agentic "look") — return the real on-device state so the
+        // model can decide instead of guessing; the loop feeds this back to it.
+        case "get_tasks":
+            return readTasks(filter: tool.args["filter"] as? String)
+        case "get_schedule":
+            return readSchedule(weekday: tool.args["weekday"] as? Int)
+        case "get_focus_stats":
+            return readFocusStats()
+        case "get_exams":
+            return readExams()
+
         default:
             return aiUsesTurkish ? "Bunu şu an yapamıyorum." : "I can't do that yet."
         }
+    }
+
+    // MARK: - Read-tool handlers (answer from on-device SwiftData)
+
+    private func readTasks(filter: String?) -> String {
+        let en = appLanguageIsEnglish()
+        let uid = currentUserID
+        var open = allTasks.filter { !$0.isDone && ($0.ownerUserID == uid || $0.ownerUserID == nil) }
+        let f = filter?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !f.isEmpty { open = open.filter { $0.title.lowercased().contains(f.lowercased()) } }
+        guard !open.isEmpty else {
+            return en ? "The user has no open tasks\(f.isEmpty ? "" : " matching that")." : "Kullanıcının\(f.isEmpty ? "" : " buna uyan") açık görevi yok."
+        }
+        let cal = Calendar.current
+        let lines = open.prefix(25).map { t -> String in
+            guard let due = t.dueDate else { return "• \(t.title)" }
+            let day: String
+            if cal.isDateInToday(due) { day = en ? "today" : "bugün" }
+            else if cal.isDateInTomorrow(due) { day = en ? "tomorrow" : "yarın" }
+            else { day = "\(cal.component(.day, from: due)) \(localizedMonthShort(cal.component(.month, from: due) - 1))" }
+            return "• \(t.title) (\(day))"
+        }
+        return (en ? "Open tasks (\(open.count)):\n" : "Açık görevler (\(open.count)):\n") + lines.joined(separator: "\n")
+    }
+
+    private func readSchedule(weekday: Int?) -> String {
+        let en = appLanguageIsEnglish()
+        let uid = currentUserID
+        var events = ((try? modelContext.fetch(FetchDescriptor<EventItem>())) ?? [])
+            .filter { $0.ownerUserID == uid || $0.ownerUserID == nil }
+        if let w = weekday { events = events.filter { $0.weekday == max(0, min(6, w - 1)) } }
+        guard !events.isEmpty else {
+            return en ? "No lessons on the schedule\(weekday == nil ? "" : " that day")." : "Programda\(weekday == nil ? "" : " o gün") ders yok."
+        }
+        let sorted = events.sorted { $0.weekday != $1.weekday ? $0.weekday < $1.weekday : $0.startMinute < $1.startMinute }
+        let lines = sorted.prefix(40).map { ev -> String in
+            let time = String(format: "%02d:%02d", ev.startMinute / 60, ev.startMinute % 60)
+            return "• \(localizedWeekdayFull(ev.weekday)) \(time) — \(ev.title)"
+        }
+        return (en ? "Weekly schedule:\n" : "Haftalık program:\n") + lines.joined(separator: "\n")
+    }
+
+    private func readFocusStats() -> String {
+        let en = appLanguageIsEnglish()
+        let total = last7DaysFocus.map { $0.completedSeconds / 60 }.reduce(0, +)
+        guard total > 0 else {
+            return en ? "No focus sessions in the last 7 days." : "Son 7 günde odak seansı yok."
+        }
+        var parts: [String] = [
+            en ? "Last 7 days: \(total) min across \(last7DaysFocus.count) sessions."
+               : "Son 7 gün: \(last7DaysFocus.count) seansta toplam \(total) dk."
+        ]
+        if let b = courseFocusBreakdown(en: en) { parts.append(b) }
+        if let p = peakStudyHours(en: en) { parts.append(p) }
+        if let r = weekCompletionRate {
+            parts.append(en ? "\(r)% of started sessions completed." : "Başlanan seansların %\(r)'i tamamlandı.")
+        }
+        return parts.joined(separator: "\n")
+    }
+
+    private func readExams() -> String {
+        let en = appLanguageIsEnglish()
+        return upcomingExamsLine(en: en) ?? (en ? "No upcoming exams." : "Yaklaşan sınav yok.")
     }
 
     private func parseToolPlanItems(_ args: [String: Any]) -> [UpdoAIPlanItem] {

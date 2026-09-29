@@ -77,64 +77,127 @@ final class UpdoAIChatStore: ObservableObject {
                     contextPrompt: contextPrompt, history: history, credits: credits, onTool: onTool
                 )
             } else {
-                // Real token-by-token streaming (OpenAI-first via our key). The
-                // chat renders `streamingText` live as deltas arrive.
-                streamingText = ""
-                var toolToApply: AIToolCall? = nil
-                var receivedAny = false
-                do {
-                    for try await event in AIService.shared.coachChatStream(
-                        system: contextPrompt, messages: history, maxTokens: 300
-                    ) {
-                        switch event {
-                        case .delta(let chunk):
-                            receivedAny = true
-                            streamingText += chunk
-                        case .tool(let tool):
-                            receivedAny = true
-                            toolToApply = tool
-                        case .done:
-                            break
-                        }
+                // AGENTIC LOOP (Phase 2). Native OpenAI tool-calling across turns:
+                // stream a turn; if the model calls a tool, apply it locally, append
+                // the assistant tool-call + the tool RESULT (native format) and
+                // stream again — until the model gives a final text reply. Capped.
+                // Any continuation failure falls back to the last action's local
+                // confirmation, so behaviour never regresses.
+                var convo: [[String: Any]] = history.map {
+                    ["role": $0["role"] ?? "user", "content": $0["content"] ?? ""]
+                }
+                var lastResult: String? = nil
+                var producedText = ""
+                let maxIterations = 4
+                var iteration = 0
+
+                while iteration < maxIterations {
+                    iteration += 1
+                    // The first turn was already credit-gated at the top of send();
+                    // gate every continuation so a chain can't outrun the free pool.
+                    if iteration > 1 {
+                        guard credits.canSendChatMessage else { break }
                     }
-                } catch let streamError {
-                    // If the stream endpoint is unavailable (e.g. backend not yet
-                    // deployed → 404/5xx, or a transport error) and nothing was
-                    // produced, fall back to the non-streaming coach so chat keeps
-                    // working. Real quota/rate limits must surface, not retry.
-                    guard !receivedAny, Self.isStreamFallbackEligible(streamError) else {
-                        throw streamError
-                    }
+
                     streamingText = ""
-                    replyText = try await sendNonStreaming(
-                        contextPrompt: contextPrompt, history: history, credits: credits, onTool: onTool
-                    )
-                    let reply = AIMessage(role: "assistant", text: replyText, timestamp: .now)
-                    messages.append(reply)
-                    lastPreviewText = replyText
-                    UserDefaults.standard.set(replyText, forKey: previewKey)
-                    persist()
-                    isSending = false
-                    return
+                    var turnText = ""
+                    var turnTool: AIToolCall? = nil
+                    var receivedAny = false
+                    var streamError: Error? = nil
+                    do {
+                        for try await event in AIService.shared.coachChatStream(
+                            system: contextPrompt, messages: convo, maxTokens: 300
+                        ) {
+                            switch event {
+                            case .delta(let chunk):
+                                receivedAny = true
+                                turnText += chunk
+                                streamingText = turnText
+                            case .tool(let tool):
+                                receivedAny = true
+                                turnTool = tool
+                            case .status(let label):
+                                // Server is doing a silent round-trip (e.g. a web
+                                // search). Show a live hint until the answer streams
+                                // in and overwrites it; don't flip `receivedAny` so a
+                                // status alone can't defeat the first-turn fallback.
+                                if turnText.isEmpty, label == "web_search" {
+                                    streamingText = appLanguageIsEnglish()
+                                        ? "🔎 Searching the web…"
+                                        : "🔎 Web'de aranıyor…"
+                                }
+                            case .done:
+                                break
+                            }
+                        }
+                    } catch {
+                        streamError = error
+                    }
+
+                    if let e = streamError {
+                        // First turn, nothing produced, endpoint unavailable → the
+                        // existing non-streaming fallback keeps chat working.
+                        if iteration == 1, !receivedAny, Self.isStreamFallbackEligible(e) {
+                            streamingText = ""
+                            replyText = try await sendNonStreaming(
+                                contextPrompt: contextPrompt, history: history, credits: credits, onTool: onTool
+                            )
+                            let reply = AIMessage(role: "assistant", text: replyText, timestamp: .now)
+                            messages.append(reply)
+                            lastPreviewText = replyText
+                            UserDefaults.standard.set(replyText, forKey: previewKey)
+                            persist()
+                            isSending = false
+                            return
+                        }
+                        // A quota/rate error on turn 1 must surface, not fall back.
+                        if iteration == 1 { throw e }
+                        // Continuation failure → stop; fall back to last confirmation.
+                        break
+                    }
+
+                    // Deduct credits on each successful turn (optimistic; backend truth).
+                    credits.noteMessageSent()
+
+                    if let tool = turnTool {
+                        // Apply the action, then feed the real result back natively so
+                        // the model can chain the next action or write a smart closing.
+                        let result = onTool(tool)
+                        lastResult = result
+                        let callID = "call_" + String(
+                            UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12)
+                        )
+                        let argsJSON = (try? JSONSerialization.data(withJSONObject: tool.args))
+                            .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                        convo.append([
+                            "role": "assistant",
+                            "content": "",
+                            "tool_calls": [[
+                                "id": callID,
+                                "type": "function",
+                                "function": ["name": tool.name, "arguments": argsJSON],
+                            ]],
+                        ])
+                        convo.append(["role": "tool", "tool_call_id": callID, "content": result])
+                        continue
+                    }
+
+                    let trimmed = turnText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty { producedText = trimmed }
+                    break
                 }
 
-                // Only deduct credits on success (optimistic; backend is truth).
-                credits.noteMessageSent()
-
-                if let tool = toolToApply {
-                    // Action call → no streamed text; apply + reveal confirmation.
+                if producedText.isEmpty {
+                    // No final text (cap / failure) → typewriter the last action
+                    // confirmation, or error if nothing was produced at all.
+                    guard let r = lastResult else { throw AIServiceError.invalidResponse }
                     streamingText = ""
-                    let confirmation = onTool(tool)
-                    await revealReply(confirmation)
+                    await revealReply(r)
                     streamingText = ""
-                    replyText = confirmation
+                    replyText = r
                 } else {
-                    // Guard: a blank reply must not land as an empty bubble.
-                    guard !streamingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                        throw AIServiceError.invalidResponse
-                    }
-                    replyText = streamingText
                     streamingText = ""
+                    replyText = producedText
                 }
             }
 

@@ -124,7 +124,7 @@ actor AIService {
     /// exactly like the non-streaming path, so callers can fall back.
     nonisolated func coachChatStream(
         system: String,
-        messages: [[String: String]],
+        messages: [[String: Any]],
         maxTokens: Int = 300
     ) -> AsyncThrowingStream<CoachStreamEvent, Error> {
         AsyncThrowingStream { continuation in
@@ -197,6 +197,10 @@ actor AIService {
                                     name: name,
                                     args: (obj["args"] as? [String: Any]) ?? [:]
                                 )))
+                            }
+                        case "status":
+                            if let label = obj["label"] as? String, !label.isEmpty {
+                                continuation.yield(.status(label))
                             }
                         case "done":
                             continuation.yield(.done(creditsRemaining: obj["creditsRemaining"] as? Int))
@@ -289,6 +293,7 @@ struct AIToolCall {
 enum CoachStreamEvent {
     case delta(String)                     // incremental text
     case tool(AIToolCall)                  // model called an action (no text stream)
+    case status(String)                    // server-side progress (e.g. "web_search")
     case done(creditsRemaining: Int?)      // stream finished
 }
 
