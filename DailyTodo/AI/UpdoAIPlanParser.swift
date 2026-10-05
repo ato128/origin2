@@ -88,6 +88,11 @@ enum UpdoAIPlanParser {
 
         let date = extractDate(&line)
         let duration = extractDuration(&line)
+        // A plan line always carries a when or a how-long ("• 10 Temmuz — Fizik —
+        // 2 saat"). Without either it's an explanation step / list item — the
+        // coach now writes bullet lists in normal answers, and those must never
+        // turn into an "Add N tasks" card.
+        guard date != nil || duration != nil else { return nil }
 
         // Clean leftovers: emojis at the head, stray separators, "(Ders):" wrappers.
         line = line.replacingOccurrences(of: #"^[\s:—–\-·,]+"#, with: "", options: .regularExpression)
