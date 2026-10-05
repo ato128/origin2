@@ -7,6 +7,7 @@ import Foundation
 import Combine
 import QuartzCore
 import SwiftUI
+import UIKit
 
 struct AIMessage: Identifiable, Codable {
     var id = UUID()
@@ -16,6 +17,8 @@ struct AIMessage: Identifiable, Codable {
     var isStreaming: Bool = false
     var actionTitle: String? = nil   // for assistant messages with a tap-to-confirm action
     var actionPayload: String? = nil // JSON or simple string
+    /// A question photo the user attached (file name in `AIChatImageStore`).
+    var imageFile: String? = nil
 
     var anthropicMessage: [String: String] {
         ["role": role == "user" ? "user" : "assistant", "content": text]
@@ -61,21 +64,32 @@ final class UpdoAIChatStore: ObservableObject {
 
     func send(
         text: String,
+        image: UIImage? = nil,
         contextPrompt: String,
         credits: DailyCreditsManager,
         userID: String,
         onTool: @MainActor (AIToolCall) -> String
     ) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isSending else { return }
+        guard !trimmed.isEmpty || image != nil, !isSending else { return }
         guard credits.canSendChatMessage else {
             error = credits.limitMessage
             return
         }
 
-        Analytics.shared.track("ai_message_sent")
+        Analytics.shared.track(image == nil ? "ai_message_sent" : "ai_photo_question_sent")
 
-        let userMsg = AIMessage(role: "user", text: trimmed, timestamp: .now)
+        // A question photo: downscaled once, kept on disk for the bubble, and
+        // sent (base64) only with THIS turn — older photos never travel again.
+        var imageB64: String? = nil
+        var imageFile: String? = nil
+        if let image, let jpeg = AIChatImageStore.prepareJPEG(image) {
+            imageB64 = jpeg.base64EncodedString()
+            imageFile = AIChatImageStore.save(jpeg)
+        }
+
+        var userMsg = AIMessage(role: "user", text: trimmed, timestamp: .now)
+        userMsg.imageFile = imageFile
         messages.append(userMsg)
         persist()
         isSending = true
@@ -83,12 +97,17 @@ final class UpdoAIChatStore: ObservableObject {
 
         // Last 20 turns so a longer explanation keeps its thread; each turn is
         // clipped so one very long old answer can't balloon the input cost.
-        let history = Array(messages.suffix(Self.historyTurns)).compactMap { msg -> [String: String]? in
+        let history: [[String: Any]] = Array(messages.suffix(Self.historyTurns)).compactMap { msg in
             guard msg.role == "user" || msg.role == "assistant" else { return nil }
-            var m = msg.anthropicMessage
-            if let content = m["content"], content.count > Self.historyCharsPerTurn {
-                m["content"] = String(content.prefix(Self.historyCharsPerTurn)) + "…"
+            var content = msg.text
+            if content.count > Self.historyCharsPerTurn {
+                content = String(content.prefix(Self.historyCharsPerTurn)) + "…"
             }
+            if msg.imageFile != nil && msg.id != userMsg.id {
+                content = "[📷] " + content
+            }
+            var m: [String: Any] = ["role": msg.role == "user" ? "user" : "assistant", "content": content]
+            if msg.id == userMsg.id, let imageB64 { m["images"] = [imageB64] }
             return m
         }
 
@@ -109,9 +128,7 @@ final class UpdoAIChatStore: ObservableObject {
                 // stream again — until the model gives a final text reply. Capped.
                 // Any continuation failure falls back to the last action's local
                 // confirmation, so behaviour never regresses.
-                var convo: [[String: Any]] = history.map {
-                    ["role": $0["role"] ?? "user", "content": $0["content"] ?? ""]
-                }
+                var convo: [[String: Any]] = history
                 var lastResult: String? = nil
                 var producedText = ""
                 let maxIterations = 4
@@ -255,7 +272,7 @@ final class UpdoAIChatStore: ObservableObject {
     /// the caller commits the returned reply. Throws on quota/rate/blank.
     private func sendNonStreaming(
         contextPrompt: String,
-        history: [[String: String]],
+        history: [[String: Any]],
         credits: DailyCreditsManager,
         onTool: @MainActor (AIToolCall) -> String
     ) async throws -> String {
@@ -340,7 +357,9 @@ final class UpdoAIChatStore: ObservableObject {
 
     func persist() {
         if messages.count > maxStoredMessages {
-            messages.removeFirst(messages.count - maxStoredMessages)
+            let dropped = messages.prefix(messages.count - maxStoredMessages)
+            dropped.compactMap(\.imageFile).forEach(AIChatImageStore.delete)
+            messages.removeFirst(dropped.count)
         }
         if let data = try? JSONEncoder().encode(messages) {
             UserDefaults.standard.set(data, forKey: storageKey)
@@ -350,7 +369,67 @@ final class UpdoAIChatStore: ObservableObject {
     func clearHistory() {
         messages = []
         stream.reset()
+        AIChatImageStore.deleteAll()
         persist()
+    }
+}
+
+// MARK: - AIChatImageStore
+//
+//  Question photos attached in Updo AI chat. Stored as files (not inside the
+//  UserDefaults message blob) under Application Support; the message keeps
+//  only the file name. Decoded thumbnails are memoized.
+
+enum AIChatImageStore {
+    private static let cache = NSCache<NSString, UIImage>()
+
+    private static var directory: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = base.appendingPathComponent("UpdoAIImages", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// Downscaled to ≤1600 px on the long edge — sharp enough for small print
+    /// on a worksheet, small enough to upload fast (~200–400 KB).
+    static func prepareJPEG(_ image: UIImage) -> Data? {
+        let maxSide: CGFloat = 1600
+        let size = image.size
+        let scale = min(1, maxSide / max(size.width, size.height))
+        let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let resized = UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+        return resized.jpegData(compressionQuality: 0.72)
+    }
+
+    static func save(_ jpeg: Data) -> String? {
+        let name = UUID().uuidString + ".jpg"
+        do {
+            try jpeg.write(to: directory.appendingPathComponent(name), options: .atomic)
+            return name
+        } catch {
+            return nil
+        }
+    }
+
+    static func load(_ name: String) -> UIImage? {
+        if let hit = cache.object(forKey: name as NSString) { return hit }
+        guard let image = UIImage(contentsOfFile: directory.appendingPathComponent(name).path) else { return nil }
+        cache.setObject(image, forKey: name as NSString)
+        return image
+    }
+
+    static func delete(_ name: String) {
+        cache.removeObject(forKey: name as NSString)
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+    }
+
+    static func deleteAll() {
+        cache.removeAllObjects()
+        try? FileManager.default.removeItem(at: directory)
     }
 }
 

@@ -2357,3 +2357,15 @@
 "insd_focus_detail_title" = "Odak Geçmişi";
 "insd_avg" = "Ort. seans";
 "insd_all_sessions_caps" = "TÜM SEANSLAR";
+
+/* Updo AI — question photo + teacher follow-ups */
+"ai_attach" = "Ekle";
+"ai_photo_camera" = "Soru fotoğrafı çek";
+"ai_photo_library" = "Galeriden seç";
+"ai_photo_question" = "Soru fotoğrafı";
+"ai_fu_simpler" = "Daha basit anlat";
+"ai_fu_simpler_prompt" = "Bunu daha basit, günlük bir örnekle anlatır mısın?";
+"ai_fu_example" = "Benzer örnek";
+"ai_fu_example_prompt" = "Buna benzer bir örnek soruyu adım adım çözer misin?";
+"ai_fu_quiz" = "Beni test et";
+"ai_fu_quiz_prompt" = "Bu konuda beni test et: bana tek tek soru sor, cevabımı kontrol et.";

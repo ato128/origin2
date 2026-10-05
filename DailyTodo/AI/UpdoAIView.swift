@@ -54,6 +54,14 @@ struct UpdoAIView: View {
     @State private var showScanPreview = false
     @State private var didAutoStartScan = false
 
+    // Question photo ("bu soruyu çöz"): picked from camera or library, previewed
+    // above the composer, sent with the next message.
+    @State private var pendingImage: UIImage? = nil
+    @State private var showQuestionCamera = false
+    @State private var showQuestionLibrary = false
+    @State private var questionPickerItem: PhotosPickerItem? = nil
+    @State private var viewerImage: UIImage? = nil
+
     private let hapticSend = UIImpactFeedbackGenerator(style: .light)
     private let hapticResponse = UINotificationFeedbackGenerator()
 
@@ -278,7 +286,7 @@ struct UpdoAIView: View {
     private var canSend: Bool {
         // Credits are checked in `routeUserInput` for the LLM path only — local
         // add/remove commands are free, so the button stays usable at 0 credits.
-        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        (!inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pendingImage != nil)
             && !chatStore.isSending
     }
 
@@ -388,6 +396,33 @@ struct UpdoAIView: View {
         .onChange(of: scanPickerItems) { _, items in
             guard !items.isEmpty else { return }
             Task { await runScheduleScan() }
+        }
+        .photosPicker(
+            isPresented: $showQuestionLibrary,
+            selection: $questionPickerItem,
+            matching: .images
+        )
+        .onChange(of: questionPickerItem) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { pendingImage = image }
+                }
+                questionPickerItem = nil
+            }
+        }
+        .fullScreenCover(isPresented: $showQuestionCamera) {
+            AICameraPicker { image in
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { pendingImage = image }
+            }
+            .ignoresSafeArea()
+        }
+        .fullScreenCover(item: Binding(
+            get: { viewerImage.map(AIViewerImage.init) },
+            set: { viewerImage = $0?.image }
+        )) { item in
+            AIImageViewer(image: item.image)
         }
         .onAppear {
             hapticSend.prepare()
@@ -638,7 +673,9 @@ struct UpdoAIView: View {
         AIMessageBubble(
             text: msg.text,
             isUser: msg.role == "user",
-            showsOrb: !chatStore.isSending && isLastAssistantMessage(msg)
+            showsOrb: !chatStore.isSending && isLastAssistantMessage(msg),
+            imageFile: msg.imageFile,
+            onTapImage: { viewerImage = $0 }
         )
         .equatable()
         .transition(
@@ -653,6 +690,13 @@ struct UpdoAIView: View {
                 )
         )
 
+        if showsFollowUps(for: msg) {
+            followUpChips
+                .padding(.top, 8)
+                .padding(.leading, 30)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+        }
+
         if msg.role == "assistant" {
             let items = cachedPlan(msg.text)
             if items.count >= 2
@@ -665,6 +709,49 @@ struct UpdoAIView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .topLeading)))
             }
         }
+    }
+
+    // MARK: - Follow-up chips (teacher mode)
+
+    /// After an explanation-sized answer (not a plan, not a short confirmation),
+    /// offer the next learning move in one tap: a hint, a simpler take, a quiz.
+    private func showsFollowUps(for msg: AIMessage) -> Bool {
+        guard msg.role == "assistant", !chatStore.isSending,
+              chatStore.messages.last?.id == msg.id,
+              msg.text.count >= 280,
+              cachedPlan(msg.text).count < 2 else { return false }
+        return true
+    }
+
+    private var followUpChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                followUpChip(icon: "lightbulb", title: tr("ai_fu_simpler"), prompt: tr("ai_fu_simpler_prompt"))
+                followUpChip(icon: "list.number", title: tr("ai_fu_example"), prompt: tr("ai_fu_example_prompt"))
+                followUpChip(icon: "checkmark.seal", title: tr("ai_fu_quiz"), prompt: tr("ai_fu_quiz_prompt"))
+            }
+            .padding(.trailing, 16)
+        }
+    }
+
+    private func followUpChip(icon: String, title: String, prompt: String) -> some View {
+        Button {
+            sendQuickMessage(prompt)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(UpdoTheme.cyan)
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background(UpdoTheme.surfaceHigh, in: Capsule())
+            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 
     /// Sohbetteki en son asistan (AI) mesajı mı? Orb yalnız onun yanında gösterilir.
@@ -815,7 +902,13 @@ struct UpdoAIView: View {
     }
 
     private var inputBar: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
+            if let pendingImage {
+                pendingImagePreview(pendingImage)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .transition(.scale(scale: 0.85, anchor: .bottomLeading).combined(with: .opacity))
+            }
             HStack(alignment: .bottom, spacing: 10) {
                 if credits.isLoaded && !credits.canSendChatMessage {
                     Button {
@@ -859,9 +952,23 @@ struct UpdoAIView: View {
                 } else {
                     // iMessage-style capsule: field with send button inside, trailing
                     HStack(alignment: .bottom, spacing: 4) {
-                        // Always-available schedule scan (works mid-chat too).
-                        Button { beginScheduleScan() } label: {
-                            Image(systemName: "doc.text.viewfinder")
+                        // Attach: a question photo (camera / library) or the
+                        // always-available schedule scan (works mid-chat too).
+                        Menu {
+                            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                Button { showQuestionCamera = true } label: {
+                                    Label(tr("ai_photo_camera"), systemImage: "camera")
+                                }
+                            }
+                            Button { showQuestionLibrary = true } label: {
+                                Label(tr("ai_photo_library"), systemImage: "photo.on.rectangle")
+                            }
+                            Divider()
+                            Button { beginScheduleScan() } label: {
+                                Label(tr("ai_chip_scan"), systemImage: "doc.text.viewfinder")
+                            }
+                        } label: {
+                            Image(systemName: "plus")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(UpdoTheme.cyan)
                                 .frame(width: 32, height: 32)
@@ -869,7 +976,7 @@ struct UpdoAIView: View {
                         .buttonStyle(.plain)
                         .padding(.leading, 4)
                         .padding(.bottom, 4)
-                        .accessibilityLabel(tr("ai_chip_scan"))
+                        .accessibilityLabel(tr("ai_attach"))
 
                         TextField(tr("ai_input_placeholder"), text: $inputText, axis: .vertical)
                             .font(.body)
@@ -912,6 +1019,34 @@ struct UpdoAIView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+        }
+    }
+
+    /// The attached question photo, waiting to be sent with the next message.
+    private func pendingImagePreview(_ image: UIImage) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(UpdoTheme.border, lineWidth: 1)
+                )
+                .onTapGesture { viewerImage = image }
+
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { pendingImage = nil }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 20))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, Color.black.opacity(0.65))
+            }
+            .buttonStyle(.plain)
+            .offset(x: 7, y: -7)
+            .accessibilityLabel(tr("event_close"))
         }
     }
 
@@ -1037,7 +1172,17 @@ struct UpdoAIView: View {
 
     private func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !chatStore.isSending, currentUserID != nil else { return }
+        guard !chatStore.isSending, currentUserID != nil else { return }
+        if let image = pendingImage {
+            // A photo question always goes to the model — the token-free local
+            // interpreters only understand text commands.
+            guard sendToCoach(text, image: image) else { return }
+            hapticSend.impactOccurred()
+            inputText = ""
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { pendingImage = nil }
+            return
+        }
+        guard !text.isEmpty else { return }
         hapticSend.impactOccurred()
         inputText = ""
         routeUserInput(text)
@@ -1132,20 +1277,30 @@ struct UpdoAIView: View {
             return
         }
 
+        sendToCoach(text)
+    }
+
+    /// Sends to the LLM coach (credit-gated). Returns false when blocked by the
+    /// credit limit, so a pending photo isn't thrown away.
+    @discardableResult
+    private func sendToCoach(_ text: String, image: UIImage? = nil) -> Bool {
+        guard let uid = currentUserID else { return false }
         guard credits.canSendChatMessage else {
             chatStore.error = credits.limitMessage
-            return
+            return false
         }
 
         Task {
             await chatStore.send(
                 text: text,
+                image: image,
                 contextPrompt: contextSystemPrompt,
                 credits: credits,
                 userID: uid,
                 onTool: { tool in executeAITool(tool) }
             )
         }
+        return true
     }
 
     // MARK: - LLM tool-use (aksiyon çağrıları)
@@ -1953,8 +2108,38 @@ private struct AIMessageBubble: View, Equatable {
     let text: String
     let isUser: Bool
     let showsOrb: Bool
+    var imageFile: String? = nil
+    var onTapImage: (UIImage) -> Void = { _ in }
+
+    static func == (a: Self, b: Self) -> Bool {
+        a.text == b.text && a.isUser == b.isUser && a.showsOrb == b.showsOrb && a.imageFile == b.imageFile
+    }
 
     var body: some View {
+        VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
+            if let imageFile, let image = AIChatImageStore.load(imageFile) {
+                HStack {
+                    if isUser { Spacer(minLength: 64) }
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 220, maxHeight: 260)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(UpdoTheme.border, lineWidth: 1)
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture { onTapImage(image) }
+                        .accessibilityLabel(tr("ai_photo_question"))
+                    if !isUser { Spacer(minLength: 64) }
+                }
+            }
+            if !text.isEmpty { bubbleRow }
+        }
+    }
+
+    private var bubbleRow: some View {
         HStack(alignment: .bottom, spacing: 6) {
             if isUser {
                 Spacer(minLength: 64)
@@ -2012,6 +2197,86 @@ private struct AIMessageBubble: View, Equatable {
         if richTextCache.count > 300 { richTextCache.removeAll(keepingCapacity: true) }
         richTextCache[s] = attr
         return Text(attr)
+    }
+}
+
+// MARK: - Question photo: camera + viewer
+
+/// System camera for snapping a question. Returns the captured photo.
+private struct AICameraPicker: UIViewControllerRepresentable {
+    let onImage: (UIImage) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: AICameraPicker
+        init(_ parent: AICameraPicker) { self.parent = parent }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage { parent.onImage(image) }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+}
+
+private struct AIViewerImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+/// Full-screen photo with pinch-to-zoom (double-tap toggles 2.5×).
+private struct AIImageViewer: View {
+    let image: UIImage
+    @Environment(\.dismiss) private var dismiss
+    @State private var scale: CGFloat = 1
+    @GestureState private var pinch: CGFloat = 1
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .scaleEffect(scale * pinch)
+                .gesture(
+                    MagnifyGesture()
+                        .updating($pinch) { v, st, _ in st = v.magnification }
+                        .onEnded { v in scale = min(4, max(1, scale * v.magnification)) }
+                )
+                .onTapGesture(count: 2) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { scale = scale > 1 ? 1 : 2.5 }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .liquidGlass(in: Circle())
+            }
+            .padding(.trailing, 16)
+            .padding(.top, 8)
+            .accessibilityLabel(tr("event_close"))
+        }
     }
 }
 

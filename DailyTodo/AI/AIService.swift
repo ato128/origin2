@@ -93,7 +93,7 @@ actor AIService {
     /// katmanı.
     func coachChat(
         system: String,
-        messages: [[String: String]],
+        messages: [[String: Any]],
         maxTokens: Int = 300
     ) async throws -> (text: String, tool: AIToolCall?) {
         let body: [String: Any] = [

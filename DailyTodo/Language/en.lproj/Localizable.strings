@@ -2356,3 +2356,15 @@
 "insd_focus_detail_title" = "Focus History";
 "insd_avg" = "Avg session";
 "insd_all_sessions_caps" = "ALL SESSIONS";
+
+/* Updo AI — question photo + teacher follow-ups */
+"ai_attach" = "Attach";
+"ai_photo_camera" = "Take a photo of a question";
+"ai_photo_library" = "Choose from library";
+"ai_photo_question" = "Question photo";
+"ai_fu_simpler" = "Explain simpler";
+"ai_fu_simpler_prompt" = "Can you explain this more simply, with an everyday example?";
+"ai_fu_example" = "Similar example";
+"ai_fu_example_prompt" = "Can you solve a similar example question step by step?";
+"ai_fu_quiz" = "Quiz me";
+"ai_fu_quiz_prompt" = "Quiz me on this: ask me one question at a time and check my answer.";
