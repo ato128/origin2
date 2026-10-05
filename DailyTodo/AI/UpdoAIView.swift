@@ -14,6 +14,9 @@ struct UpdoAIView: View {
     /// When opened from the Home "Ders tara" shortcut, kicks off the photo-scan
     /// flow automatically (asks for photos → scans → "added to your week").
     var autoStartScan: Bool = false
+    /// Opened from an Updo AI notification: shown as Updo AI's first line, so
+    /// the student can just answer it (no credit spent until they reply).
+    var openerMessage: String? = nil
     let onDismissAndOpenWeek: () -> Void
     let onDismissAndAddTask: () -> Void
 
@@ -428,12 +431,26 @@ struct UpdoAIView: View {
             hapticSend.prepare()
             hapticResponse.prepare()
             Task { await credits.refreshIfStale() }
+            showOpenerIfNeeded()
             sendSeedIfNeeded()
             autoStartScanIfNeeded()
         }
     }
 
     @State private var didSendSeed = false
+    @State private var didShowOpener = false
+
+    private func showOpenerIfNeeded() {
+        guard !didShowOpener,
+              let opener = openerMessage?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !opener.isEmpty else { return }
+        didShowOpener = true
+        guard chatStore.messages.last?.text != opener else { return }
+        Analytics.shared.track("ai_nudge_opened")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            chatStore.appendAssistant(opener)
+        }
+    }
 
     /// When the chat is opened from the Home "what do you want to do today?" bar,
     /// auto-send the user's typed intention as the first message.

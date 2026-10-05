@@ -772,6 +772,7 @@ struct DailyTodoApp: App {
             }
             startInboxSocket()
             rescheduleSmartNotifications(reason: "scene active")
+            refreshAINudges()
 
             // Arka plandan dönerken tamponlanan davet varsa sun.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -797,6 +798,20 @@ struct DailyTodoApp: App {
         }
     }
     
+    /// Once a day on app open: Updo AI rewrites the smart-notification copy from
+    /// the student's current state (background, never blocks the UI).
+    private func refreshAINudges() {
+        let context = ModelContext(container)
+        let currentUserID = session.currentUser?.id.uuidString
+        Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)   // let launch work settle first
+            await SmartNotificationScheduler.shared.refreshAINudgesIfNeeded(
+                context: context,
+                currentUserID: currentUserID
+            )
+        }
+    }
+
     private func rescheduleSmartNotifications(reason: String) {
         let context = ModelContext(container)
         let currentUserID = session.currentUser?.id.uuidString
@@ -1107,6 +1122,11 @@ struct DailyTodoApp: App {
 
         if url.host == "week" {
             NotificationCenter.default.post(name: .openWeekFromWidget, object: nil)
+            return
+        }
+
+        if url.host == "ai" {
+            NotificationCenter.default.post(name: .openUpdoAIFromNotification, object: nil)
             return
         }
 

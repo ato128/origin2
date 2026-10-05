@@ -2368,3 +2368,16 @@
 "ai_fu_example_prompt" = "Can you solve a similar example question step by step?";
 "ai_fu_quiz" = "Quiz me";
 "ai_fu_quiz_prompt" = "Quiz me on this: ask me one question at a time and check my answer.";
+
+/* Smart notifications — win-back (template fallback when Updo AI copy isn't available) */
+"snb_wb_1_title" = "Taking a short break? 👋";
+"snb_wb_1_body" = "One small step is enough — Updo AI has a short session ready for you.";
+"snb_wb_2_title" = "Let's get your rhythm back";
+"snb_wb_2_body" = "Picking up where you left off is easy — I'll show you the easiest first step.";
+"snb_wb_4_title" = "Updo AI is here for you";
+"snb_wb_4_body" = "Let's tidy up your plan together; I'll suggest what to study.";
+"snb_wb_7_title" = "Let's start a fresh page ✨";
+"snb_wb_7_body" = "A great time to restart. Want me to put together a short plan?";
+"snb_wb_14_title" = "Ready for a fresh start?";
+"snb_wb_14_body" = "Your goals are still here. Build a new routine with Updo AI in minutes.";
+"snb_wb_opener" = "Welcome back! 👋 Let's ease back in: I can put together a short, doable plan for today. Shall we start?";

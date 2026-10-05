@@ -162,6 +162,13 @@ struct MainTabView: View {
         .onReceive(NotificationCenter.default.publisher(for: .openWeekTab)) { _ in
             tab = .week
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openUpdoAIFromNotification)) { _ in
+            // Updo AI lives on Home; HomeView presents the chat with the opener.
+            tab = .tasks
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                NotificationCenter.default.post(name: .presentUpdoAIWithOpener, object: nil)
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .openFriendChatFromNotification)) { output in
             guard let rawID = output.object as? String,
                   let friendshipID = UUID(uuidString: rawID)

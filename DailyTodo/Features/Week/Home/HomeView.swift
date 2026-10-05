@@ -70,6 +70,8 @@ struct HomeView: View {
     @State var aiQuickInput = ""
     @State var aiSeedPrompt: String? = nil
     @State var aiAutoScan = false
+    /// Updo AI's first line when the chat is opened from one of its notifications.
+    @State var aiOpener: String? = nil
     @FocusState var aiQuickFocused: Bool
     @AppStorage("updoChallengeAcceptedDayV1") var challengeAcceptedDay: Int = -1
     @AppStorage("challengeStreakCountV1") var challengeStreakCount: Int = 0
@@ -178,10 +180,11 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $showMessages) {
             MessagesView()
         }
-        .fullScreenCover(isPresented: $showUpdoAI, onDismiss: { aiSeedPrompt = nil; aiAutoScan = false }) {
+        .fullScreenCover(isPresented: $showUpdoAI, onDismiss: { aiSeedPrompt = nil; aiAutoScan = false; aiOpener = nil }) {
             UpdoAIView(
                 seedPrompt: aiSeedPrompt,
                 autoStartScan: aiAutoScan,
+                openerMessage: aiOpener,
                 onDismissAndOpenWeek: {
                     showUpdoAI = false
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { onOpenWeek() }
@@ -214,6 +217,10 @@ struct HomeView: View {
             pageAppeared = true
             startShimmerLoop()
             evaluateStreakChange()
+            presentAIFromNotificationIfPending()   // cold start from a notification tap
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .presentUpdoAIWithOpener)) { _ in
+            presentAIFromNotificationIfPending()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { evaluateStreakChange() }
@@ -248,6 +255,16 @@ struct HomeView: View {
 
     /// Compares the current streak to the last value we showed the user. If it
     /// grew, auto-presents the "Seri arttı" bubble and lets it self-dismiss.
+
+    /// Opens Updo AI with the opener of the notification the user just tapped.
+    private func presentAIFromNotificationIfPending() {
+        guard let opener = AINudgeStore.pendingOpener else { return }
+        AINudgeStore.pendingOpener = nil
+        aiSeedPrompt = nil
+        aiAutoScan = false
+        aiOpener = opener
+        showUpdoAI = true
+    }
     private func evaluateStreakChange() {
         let current = progression.currentStreak
         let defaults = UserDefaults.standard

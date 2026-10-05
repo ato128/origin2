@@ -14,6 +14,8 @@ enum SmartNotificationCategory: String, Codable {
     case todayTasks
     case aiSuggestion
     case weeklyRecap
+    /// "We miss you" sequence for users who stop opening the app (day 1/2/4/7/14).
+    case winback
 }
 
 struct SmartNotificationPreferences {
@@ -41,11 +43,15 @@ struct SmartNotificationPreferences {
 struct SmartNotificationCandidate: Identifiable {
     let id: String
     let category: SmartNotificationCategory
-    let title: String
-    let body: String
+    var title: String
+    var body: String
     let triggerDate: Date
-    let deepLink: String
+    var deepLink: String
     let priority: Int
+    /// Slot Updo AI may write the copy for (see `AINudgeStore`).
+    var aiKey: String? = nil
+    /// First chat message Updo AI shows when this notification is tapped.
+    var opener: String? = nil
 }
 
 struct SmartNotificationBrain {
@@ -131,6 +137,15 @@ struct SmartNotificationBrain {
             )
         )
 
+        if preferences.aiSuggestionEnabled {
+            candidates.append(contentsOf: winbackCandidates(focusRecords: focusRecords, now: now))
+        }
+
+        // Updo AI voice: the rules above decide WHEN/WHETHER; where Updo AI has
+        // written copy for that slot (with real course/exam/task names), it
+        // replaces the template and the tap opens the chat with its opener.
+        candidates = candidates.map { applyAICopy(to: $0, now: now) }
+
         return candidates
             .filter { $0.triggerDate > now.addingTimeInterval(60) }
             .sorted {
@@ -140,6 +155,65 @@ struct SmartNotificationBrain {
 
                 return $0.triggerDate < $1.triggerDate
             }
+    }
+
+    // MARK: - Updo AI copy overlay
+
+    private static func applyAICopy(
+        to candidate: SmartNotificationCandidate,
+        now: Date
+    ) -> SmartNotificationCandidate {
+        guard let key = candidate.aiKey else { return candidate }
+        var c = candidate
+        if let copy = AINudgeStore.copy(for: key, now: now) {
+            c.title = copy.title
+            c.body = copy.body
+            c.opener = copy.opener
+            c.deepLink = "dailytodo://ai"
+        } else if c.category == .winback {
+            // No AI copy (offline / not generated yet) → still open the chat.
+            c.deepLink = "dailytodo://ai"
+        }
+        return c
+    }
+
+    // MARK: - Win-back (user stopped opening the app)
+
+    /// Re-anchored on every reschedule (app open / background), so for an active
+    /// user these keep sliding forward and never fire; they only land once the
+    /// user actually stays away: day 1, 2, 4, 7 and 14, near their usual time.
+    private static func winbackCandidates(
+        focusRecords: [FocusSessionRecord],
+        now: Date
+    ) -> [SmartNotificationCandidate] {
+        let calendar = Calendar.current
+        let minuteOfDay = personalizedMinute(
+            defaultMinute: 18 * 60 + 30,
+            records: focusRecords,
+            offset: -30,
+            clampedTo: (11 * 60)...(20 * 60 + 30),
+            now: now
+        )
+        let today = calendar.startOfDay(for: now)
+        let anchor = dayKey(now)
+
+        return [1, 2, 4, 7, 14].compactMap { offset -> SmartNotificationCandidate? in
+            guard let day = calendar.date(byAdding: .day, value: offset, to: today),
+                  let trigger = calendar.date(
+                    bySettingHour: minuteOfDay / 60, minute: minuteOfDay % 60, second: 0, of: day
+                  ) else { return nil }
+            return SmartNotificationCandidate(
+                id: "smart.winback.\(anchor).d\(offset)",
+                category: .winback,
+                title: tr("snb_wb_\(offset)_title"),
+                body: tr("snb_wb_\(offset)_body"),
+                triggerDate: trigger,
+                deepLink: "dailytodo://ai",
+                priority: 30,
+                aiKey: "winback_\(offset)",
+                opener: tr("snb_wb_opener")
+            )
+        }
     }
 
     // MARK: - Updo AI Suggestion (empty-plan nudge)
@@ -206,7 +280,8 @@ struct SmartNotificationBrain {
                 body: body,
                 triggerDate: trigger,
                 deepLink: "dailytodo://week",
-                priority: 48
+                priority: 48,
+                aiKey: "plan_empty"
             )
         ]
     }
@@ -365,7 +440,8 @@ struct SmartNotificationBrain {
                     body: tr("snb_neglect_body"),
                     triggerDate: trigger,
                     deepLink: "dailytodo://focus",
-                    priority: 70
+                    priority: 70,
+                    aiKey: AINudgeStore.examPrepKey(for: subject)
                 )
             )
         }
@@ -373,7 +449,7 @@ struct SmartNotificationBrain {
         return result
     }
 
-    private static func fold(_ s: String) -> String {
+    static func fold(_ s: String) -> String {
         s.folding(options: [.diacriticInsensitive, .caseInsensitive],
                   locale: Locale(identifier: "tr"))
     }
@@ -440,7 +516,8 @@ struct SmartNotificationBrain {
                 body: body,
                 triggerDate: trigger,
                 deepLink: deepLink,
-                priority: 92
+                priority: 92,
+                aiKey: "streak_risk"
             )
         ]
     }
@@ -489,7 +566,8 @@ struct SmartNotificationBrain {
                 body: body,
                 triggerDate: trigger,
                 deepLink: "dailytodo://week",
-                priority: 72
+                priority: 72,
+                aiKey: "tasks_today"
             )
         ]
     }
@@ -530,7 +608,8 @@ struct SmartNotificationBrain {
                 body: tr("snb_one_session"),
                 triggerDate: trigger,
                 deepLink: "dailytodo://focus",
-                priority: 58
+                priority: 58,
+                aiKey: "focus_today"
             )
         ]
     }
@@ -702,7 +781,7 @@ struct SmartNotificationBrain {
         return total >= quietStart || total < quietEnd
     }
 
-    private static func dayKey(_ date: Date) -> String {
+    static func dayKey(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "yyyy-MM-dd"

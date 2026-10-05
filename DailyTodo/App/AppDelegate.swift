@@ -204,6 +204,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     private func handleNotificationPayload(_ userInfo: [AnyHashable: Any]) {
+        // Updo AI notification → the chat opens with this as Updo AI's first line.
+        if let opener = userInfo["ai_opener"] as? String, !opener.isEmpty {
+            AINudgeStore.pendingOpener = opener
+        }
         guard let type = userInfo["type"] as? String else {
             if let deepLink = userInfo["deep_link"] as? String,
                let url = URL(string: deepLink) {
@@ -370,6 +374,8 @@ extension Notification.Name {
     static let openCrewChatFromNotification = Notification.Name("openCrewChatFromNotification")
     static let openFriendChatFromNotification = Notification.Name("openFriendChatFromNotification")
     static let openURLFromNotification = Notification.Name("openURLFromNotification")
+    static let openUpdoAIFromNotification = Notification.Name("openUpdoAIFromNotification")
+    static let presentUpdoAIWithOpener = Notification.Name("presentUpdoAIWithOpener")
     static let didReceiveAPNSToken = Notification.Name("didReceiveAPNSToken")
 
     static let presentCrewFocusInviteSheet = Notification.Name("presentCrewFocusInviteSheet")

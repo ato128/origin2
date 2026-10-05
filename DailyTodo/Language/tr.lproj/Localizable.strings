@@ -2369,3 +2369,16 @@
 "ai_fu_example_prompt" = "Buna benzer bir örnek soruyu adım adım çözer misin?";
 "ai_fu_quiz" = "Beni test et";
 "ai_fu_quiz_prompt" = "Bu konuda beni test et: bana tek tek soru sor, cevabımı kontrol et.";
+
+/* Smart notifications — win-back (template fallback when Updo AI copy isn't available) */
+"snb_wb_1_title" = "Kısa bir mola mı? 👋";
+"snb_wb_1_body" = "Tek bir küçük adım yeter: Updo AI sana uygun kısa bir seans hazırladı.";
+"snb_wb_2_title" = "Ritmini geri alalım";
+"snb_wb_2_body" = "Kaldığın yerden başlamak kolay — sana en kolay ilk adımı göstereyim.";
+"snb_wb_4_title" = "Updo AI seni bekliyor";
+"snb_wb_4_body" = "Planını birlikte toparlayalım; ne çalışacağını ben önereyim.";
+"snb_wb_7_title" = "Temiz bir sayfa açalım ✨";
+"snb_wb_7_body" = "Yeniden başlamak için harika bir zaman. Sana kısa bir plan hazırlayayım mı?";
+"snb_wb_14_title" = "Yeni bir başlangıç?";
+"snb_wb_14_body" = "Hedeflerin hâlâ burada. Updo AI ile birkaç dakikada yeni bir rutin kur.";
+"snb_wb_opener" = "Tekrar hoş geldin! 👋 Kaldığın yerden kolayca başlayalım: istersen sana bugün için kısa, yapılabilir bir plan hazırlayayım. Başlayalım mı?";
