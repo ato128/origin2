@@ -39,6 +39,13 @@ final class UpdoAIChatStore: ObservableObject {
     /// list shows it without an insertion transition so the hand-off is seamless.
     private(set) var streamedMessageID: UUID?
 
+    /// Output ceiling per turn. The model is told to keep chat short and only go
+    /// long for explanations/solutions, so this is headroom, not a target — the
+    /// old 300 cut worked solutions off mid-step. (Backend caps coach at 1024.)
+    private static let replyTokenBudget = 900
+    private static let historyTurns = 20
+    private static let historyCharsPerTurn = 1_500
+
     private let storageKey = "updo_ai_messages_v1"
     private let previewKey = "updo_ai_last_preview"
     /// Only the tail is ever shown (and only the last 8 travel to the model);
@@ -74,9 +81,15 @@ final class UpdoAIChatStore: ObservableObject {
         isSending = true
         error = nil
 
-        let history = Array(messages.suffix(8)).compactMap { msg -> [String: String]? in
+        // Last 20 turns so a longer explanation keeps its thread; each turn is
+        // clipped so one very long old answer can't balloon the input cost.
+        let history = Array(messages.suffix(Self.historyTurns)).compactMap { msg -> [String: String]? in
             guard msg.role == "user" || msg.role == "assistant" else { return nil }
-            return msg.anthropicMessage
+            var m = msg.anthropicMessage
+            if let content = m["content"], content.count > Self.historyCharsPerTurn {
+                m["content"] = String(content.prefix(Self.historyCharsPerTurn)) + "…"
+            }
+            return m
         }
 
         do {
@@ -119,7 +132,7 @@ final class UpdoAIChatStore: ObservableObject {
                     var streamError: Error? = nil
                     do {
                         for try await event in AIService.shared.coachChatStream(
-                            system: contextPrompt, messages: convo, maxTokens: 300
+                            system: contextPrompt, messages: convo, maxTokens: Self.replyTokenBudget
                         ) {
                             switch event {
                             case .delta(let chunk):
@@ -247,7 +260,7 @@ final class UpdoAIChatStore: ObservableObject {
         onTool: @MainActor (AIToolCall) -> String
     ) async throws -> String {
         let (fullText, tool) = try await AIService.shared.coachChat(
-            system: contextPrompt, messages: history, maxTokens: 300
+            system: contextPrompt, messages: history, maxTokens: Self.replyTokenBudget
         )
         credits.noteMessageSent()
         let replyText: String

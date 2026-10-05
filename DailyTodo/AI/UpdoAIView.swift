@@ -2033,9 +2033,10 @@ private struct AIStreamingRow: View {
                     TypingIndicatorBubble(status: stream.frame.status)
                         .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomLeading)))
                 } else {
-                    // Plain Text while streaming (Markdown is applied once, on the
-                    // committed message). The renderer settles fresh glyphs in.
-                    Text(verbatim: stream.frame.text)
+                    // Same inline Markdown as the committed bubble, so **bold**
+                    // doesn't flash as raw asterisks and then jump on commit.
+                    // The renderer settles fresh glyphs in.
+                    Self.liveText(stream.frame.text)
                         .font(.body)
                         .lineSpacing(2)
                         .foregroundStyle(UpdoTheme.textPrimary)
@@ -2054,6 +2055,23 @@ private struct AIStreamingRow: View {
 
             Spacer(minLength: 64)
         }
+    }
+
+    /// Inline Markdown for a partially written reply. An unclosed `**` at the
+    /// write head is hidden until its pair arrives (instead of showing raw
+    /// asterisks); text without any markup skips parsing entirely.
+    private static func liveText(_ s: String) -> Text {
+        guard s.contains("*") || s.contains("`") else { return Text(verbatim: s) }
+        var src = s
+        if src.components(separatedBy: "**").count % 2 == 0,
+           let r = src.range(of: "**", options: .backwards) {
+            src.removeSubrange(r)
+        }
+        guard let attr = try? AttributedString(
+            markdown: src,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) else { return Text(verbatim: s) }
+        return Text(attr)
     }
 }
 
