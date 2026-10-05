@@ -6,4 +6,4 @@ SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 // Secret key (sk_...) AYRI ve Railway backend'de (REVENUECAT_SECRET_KEY) tutulur.
 REVENUECAT_API_KEY = appl_BcgqCggCADddBqCcLCvmrUXOlJf
 POSTHOG_API_KEY = phc_pNTV4jAfcbzCcwiA9YBNjsBK6pCpWdyMSvieHgCKDfGp
-POSTHOG_HOST = https://eu.i.posthog.com
+POSTHOG_HOST = https:/$()/eu.i.posthog.com

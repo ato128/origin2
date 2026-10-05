@@ -2086,9 +2086,9 @@ private struct CurvedTimelineView: View {
             .stroke(
                 LinearGradient(
                     stops: [
-                        .init(color: UpdoTheme.filmy(0.0), location: max(0, shimmerPhase - 0.18)),
-                        .init(color: UpdoTheme.filmy(0.55), location: shimmerPhase),
-                        .init(color: UpdoTheme.filmy(0.0), location: min(1, shimmerPhase + 0.18))
+                        .init(color: UpdoTheme.filmy(0.0), location: min(1, max(0, shimmerPhase - 0.18))),
+                        .init(color: UpdoTheme.filmy(0.55), location: min(1, max(0, shimmerPhase))),
+                        .init(color: UpdoTheme.filmy(0.0), location: min(1, max(0, shimmerPhase + 0.18)))
                     ],
                     startPoint: .leading,
                     endPoint: .trailing

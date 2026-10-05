@@ -45,7 +45,14 @@ enum AppSecrets {
     }
 
     static var postHogHost: String {
-        return Bundle.main.object(forInfoDictionaryKey: "POSTHOG_HOST") as? String ?? "https://eu.i.posthog.com"
+        // xcconfig treats `//` as a comment, so a plain `https://…` value arrives
+        // as just "https:" and PostHog posted to "https://batch/" (DNS -1003,
+        // zero events delivered). Config.xcconfig now escapes it; this guard keeps
+        // a truncated value from ever silently disabling analytics again.
+        let fallback = "https://eu.i.posthog.com"
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: "POSTHOG_HOST") as? String,
+              let host = URL(string: raw)?.host, !host.isEmpty else { return fallback }
+        return raw
     }
 
 }

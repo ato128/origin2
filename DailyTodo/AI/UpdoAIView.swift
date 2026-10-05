@@ -597,10 +597,14 @@ struct UpdoAIView: View {
                         }
 
                         if chatStore.isSending {
-                            typingOrStreamingRow
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 3)
-                                .id("typing")
+                            // Its own view observing only the stream: per-frame
+                            // text updates re-render this bubble, nothing else.
+                            AIStreamingRow(stream: chatStore.stream) {
+                                proxy.scrollTo("typing", anchor: .bottom)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 3)
+                            .id("typing")
                         }
                     }
 
@@ -621,11 +625,6 @@ struct UpdoAIView: View {
             .onChange(of: chatStore.isSending) { _, sending in
                 if sending { withAnimation(.easeOut(duration: 0.22)) { proxy.scrollTo("bottom", anchor: .bottom) } }
             }
-            .onChange(of: chatStore.streamingText) { _, text in
-                // Instant (non-animated) follow while streaming — animating the
-                // scroll on every token was the main source of the in-chat stutter.
-                if !text.isEmpty { proxy.scrollTo("typing", anchor: .bottom) }
-            }
         }
     }
 
@@ -633,15 +632,26 @@ struct UpdoAIView: View {
 
     @ViewBuilder
     private func messageRow(_ msg: AIMessage) -> some View {
-        messageBubble(msg)
-            .transition(
-                .asymmetric(
+        // Equatable value view: SwiftUI skips its body unless this message's own
+        // inputs change, so re-renders of the screen (typing in the composer, a
+        // new message) no longer re-lay-out every bubble ever shown.
+        AIMessageBubble(
+            text: msg.text,
+            isUser: msg.role == "user",
+            showsOrb: !chatStore.isSending && isLastAssistantMessage(msg)
+        )
+        .equatable()
+        .transition(
+            msg.id == chatStore.streamedMessageID
+                // Written live in the streaming bubble — swap in place, no fly-in.
+                ? .identity
+                : .asymmetric(
                     insertion: .move(edge: .bottom)
                         .combined(with: .opacity)
                         .combined(with: .scale(scale: 0.97, anchor: msg.role == "user" ? .bottomTrailing : .bottomLeading)),
                     removal: .opacity
                 )
-            )
+        )
 
         if msg.role == "assistant" {
             let items = cachedPlan(msg.text)
@@ -657,108 +667,9 @@ struct UpdoAIView: View {
         }
     }
 
-    // MARK: - Message Bubble
-
-    @ViewBuilder
-    private func messageBubble(_ msg: AIMessage) -> some View {
-        let isUser = msg.role == "user"
-
-        HStack(alignment: .bottom, spacing: 6) {
-            if isUser {
-                Spacer(minLength: 64)
-            } else if isLastAssistantMessage(msg) {
-                // Orb yalnızca SON AI mesajının yanında.
-                aiAvatar
-            } else {
-                // Eski AI mesajlarında orb yok ama baloncuk hizası korunur.
-                Color.clear.frame(width: 24, height: 24)
-            }
-
-            richText(msg.text)
-                .font(.body)
-                .lineSpacing(2)
-                .foregroundStyle(isUser ? Color.white : UpdoTheme.textPrimary)
-                .padding(.horizontal, 13)
-                .padding(.vertical, 9)
-                .background {
-                    if isUser {
-                        LinearGradient(
-                            colors: [UpdoTheme.cyan, UpdoTheme.purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    } else {
-                        UpdoTheme.surfaceHigh
-                    }
-                }
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 18,
-                        bottomLeadingRadius: isUser ? 18 : 5,
-                        bottomTrailingRadius: isUser ? 5 : 18,
-                        topTrailingRadius: 18
-                    )
-                )
-                .overlay {
-                    if !isUser {
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 18,
-                            bottomLeadingRadius: 5,
-                            bottomTrailingRadius: 18,
-                            topTrailingRadius: 18
-                        )
-                        .strokeBorder(UpdoTheme.border, lineWidth: 1)
-                    }
-                }
-
-            if !isUser {
-                Spacer(minLength: 64)
-            }
-        }
-    }
-
-    private var aiAvatar: some View {
-        UpdoAIOrb(mode: .idle, size: 24)
-    }
-
     /// Sohbetteki en son asistan (AI) mesajı mı? Orb yalnız onun yanında gösterilir.
     private func isLastAssistantMessage(_ msg: AIMessage) -> Bool {
         chatStore.messages.last(where: { $0.role == "assistant" })?.id == msg.id
-    }
-
-    // MARK: - Typing / Streaming
-
-    @ViewBuilder
-    private var typingOrStreamingRow: some View {
-        HStack(alignment: .bottom, spacing: 6) {
-            UpdoAIOrb(mode: .speaking, size: 24)
-
-            if chatStore.streamingText.isEmpty {
-                TypingIndicatorBubble()
-            } else {
-                // Plain Text while streaming — the reply arrives token-by-token, so
-                // re-parsing Markdown on every update froze the chat. The coach is
-                // instructed to emit plain text anyway; the committed messageRow
-                // still uses richText (parsed once, cached).
-                Text(chatStore.streamingText)
-                    .font(.body)
-                    .lineSpacing(2)
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 9)
-                    .background(UpdoTheme.surfaceHigh)
-                    .clipShape(
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 18,
-                            bottomLeadingRadius: 5,
-                            bottomTrailingRadius: 18,
-                            topTrailingRadius: 18
-                        )
-                    )
-            }
-
-            Spacer(minLength: 64)
-        }
     }
 
     // MARK: - Empty State
@@ -1107,28 +1018,6 @@ struct UpdoAIView: View {
     }
 
     // MARK: - Helpers
-
-    /// Renders `**bold**` / `*italic*` inline markdown instead of showing the raw
-    /// asterisks; falls back to plain text when parsing fails. Newlines preserved.
-    /// Markdown-rendered text, memoized. Any change to `streamingText` re-evaluates
-    /// this view's body, which re-runs `richText` for every visible message — so
-    /// parsing Markdown live (during streaming) turned the message list into an
-    /// O(messages × tokens) cost and froze the chat. Committed message text is
-    /// immutable, so caching by string makes those re-evals cache hits.
-    private static var richTextCache: [String: AttributedString] = [:]
-
-    private func richText(_ s: String) -> Text {
-        if let cached = Self.richTextCache[s] { return Text(cached) }
-        guard let attr = try? AttributedString(
-            markdown: s,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        ) else {
-            return Text(s)
-        }
-        if Self.richTextCache.count > 300 { Self.richTextCache.removeAll(keepingCapacity: true) }
-        Self.richTextCache[s] = attr
-        return Text(attr)
-    }
 
     /// Action-plan parsing, memoized. `UpdoAIPlanParser.parse` folds + splits every
     /// line of a message; `messageRow` runs it for EVERY visible assistant message,
@@ -1883,7 +1772,7 @@ struct UpdoAIView: View {
     private func pendingPlanCard() -> (msgID: UUID, items: [UpdoAIPlanItem])? {
         for msg in chatStore.messages.reversed() where msg.role == "assistant" {
             if executedActionIDs.contains(msg.id) || dismissedActionIDs.contains(msg.id) { continue }
-            let items = UpdoAIPlanParser.parse(msg.text)
+            let items = cachedPlan(msg.text)
             if !items.isEmpty { return (msg.id, items) }
         }
         return nil
@@ -2049,41 +1938,206 @@ struct UpdoAIView: View {
     }
 }
 
-// MARK: - Typing Indicator Bubble
+// MARK: - Message Bubble
 
-private struct TypingIndicatorBubble: View {
-    @State private var dotPhase = 0
-    @State private var isActive = false
+private let aiBubbleShape = UnevenRoundedRectangle(
+    topLeadingRadius: 18, bottomLeadingRadius: 5, bottomTrailingRadius: 18, topTrailingRadius: 18
+)
+private let userBubbleShape = UnevenRoundedRectangle(
+    topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 5, topTrailingRadius: 18
+)
 
-    private let dotTimer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
+/// A committed chat bubble. Pure value inputs + `Equatable`, so the list can
+/// skip it entirely when the screen re-renders for unrelated reasons.
+private struct AIMessageBubble: View, Equatable {
+    let text: String
+    let isUser: Bool
+    let showsOrb: Bool
 
     var body: some View {
-        HStack(spacing: 5) {
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .fill(Color.secondary)
-                    .frame(width: 7, height: 7)
-                    .opacity(isActive && dotPhase == i ? 0.9 : 0.3)
-                    .animation(.linear(duration: 0.1), value: dotPhase)
+        HStack(alignment: .bottom, spacing: 6) {
+            if isUser {
+                Spacer(minLength: 64)
+            } else if showsOrb {
+                // Orb yalnızca SON AI mesajının yanında.
+                UpdoAIOrb(mode: .idle, size: 24)
+            } else {
+                // Eski AI mesajlarında orb yok ama baloncuk hizası korunur.
+                Color.clear.frame(width: 24, height: 24)
+            }
+
+            Self.richText(text)
+                .font(.body)
+                .lineSpacing(2)
+                .foregroundStyle(isUser ? Color.white : UpdoTheme.textPrimary)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 9)
+                .background {
+                    if isUser {
+                        LinearGradient(
+                            colors: [UpdoTheme.cyan, UpdoTheme.purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    } else {
+                        UpdoTheme.surfaceHigh
+                    }
+                }
+                .clipShape(isUser ? userBubbleShape : aiBubbleShape)
+                .overlay {
+                    if !isUser {
+                        aiBubbleShape.strokeBorder(UpdoTheme.border, lineWidth: 1)
+                    }
+                }
+
+            if !isUser {
+                Spacer(minLength: 64)
+            }
+        }
+    }
+
+    /// Renders `**bold**` / `*italic*` inline markdown instead of showing the raw
+    /// asterisks; falls back to plain text when parsing fails. Newlines preserved.
+    /// Memoized: committed message text is immutable, so re-renders are cache hits.
+    private static var richTextCache: [String: AttributedString] = [:]
+
+    private static func richText(_ s: String) -> Text {
+        if let cached = richTextCache[s] { return Text(cached) }
+        guard let attr = try? AttributedString(
+            markdown: s,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) else {
+            return Text(s)
+        }
+        if richTextCache.count > 300 { richTextCache.removeAll(keepingCapacity: true) }
+        richTextCache[s] = attr
+        return Text(attr)
+    }
+}
+
+// MARK: - Streaming Row
+
+/// The live reply. Observes ONLY the stream pacer, so the ~60 fps write-on
+/// re-renders this one bubble — never the chat screen or the message list.
+private struct AIStreamingRow: View {
+    @ObservedObject var stream: AIStreamPacer
+    /// Called when the bubble grows a line, to keep the bottom in view.
+    let onGrow: () -> Void
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 6) {
+            UpdoAIOrb(mode: .speaking, size: 24)
+
+            ZStack(alignment: .bottomLeading) {
+                if stream.frame.text.isEmpty {
+                    TypingIndicatorBubble(status: stream.frame.status)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomLeading)))
+                } else {
+                    // Plain Text while streaming (Markdown is applied once, on the
+                    // committed message). The renderer settles fresh glyphs in.
+                    Text(verbatim: stream.frame.text)
+                        .font(.body)
+                        .lineSpacing(2)
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .textRenderer(AIStreamRevealRenderer(tail: stream.frame.tail))
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 9)
+                        .background(UpdoTheme.surfaceHigh)
+                        .clipShape(aiBubbleShape)
+                        .overlay { aiBubbleShape.strokeBorder(UpdoTheme.border, lineWidth: 1) }
+                        .transition(.opacity)
+                }
+            }
+            .animation(.smooth(duration: 0.22), value: stream.frame.text.isEmpty)
+            // Fires on line wraps only (height change) — not on every character.
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in onGrow() }
+
+            Spacer(minLength: 64)
+        }
+    }
+}
+
+/// Draws the newest characters "settling in": each fades up from transparent,
+/// rises ~3 pt and sharpens from a soft blur over `settleDuration`. Glyphs are
+/// matched to the pacer's per-character progress counting from the END of the
+/// text, so the effect stays anchored to the write head.
+private struct AIStreamRevealRenderer: TextRenderer {
+    /// Settle progress (0…1) of the newest characters, newest first.
+    let tail: [Double]
+
+    var displayPadding: EdgeInsets { EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4) }
+
+    func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
+        guard !tail.isEmpty else {
+            for line in layout { ctx.draw(line) }
+            return
+        }
+        var total = 0
+        for line in layout { for run in line { total += run.count } }
+        let settledBefore = total - tail.count   // glyph index where the fade begins
+
+        var index = 0
+        for line in layout {
+            for run in line {
+                if index + run.count <= settledBefore {
+                    ctx.draw(run)
+                    index += run.count
+                    continue
+                }
+                for glyph in run {
+                    let fromEnd = total - 1 - index
+                    index += 1
+                    guard fromEnd >= 0, fromEnd < tail.count else {
+                        ctx.draw(glyph)
+                        continue
+                    }
+                    let p = tail[fromEnd]
+                    let e = 1 - pow(1 - p, 3)            // ease-out cubic
+                    var g = ctx
+                    g.opacity = e
+                    g.translateBy(x: 0, y: (1 - e) * 3)
+                    if e < 0.97 { g.addFilter(.blur(radius: (1 - e) * 2.4)) }
+                    g.draw(glyph)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Typing Indicator Bubble
+
+/// Three dots riding a soft wave (or a live status like "Web'de aranıyor…").
+/// TimelineView-driven — no Timer publisher re-created on every parent render.
+private struct TypingIndicatorBubble: View {
+    var status: String? = nil
+
+    var body: some View {
+        HStack(spacing: 8) {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { tl in
+                let t = tl.date.timeIntervalSinceReferenceDate
+                HStack(spacing: 5) {
+                    ForEach(0..<3, id: \.self) { i in
+                        let w = (sin(t * 5.2 - Double(i) * 0.75) + 1) / 2   // 0…1
+                        Circle()
+                            .fill(Color.secondary)
+                            .frame(width: 7, height: 7)
+                            .opacity(0.3 + 0.6 * w)
+                            .offset(y: -2.5 * w)
+                    }
+                }
+            }
+            if let status {
+                Text(status)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .transition(.opacity)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(UpdoTheme.surfaceHigh)
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 18,
-                bottomLeadingRadius: 5,
-                bottomTrailingRadius: 18,
-                topTrailingRadius: 18
-            )
-        )
-        .onAppear { isActive = true }
-        .onDisappear { isActive = false }
-        .onReceive(dotTimer) { _ in
-            guard isActive else { return }
-            dotPhase = (dotPhase + 1) % 3
-        }
+        .clipShape(aiBubbleShape)
+        .animation(.smooth(duration: 0.25), value: status)
     }
 }
 

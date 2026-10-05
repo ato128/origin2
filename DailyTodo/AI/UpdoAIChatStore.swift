@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import QuartzCore
 import SwiftUI
 
 struct AIMessage: Identifiable, Codable {
@@ -24,13 +25,25 @@ struct AIMessage: Identifiable, Codable {
 @MainActor
 final class UpdoAIChatStore: ObservableObject {
     @Published var messages: [AIMessage] = []
-    @Published var streamingText: String = ""
     @Published var isSending: Bool = false
     @Published var error: String? = nil
     @Published var lastPreviewText: String = ""
 
+    /// The live reply being written. Deliberately NOT a `@Published` property of
+    /// this store: every token used to republish the whole store, re-evaluating
+    /// the entire chat screen (background, toolbar, every materialized message
+    /// row) dozens of times a second. Only the streaming bubble observes this.
+    let stream = AIStreamPacer()
+
+    /// The assistant message that was just committed from the live stream — the
+    /// list shows it without an insertion transition so the hand-off is seamless.
+    private(set) var streamedMessageID: UUID?
+
     private let storageKey = "updo_ai_messages_v1"
     private let previewKey = "updo_ai_last_preview"
+    /// Only the tail is ever shown (and only the last 8 travel to the model);
+    /// an unbounded history made every persist() re-encode the whole chat.
+    private let maxStoredMessages = 200
 
     init() {
         load()
@@ -99,7 +112,7 @@ final class UpdoAIChatStore: ObservableObject {
                         guard credits.canSendChatMessage else { break }
                     }
 
-                    streamingText = ""
+                    stream.reset()
                     var turnText = ""
                     var turnTool: AIToolCall? = nil
                     var receivedAny = false
@@ -112,7 +125,7 @@ final class UpdoAIChatStore: ObservableObject {
                             case .delta(let chunk):
                                 receivedAny = true
                                 turnText += chunk
-                                streamingText = turnText
+                                stream.append(chunk)
                             case .tool(let tool):
                                 receivedAny = true
                                 turnTool = tool
@@ -122,9 +135,9 @@ final class UpdoAIChatStore: ObservableObject {
                                 // in and overwrites it; don't flip `receivedAny` so a
                                 // status alone can't defeat the first-turn fallback.
                                 if turnText.isEmpty, label == "web_search" {
-                                    streamingText = appLanguageIsEnglish()
-                                        ? "🔎 Searching the web…"
-                                        : "🔎 Web'de aranıyor…"
+                                    stream.setStatus(appLanguageIsEnglish()
+                                        ? "Searching the web…"
+                                        : "Web'de aranıyor…")
                                 }
                             case .done:
                                 break
@@ -138,15 +151,11 @@ final class UpdoAIChatStore: ObservableObject {
                         // First turn, nothing produced, endpoint unavailable → the
                         // existing non-streaming fallback keeps chat working.
                         if iteration == 1, !receivedAny, Self.isStreamFallbackEligible(e) {
-                            streamingText = ""
+                            stream.reset()
                             replyText = try await sendNonStreaming(
                                 contextPrompt: contextPrompt, history: history, credits: credits, onTool: onTool
                             )
-                            let reply = AIMessage(role: "assistant", text: replyText, timestamp: .now)
-                            messages.append(reply)
-                            lastPreviewText = replyText
-                            UserDefaults.standard.set(replyText, forKey: previewKey)
-                            persist()
+                            commitReply(replyText)
                             isSending = false
                             return
                         }
@@ -191,23 +200,20 @@ final class UpdoAIChatStore: ObservableObject {
                     // No final text (cap / failure) → typewriter the last action
                     // confirmation, or error if nothing was produced at all.
                     guard let r = lastResult else { throw AIServiceError.invalidResponse }
-                    streamingText = ""
+                    stream.reset()
                     await revealReply(r)
-                    streamingText = ""
                     replyText = r
                 } else {
-                    streamingText = ""
+                    // Let the paced reveal finish writing the tail before the
+                    // bubble is swapped for the committed message.
+                    await stream.drain()
                     replyText = producedText
                 }
             }
 
-            let reply = AIMessage(role: "assistant", text: replyText, timestamp: .now)
-            messages.append(reply)
-            lastPreviewText = replyText
-            UserDefaults.standard.set(replyText, forKey: previewKey)
-            persist()
+            commitReply(replyText)
         } catch {
-            streamingText = ""
+            stream.reset()
             // Keep the user message visible — append an error reply instead of removing
             let errText: String
             switch error {
@@ -254,8 +260,20 @@ final class UpdoAIChatStore: ObservableObject {
             replyText = fullText
         }
         await revealReply(replyText)
-        streamingText = ""
         return replyText
+    }
+
+    /// Appends the finished reply and clears the live bubble in the SAME main-
+    /// actor turn, so SwiftUI renders one frame: the streaming row disappears and
+    /// the committed row takes its place (no empty/typing flash in between).
+    private func commitReply(_ text: String) {
+        let reply = AIMessage(role: "assistant", text: text, timestamp: .now)
+        streamedMessageID = stream.hasContent ? reply.id : nil
+        messages.append(reply)
+        stream.reset()
+        lastPreviewText = text
+        UserDefaults.standard.set(text, forKey: previewKey)
+        persist()
     }
 
     /// A streaming failure is "endpoint unavailable" (backend not deployed yet,
@@ -272,24 +290,11 @@ final class UpdoAIChatStore: ObservableObject {
         }
     }
 
-    /// Reveals `full` word-by-word into `streamingText` for a live typing feel.
-    /// Bounded: a one-word reply still shows briefly, a long plan doesn't drag.
-    /// Newlines stay attached to their words, so plan formatting is preserved.
+    /// Writes an already-complete reply (BYO key / non-streaming fallback /
+    /// action confirmation) through the same paced reveal as a live stream.
     private func revealReply(_ full: String) async {
-        let words = full.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
-        guard words.count > 1 else {
-            streamingText = full
-            try? await Task.sleep(nanoseconds: 130_000_000)
-            return
-        }
-        let perWord = min(0.05, max(0.012, 0.9 / Double(words.count)))
-        var acc = ""
-        for (i, w) in words.enumerated() {
-            acc += (i == 0 ? "" : " ") + w
-            streamingText = acc
-            if Task.isCancelled { break }
-            try? await Task.sleep(nanoseconds: UInt64(perWord * 1_000_000_000))
-        }
+        stream.append(full)
+        await stream.drain()
     }
 
     /// Appends an assistant-only line locally (no network, no credit spend).
@@ -321,6 +326,9 @@ final class UpdoAIChatStore: ObservableObject {
     }
 
     func persist() {
+        if messages.count > maxStoredMessages {
+            messages.removeFirst(messages.count - maxStoredMessages)
+        }
         if let data = try? JSONEncoder().encode(messages) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
@@ -328,8 +336,159 @@ final class UpdoAIChatStore: ObservableObject {
 
     func clearHistory() {
         messages = []
-        streamingText = ""
+        stream.reset()
         persist()
+    }
+}
+
+// MARK: - AIStreamPacer
+//
+//  Turns a bursty token stream into a steady, ChatGPT/Claude-style write-on.
+//  Network chunks land in a backlog; a display link reveals characters at an
+//  adaptive rate (a calm base speed that accelerates with the backlog, so it
+//  never lags far behind the model) and stamps each character's reveal time.
+//  The bubble fades/settles the freshest characters in from those timestamps.
+//  Ticks only while there's something to reveal or settle — idle costs nothing.
+
+@MainActor
+final class AIStreamPacer: ObservableObject {
+    struct Frame: Equatable {
+        /// Revealed text so far.
+        var text: String = ""
+        /// Settle progress (0…1) of the newest characters, newest first.
+        var tail: [Double] = []
+        /// A transient server-side status (e.g. web search) shown before text.
+        var status: String? = nil
+    }
+
+    @Published private(set) var frame = Frame()
+
+    /// Seconds a freshly revealed character takes to fully settle in.
+    static let settleDuration: CFTimeInterval = 0.32
+
+    private var chars: [Character] = []
+    private var revealed = 0
+    private var revealTimes: [CFTimeInterval] = []   // newest-last, trimmed
+    private var carry: Double = 0
+    private var finishing = false
+    private var lastTick: CFTimeInterval = 0
+    private var link: CADisplayLink?
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    var hasContent: Bool { !chars.isEmpty }
+
+    func append(_ chunk: String) {
+        guard !chunk.isEmpty else { return }
+        chars.append(contentsOf: chunk)
+        if frame.status != nil { frame.status = nil }
+        startIfNeeded()
+    }
+
+    func setStatus(_ label: String) {
+        guard chars.isEmpty else { return }
+        frame.status = label
+    }
+
+    /// Resolves once every received character is revealed and settled. Speeds
+    /// the remaining backlog up so the tail never takes more than ~½ s.
+    func drain() async {
+        guard revealed < chars.count || !frame.tail.isEmpty else { return }
+        finishing = true
+        startIfNeeded()
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func reset() {
+        stop()
+        chars.removeAll(keepingCapacity: true)
+        revealTimes.removeAll(keepingCapacity: true)
+        revealed = 0
+        carry = 0
+        finishing = false
+        if frame != Frame() { frame = Frame() }
+        resumeWaiters()
+    }
+
+    // MARK: Display link
+
+    private func startIfNeeded() {
+        guard link == nil else { return }
+        let target = AIStreamPacerLinkTarget(owner: self)
+        let l = CADisplayLink(target: target, selector: #selector(AIStreamPacerLinkTarget.tick))
+        l.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+        l.add(to: .main, forMode: .common)
+        link = l
+        lastTick = CACurrentMediaTime()
+    }
+
+    private func stop() {
+        link?.invalidate()
+        link = nil
+    }
+
+    private func resumeWaiters() {
+        let w = waiters
+        waiters.removeAll()
+        w.forEach { $0.resume() }
+    }
+
+    fileprivate func tick() {
+        let now = CACurrentMediaTime()
+        let dt = min(1.0 / 20.0, max(0, now - lastTick))
+        lastTick = now
+
+        var text = frame.text
+        let backlog = chars.count - revealed
+        if backlog > 0 {
+            // ~45 chars/s when the model is slow, catching up proportionally to
+            // the backlog (steady state ≈ a few tenths of a second behind).
+            var rate = 45 + Double(backlog) * 3.2
+            if finishing { rate = max(rate, Double(backlog) / 0.4) }
+            carry += rate * dt
+            let n = min(backlog, Int(carry))
+            if n > 0 {
+                carry -= Double(n)
+                text.append(contentsOf: chars[revealed ..< revealed + n])
+                // Spread the stamps across the frame so a multi-char step still
+                // fades in as a gradient, not a block.
+                for i in 0 ..< n {
+                    revealTimes.append(now - dt * (1 - Double(i + 1) / Double(n)))
+                }
+                revealed += n
+                if revealTimes.count > 160 { revealTimes.removeFirst(revealTimes.count - 160) }
+            }
+        } else {
+            carry = 0
+        }
+
+        var tail: [Double] = []
+        var k = revealTimes.count - 1
+        while k >= 0 {
+            let p = (now - revealTimes[k]) / Self.settleDuration
+            if p >= 1 { break }
+            tail.append(max(0, p))
+            k -= 1
+        }
+
+        frame = Frame(text: text, tail: tail, status: nil)
+
+        if revealed >= chars.count && tail.isEmpty {
+            stop()
+            if finishing {
+                finishing = false
+                resumeWaiters()
+            }
+        }
+    }
+}
+
+/// CADisplayLink retains its target; this weak trampoline keeps the pacer free.
+private final class AIStreamPacerLinkTarget: NSObject {
+    weak var owner: AIStreamPacer?
+    init(owner: AIStreamPacer) { self.owner = owner }
+
+    @objc func tick() {
+        MainActor.assumeIsolated { owner?.tick() }
     }
 }
 
