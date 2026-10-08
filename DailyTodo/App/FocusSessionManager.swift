@@ -1235,7 +1235,7 @@ final class FocusSessionManager: ObservableObject {
                 previousMinutes: previousMinutes
             )
 
-            content.sound = .default
+            content.sound = .updo
             content.userInfo = [
                 "type": "focus_ended_local",
                 "session_id": session.id.uuidString,
@@ -1322,7 +1322,7 @@ final class FocusSessionManager: ObservableObject {
             previousMinutes: previousMinutes
         )
 
-        content.sound = .default
+        content.sound = .updo
         content.interruptionLevel = .timeSensitive   // Lock Screen'de daha güçlü görünür
         content.userInfo = [
             "type": "focus_ended_local",

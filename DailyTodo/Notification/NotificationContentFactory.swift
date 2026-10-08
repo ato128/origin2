@@ -17,6 +17,14 @@
 import UserNotifications
 
 @MainActor
+extension UNNotificationSound {
+    /// Updo's own notification sound (bundled `updo_notify.caf`). Remote pushes
+    /// use the same file name in their APNs `sound` field.
+    nonisolated static var updo: UNNotificationSound {
+        UNNotificationSound(named: UNNotificationSoundName("updo_notify.caf"))
+    }
+}
+
 enum NotificationContentFactory {
 
     static func make(
@@ -28,7 +36,7 @@ enum NotificationContentFactory {
         relevance: Double = 0.5,
         interruption: UNNotificationInterruptionLevel = .active,
         attachIcon: Bool = false,
-        sound: UNNotificationSound = .default
+        sound: UNNotificationSound = .updo
     ) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = title

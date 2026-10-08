@@ -78,6 +78,7 @@
 		6D4F2BDF2FA148630056E067 /* FriendChatThreadSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BDE2FA148630056E067 /* FriendChatThreadSummary.swift */; };
 		6D4F2BE32FA15FF40056E067 /* FriendPresenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BE22FA15FF40056E067 /* FriendPresenceEngine.swift */; };
 		6D4F2BF52FA88BA40056E067 /* ChatFeedbackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BF42FA88BA40056E067 /* ChatFeedbackManager.swift */; };
+		6DA1B0C12FC0000100A1B0C1 /* updo_notify.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6DA1B0C02FC0000100A1B0C1 /* updo_notify.caf */; };
 		6D4F2C172FA8989D0056E067 /* chat_incoming.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6D4F2C162FA8989D0056E067 /* chat_incoming.caf */; };
 		6D4F2C192FA898A10056E067 /* chat_sent.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6D4F2C182FA898A10056E067 /* chat_sent.caf */; };
 		6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CB2F66CE68007C124D /* MessagesView.swift */; };
@@ -406,6 +407,7 @@
 		6D4F2BDE2FA148630056E067 /* FriendChatThreadSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendChatThreadSummary.swift; sourceTree = "<group>"; };
 		6D4F2BE22FA15FF40056E067 /* FriendPresenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendPresenceEngine.swift; sourceTree = "<group>"; };
 		6D4F2BF42FA88BA40056E067 /* ChatFeedbackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatFeedbackManager.swift; sourceTree = "<group>"; };
+		6DA1B0C02FC0000100A1B0C1 /* updo_notify.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = updo_notify.caf; sourceTree = "<group>"; };
 		6D4F2C162FA8989D0056E067 /* chat_incoming.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = chat_incoming.caf; sourceTree = "<group>"; };
 		6D4F2C182FA898A10056E067 /* chat_sent.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = chat_sent.caf; sourceTree = "<group>"; };
 		6D5FE3CB2F66CE68007C124D /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
@@ -902,6 +904,7 @@
 				6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */,
 				6D775B842F5F81CF0009D660 /* Color+Hex.swift */,
 				6D4F2C162FA8989D0056E067 /* chat_incoming.caf */,
+				6DA1B0C02FC0000100A1B0C1 /* updo_notify.caf */,
 				6D4F2C182FA898A10056E067 /* chat_sent.caf */,
 				6D2A2ACE2F887A890051459D /* ambient_loop.caf */,
 				6D2A2AD02F887A960051459D /* library_loop.caf */,
@@ -1397,6 +1400,7 @@
 				6DC0CAAE2F5F7D0000A875ED /* Assets.xcassets in Resources */,
 				FF400002 /* PrivacyInfo.xcprivacy in Resources */,
 				6D4F2C172FA8989D0056E067 /* chat_incoming.caf in Resources */,
+				6DA1B0C12FC0000100A1B0C1 /* updo_notify.caf in Resources */,
 				6D2A2AD32F887A9F0051459D /* rain_loop.caf in Resources */,
 				6D605CF52F773E060052C76B /* GoogleService-Info.plist in Resources */,
 				6D4F2C192FA898A10056E067 /* chat_sent.caf in Resources */,
