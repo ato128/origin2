@@ -709,8 +709,7 @@ struct UpdoAIView: View {
 
         if showsFollowUps(for: msg) {
             followUpChips
-                .padding(.top, 8)
-                .padding(.leading, 30)
+                .padding(.top, 4)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
 
@@ -722,7 +721,6 @@ struct UpdoAIView: View {
             {
                 actionCard(items: items, msgID: msg.id)
                     .padding(.top, 6)
-                    .padding(.leading, 32)
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .topLeading)))
             }
         }
@@ -2152,8 +2150,32 @@ private struct AIMessageBubble: View, Equatable {
                     if !isUser { Spacer(minLength: 64) }
                 }
             }
-            if !text.isEmpty { bubbleRow }
+            if !text.isEmpty {
+                if isUser {
+                    bubbleRow
+                } else {
+                    // AI replies read as a document — full width, real math,
+                    // no bubble (like ChatGPT / Claude).
+                    VStack(alignment: .leading, spacing: 10) {
+                        AIRichTextView(blocks: Self.blocks(text))
+                        AIReplyFooter(orb: showsOrb ? .idle : nil, copyText: AIRichParser.plainText(text))
+                    }
+                    .padding(.top, 6)
+                    .padding(.bottom, 2)
+                }
+            }
         }
+    }
+
+    /// Committed text is immutable, so parsing is memoized per message.
+    private static var blockCache: [String: [AIRichBlock]] = [:]
+
+    private static func blocks(_ s: String) -> [AIRichBlock] {
+        if let hit = blockCache[s] { return hit }
+        let parsed = AIRichParser.parse(s)
+        if blockCache.count > 300 { blockCache.removeAll(keepingCapacity: true) }
+        blockCache[s] = parsed
+        return parsed
     }
 
     private var bubbleRow: some View {
@@ -2303,104 +2325,71 @@ private struct AIImageViewer: View {
 /// re-renders this one bubble — never the chat screen or the message list.
 private struct AIStreamingRow: View {
     @ObservedObject var stream: AIStreamPacer
-    /// Called when the bubble grows a line, to keep the bottom in view.
+    /// Called when the reply grows a line, to keep the bottom in view.
     let onGrow: () -> Void
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 6) {
-            UpdoAIOrb(mode: .speaking, size: 24)
-
-            ZStack(alignment: .bottomLeading) {
-                if stream.frame.text.isEmpty {
+        ZStack(alignment: .topLeading) {
+            if stream.frame.text.isEmpty {
+                HStack(alignment: .bottom, spacing: 6) {
+                    UpdoAIOrb(mode: .speaking, size: 24)
                     TypingIndicatorBubble(status: stream.frame.status)
-                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomLeading)))
-                } else {
-                    // Same inline Markdown as the committed bubble, so **bold**
-                    // doesn't flash as raw asterisks and then jump on commit.
-                    // The renderer settles fresh glyphs in.
-                    Self.liveText(stream.frame.text)
-                        .font(.body)
-                        .lineSpacing(2)
-                        .foregroundStyle(UpdoTheme.textPrimary)
-                        .textRenderer(AIStreamRevealRenderer(tail: stream.frame.tail))
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 9)
-                        .background(UpdoTheme.surfaceHigh)
-                        .clipShape(aiBubbleShape)
-                        .overlay { aiBubbleShape.strokeBorder(UpdoTheme.border, lineWidth: 1) }
-                        .transition(.opacity)
+                    Spacer(minLength: 64)
                 }
+                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomLeading)))
+            } else {
+                // Same document layout as the committed reply, so nothing jumps
+                // on commit. A half-written equation is held back until it
+                // closes; the renderer settles fresh glyphs in.
+                VStack(alignment: .leading, spacing: 10) {
+                    AIRichTextView(
+                        blocks: AIRichParser.parse(stream.frame.text, streaming: true),
+                        tail: stream.frame.tail
+                    )
+                    AIReplyFooter(orb: .speaking, copyText: nil)
+                }
+                .transition(.opacity)
             }
-            .animation(.smooth(duration: 0.22), value: stream.frame.text.isEmpty)
-            // Fires on line wraps only (height change) — not on every character.
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in onGrow() }
-
-            Spacer(minLength: 64)
         }
-    }
-
-    /// Inline Markdown for a partially written reply. An unclosed `**` at the
-    /// write head is hidden until its pair arrives (instead of showing raw
-    /// asterisks); text without any markup skips parsing entirely.
-    private static func liveText(_ s: String) -> Text {
-        guard s.contains("*") || s.contains("`") else { return Text(verbatim: s) }
-        var src = s
-        if src.components(separatedBy: "**").count % 2 == 0,
-           let r = src.range(of: "**", options: .backwards) {
-            src.removeSubrange(r)
-        }
-        guard let attr = try? AttributedString(
-            markdown: src,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        ) else { return Text(verbatim: s) }
-        return Text(attr)
+        .animation(.smooth(duration: 0.22), value: stream.frame.text.isEmpty)
+        // Fires on line wraps only (height change) — not on every character.
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in onGrow() }
     }
 }
 
-/// Draws the newest characters "settling in": each fades up from transparent,
-/// rises ~3 pt and sharpens from a soft blur over `settleDuration`. Glyphs are
-/// matched to the pacer's per-character progress counting from the END of the
-/// text, so the effect stays anchored to the write head.
-private struct AIStreamRevealRenderer: TextRenderer {
-    /// Settle progress (0…1) of the newest characters, newest first.
-    let tail: [Double]
+/// Under every reply: the orb (latest reply only) and a copy button.
+/// Fixed height, so the orb moving to a newer reply never shifts the layout.
+private struct AIReplyFooter: View {
+    let orb: UpdoAIOrb.Mode?
+    let copyText: String?
+    @State private var copied = false
 
-    var displayPadding: EdgeInsets { EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4) }
-
-    func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
-        guard !tail.isEmpty else {
-            for line in layout { ctx.draw(line) }
-            return
-        }
-        var total = 0
-        for line in layout { for run in line { total += run.count } }
-        let settledBefore = total - tail.count   // glyph index where the fade begins
-
-        var index = 0
-        for line in layout {
-            for run in line {
-                if index + run.count <= settledBefore {
-                    ctx.draw(run)
-                    index += run.count
-                    continue
-                }
-                for glyph in run {
-                    let fromEnd = total - 1 - index
-                    index += 1
-                    guard fromEnd >= 0, fromEnd < tail.count else {
-                        ctx.draw(glyph)
-                        continue
+    var body: some View {
+        HStack(spacing: 12) {
+            if let orb { UpdoAIOrb(mode: orb, size: 20) }
+            if let copyText {
+                Button {
+                    UIPasteboard.general.string = copyText
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.snappy) { copied = true }
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.6))
+                        withAnimation(.snappy) { copied = false }
                     }
-                    let p = tail[fromEnd]
-                    let e = 1 - pow(1 - p, 3)            // ease-out cubic
-                    var g = ctx
-                    g.opacity = e
-                    g.translateBy(x: 0, y: (1 - e) * 3)
-                    if e < 0.97 { g.addFilter(.blur(radius: (1 - e) * 2.4)) }
-                    g.draw(glyph)
+                } label: {
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(copied ? UpdoTheme.lime : UpdoTheme.textMuted)
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(width: 28, height: 24)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tr("ai_copy"))
             }
+            Spacer(minLength: 0)
         }
+        .frame(height: 24)
     }
 }
 

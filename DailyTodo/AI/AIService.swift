@@ -99,7 +99,10 @@ actor AIService {
         let body: [String: Any] = [
             "system": system,
             "messages": messages,
-            "maxTokens": maxTokens
+            "maxTokens": maxTokens,
+            // This client renders Markdown + LaTeX (AIRichText) — older builds
+            // don't send it and keep getting plain-text math.
+            "render": "rich"
         ]
         let data = try await rawPost(feature: "coach", body: body)
 
@@ -150,7 +153,8 @@ actor AIService {
                     var finalBody: [String: Any] = [
                         "system": system,
                         "messages": messages,
-                        "maxTokens": maxTokens
+                        "maxTokens": maxTokens,
+                        "render": "rich"
                     ]
                     let isEN = await MainActor.run { appLanguageIsEnglish() }
                     finalBody["language"] = isEN ? "en" : "tr"
