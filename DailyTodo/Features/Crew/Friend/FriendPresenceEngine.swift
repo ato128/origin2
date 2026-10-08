@@ -26,6 +26,22 @@ enum FriendPresenceEngine {
         presence?.is_focusing == true
     }
 
+    /// How long the friend has been focusing in this run (minutes, ≥ 1), from
+    /// the effective start they published when the run began / resumed.
+    static func focusMinutes(_ presence: FriendPresenceDTO?, now: Date = Date()) -> Int? {
+        guard let presence, presence.is_focusing,
+              let raw = presence.focusing_since,
+              let since = CrewDateParser.parse(raw) else { return nil }
+        let minutes = Int(now.timeIntervalSince(since) / 60)
+        return minutes >= 0 ? max(1, minutes) : nil
+    }
+
+    /// "Odakta · 12 dk" — or plain "Odakta" when the start isn't known yet.
+    static func focusingText(_ presence: FriendPresenceDTO?) -> String {
+        if let minutes = focusMinutes(presence) { return tr("chat_in_focus_min", minutes) }
+        return tr("chat_in_focus")
+    }
+
     static func statusText(
         presence: FriendPresenceDTO?,
         locale: Locale
@@ -36,7 +52,7 @@ enum FriendPresenceEngine {
 
         // "Odakta" online'ın önüne geçer — arkadaş çalışıyorsa en anlamlı sinyal bu.
         if presence.is_focusing {
-            return tr("chat_in_focus")
+            return focusingText(presence)
         }
 
         if isOnline(presence) {

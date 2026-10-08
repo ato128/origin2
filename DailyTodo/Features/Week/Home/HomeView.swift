@@ -1054,15 +1054,7 @@ private extension HomeView {
         }
     }
 
-    private var myFocusDisplayName: String {
-        if let user = session.currentUser {
-            let full = user.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !full.isEmpty { return full }
-            let uname = user.username.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !uname.isEmpty { return uname }
-        }
-        return appLanguageIsEnglish() ? "A friend" : "Arkadaşın"
-    }
+    private var myFocusDisplayName: String { session.focusDisplayName }
 
     /// Ana ekranda "arkadaşın odakta — katılmak iste" aksiyon kartı (Updo AI sesi).
     /// Kendi seansın aktifken gizli. Dokununca devam eden seansa KATILMA İSTEĞİ
@@ -1073,9 +1065,14 @@ private extension HomeView {
             let count = focusingFriends.count
             let en = appLanguageIsEnglish()
             let sent = (joinRequestSentFor == first.userID)
-            let headline = count == 1
-                ? (en ? "\(first.name) is in focus" : "\(first.name) şu an odakta")
-                : (en ? "\(count) friends are focusing" : "\(count) arkadaşın odakta")
+            let minutes = FriendPresenceEngine.focusMinutes(friendStore.presenceByUserID[first.userID])
+            let headline: String = {
+                if count > 1 { return en ? "\(count) friends are focusing" : "\(count) arkadaşın odakta" }
+                if let minutes {
+                    return en ? "\(first.name) · focusing for \(minutes) min" : "\(first.name) \(minutes) dk'dır odakta"
+                }
+                return en ? "\(first.name) is in focus" : "\(first.name) şu an odakta"
+            }()
             let sub = sent
                 ? (en ? "Request sent ✓ — they'll invite you back." : "İstek gönderildi ✓ — kabul edince davet gelir.")
                 : (en ? "Updo AI: ask to join and focus together." : "Updo AI: katılmak iste, birlikte odaklanın.")

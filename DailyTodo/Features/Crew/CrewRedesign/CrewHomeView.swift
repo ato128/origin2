@@ -1439,12 +1439,7 @@ private struct CrewSocialFriendsSection: View {
                 )
             } else {
                 ForEach(friends) { friend in
-                    Button {
-                        onOpenFriend(friend.id)
-                    } label: {
-                        CrewFriendRow(friend: friend)
-                    }
-                    .buttonStyle(.plain)
+                    CrewFriendRow(friend: friend) { onOpenFriend(friend.id) }
                 }
             }
         }
@@ -1475,12 +1470,21 @@ private struct CrewPresenceDot: View {
 
 private struct CrewFriendRow: View {
     let friend: CrewSocialFriendCardData
+    let onOpen: () -> Void
 
     @ObservedObject private var subscription = SubscriptionManager.shared
+    @ObservedObject private var focusSession = FocusSessionManager.shared
+    @EnvironmentObject private var session: SessionStore
+    @State private var joinRequested = false
 
-    /// Social stats (currently-focusing, focus minutes, streak, level) are a
-    /// Pro-only layer. Non-Pro viewers only see plain online presence.
+    /// Streak / level are a Pro-only layer. "Focusing · 12 min" is presence —
+    /// shown to everyone, like "online" (and it's what the join button needs).
     private var showStats: Bool { subscription.isPro }
+
+    /// Can I ask to join? They're focusing and I'm not in a session myself.
+    private var canJoin: Bool {
+        friend.isFocusing && friend.userID != nil && !focusSession.hasBlockingActiveSession
+    }
 
     var body: some View {
         HStack(spacing: 13) {
@@ -1492,7 +1496,7 @@ private struct CrewFriendRow: View {
                     size: 54
                 )
 
-                CrewPresenceDot(isLive: showStats ? (friend.isOnline || friend.isFocusing) : friend.isOnline)
+                CrewPresenceDot(isLive: friend.isOnline || friend.isFocusing)
             }
 
             VStack(alignment: .leading, spacing: 5) {
@@ -1515,10 +1519,13 @@ private struct CrewFriendRow: View {
                     .foregroundStyle(UpdoTheme.filmy(0.36))
                     .lineLimit(1)
 
-                if showStats {
+                if friend.isFocusing || showStats {
                     HStack(spacing: 8) {
                         HStack(spacing: 3) {
-                            if !friend.isFocusing {
+                            if friend.isFocusing {
+                                Image(systemName: "scope")
+                                    .font(.system(size: 9, weight: .black))
+                            } else {
                                 Image(systemName: "arrow.up.right")
                                     .font(.system(size: 8, weight: .bold))
                             }
@@ -1529,7 +1536,7 @@ private struct CrewFriendRow: View {
                         }
                         .foregroundStyle(friend.isFocusing ? Color(arenaHex: CrewArenaPalette.liveGreen) : Color(arenaHex: CrewArenaPalette.appBlue))
 
-                        if let streak = friend.streak, streak > 0 {
+                        if showStats, let streak = friend.streak, streak > 0 {
                             HStack(spacing: 2) {
                                 Image(systemName: "flame.fill")
                                     .font(.system(size: 9, weight: .black))
@@ -1539,7 +1546,7 @@ private struct CrewFriendRow: View {
                             .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                         }
 
-                        if let level = friend.level {
+                        if showStats, let level = friend.level {
                             Text("LV\(level)")
                                 .font(.system(size: 10, weight: .black, design: .monospaced))
                                 .foregroundStyle(UpdoTheme.filmy(0.55))
@@ -1560,18 +1567,61 @@ private struct CrewFriendRow: View {
 
             Spacer()
 
-            Text(showStats && friend.isFocusing ? tr("ch_join_caps") : tr("ch_message_caps"))
-                .font(.system(size: 11, weight: .black, design: .monospaced))
-                .foregroundStyle(.black)
-                .padding(.horizontal, 13)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(Color(arenaHex: CrewArenaPalette.appBlue))
-                )
+            if canJoin {
+                // A real join request: the friend gets an alert; when they
+                // accept, I land in their running focus (same countdown).
+                Button(action: requestJoin) {
+                    HStack(spacing: 4) {
+                        if joinRequested {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .black))
+                        }
+                        Text(joinRequested ? tr("ch_join_sent_caps") : tr("ch_join_caps"))
+                    }
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(Color(arenaHex: joinRequested ? CrewArenaPalette.liveGreen : CrewArenaPalette.appBlue))
+                    )
+                    .contentTransition(.opacity)
+                }
+                .buttonStyle(.plain)
+                .disabled(joinRequested)
+            } else {
+                Text(tr("ch_message_caps"))
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(Color(arenaHex: CrewArenaPalette.appBlue))
+                    )
+            }
         }
         .padding(14)
         .background(CrewSurface(cornerRadius: 22))
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
+        .onChange(of: friend.isFocusing) { _, focusing in
+            if !focusing { joinRequested = false }
+        }
+    }
+
+    private func requestJoin() {
+        guard let hostID = friend.userID, !joinRequested else { return }
+        HapticManager.shared.selection()
+        withAnimation(.snappy) { joinRequested = true }
+        let name = session.focusDisplayName
+        Task {
+            let ok = await FriendFocusBackendClient.shared.requestJoin(hostID: hostID, requesterName: name)
+            // Let them ask again if it didn't go through, or after a while.
+            try? await Task.sleep(for: .seconds(ok ? 45 : 1.5))
+            withAnimation(.snappy) { joinRequested = false }
+        }
     }
 }
 private struct CrewRequestsSheet: View {

@@ -1037,6 +1037,12 @@ final class FriendStore: ObservableObject {
             }
             .store(in: &friendEventCancellables)
 
+        NotificationCenter.default.publisher(for: .friendFocusStateChanged)
+            .sink { [weak self] note in
+                Task { @MainActor in self?.handleFriendFocusStateEvent(note) }
+            }
+            .store(in: &friendEventCancellables)
+
         Log.debug("✅ FRIEND EVENTS OBSERVED (backend socket):", currentUserID.uuidString)
     }
 
@@ -1047,6 +1053,31 @@ final class FriendStore: ObservableObject {
     }
 
     // MARK: - Backend friend event handlers
+
+    /// A friend started / paused / resumed / ended a focus — applied instantly
+    /// so "Odakta · 12 dk" flips without waiting for the next presence poll.
+    private func handleFriendFocusStateEvent(_ note: Notification) {
+        guard let info = note.object as? [AnyHashable: Any],
+              let raw = info["user_id"] as? String,
+              let id = UUID(uuidString: raw) else { return }
+
+        let focusing = (info["is_focusing"] as? Bool) ?? (info["is_focusing"] as? NSNumber)?.boolValue ?? false
+        let since = focusing ? info["focus_started_at"] as? String : nil
+        let nowISO = ISO8601DateFormatter().string(from: Date())
+
+        if let old = presenceByUserID[id] {
+            presenceByUserID[id] = FriendPresenceDTO(
+                user_id: id, is_online: old.is_online, last_seen_at: old.last_seen_at,
+                updated_at: nowISO, is_focusing: focusing, focusing_since: since
+            )
+        } else {
+            presenceByUserID[id] = FriendPresenceDTO(
+                user_id: id, is_online: true, last_seen_at: nowISO,
+                updated_at: nowISO, is_focusing: focusing, focusing_since: since
+            )
+        }
+        refreshDerivedPresence()
+    }
 
     @MainActor
     private func handleFriendEdgeEvent(_ note: Notification, isAccept: Bool) {
@@ -2606,10 +2637,11 @@ final class FriendStore: ObservableObject {
         for id in uniqueIDs {
             let online = result.online[id] ?? false
             let focusing = result.focusing.contains(id)
+            let since = focusing ? result.focusingSince[id] : nil
             if online {
                 presenceByUserID[id] = FriendPresenceDTO(
                     user_id: id, is_online: true, last_seen_at: nowISO, updated_at: nowISO,
-                    is_focusing: focusing
+                    is_focusing: focusing, focusing_since: since
                 )
             } else {
                 // Offline: GERÇEK son görülme (backend'in tuttuğu offline anı).
@@ -2619,7 +2651,7 @@ final class FriendStore: ObservableObject {
                 let seen = result.lastSeen[id] ?? ""
                 presenceByUserID[id] = FriendPresenceDTO(
                     user_id: id, is_online: false, last_seen_at: seen, updated_at: nowISO,
-                    is_focusing: focusing
+                    is_focusing: focusing, focusing_since: since
                 )
             }
         }
@@ -2630,11 +2662,11 @@ final class FriendStore: ObservableObject {
     /// kullanıcının canlı bir socket bağlantısı var (inbox socket önplandayken bağlı).
     private func fetchOnlinePresenceFromBackend(
         userIDs: [UUID]
-    ) async -> (online: [UUID: Bool], lastSeen: [UUID: String], focusing: Set<UUID>) {
-        guard !userIDs.isEmpty else { return ([:], [:], []) }
+    ) async -> (online: [UUID: Bool], lastSeen: [UUID: String], focusing: Set<UUID>, focusingSince: [UUID: String]) {
+        guard !userIDs.isEmpty else { return ([:], [:], [], [:]) }
         do {
             let token = try await SupabaseManager.shared.client.auth.session.accessToken
-            guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/presence") else { return ([:], [:], []) }
+            guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/presence") else { return ([:], [:], [], [:]) }
 
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
@@ -2644,13 +2676,14 @@ final class FriendStore: ObservableObject {
             req.httpBody = try JSONSerialization.data(withJSONObject: ["userIDs": userIDs.map(\.uuidString)])
 
             let (data, response) = try await URLSession.shared.data(for: req)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return ([:], [:], []) }
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return ([:], [:], [], [:]) }
 
             struct Resp: Decodable {
                 let ok: Bool
                 let online: [String: Bool]
                 let lastSeen: [String: String]?
                 let focusing: [String: Bool]?
+                let focusingSince: [String: String]?
             }
             let decoded = try JSONDecoder().decode(Resp.self, from: data)
 
@@ -2666,10 +2699,14 @@ final class FriendStore: ObservableObject {
             for (key, value) in (decoded.focusing ?? [:]) where value {
                 if let id = UUID(uuidString: key) { focusingResult.insert(id) }
             }
-            return (onlineResult, seenResult, focusingResult)
+            var sinceResult: [UUID: String] = [:]
+            for (key, value) in (decoded.focusingSince ?? [:]) {
+                if let id = UUID(uuidString: key) { sinceResult[id] = value }
+            }
+            return (onlineResult, seenResult, focusingResult, sinceResult)
         } catch {
             Log.debug("BACKEND PRESENCE FETCH ERROR:", error.localizedDescription)
-            return ([:], [:], [])
+            return ([:], [:], [], [:])
         }
     }
 

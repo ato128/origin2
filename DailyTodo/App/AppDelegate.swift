@@ -380,6 +380,8 @@ extension Notification.Name {
 
     static let presentCrewFocusInviteSheet = Notification.Name("presentCrewFocusInviteSheet")
     static let presentFriendFocusInviteSheet = Notification.Name("presentFriendFocusInviteSheet")
+    /// A friend started / paused / resumed / ended a focus (socket, live).
+    static let friendFocusStateChanged = Notification.Name("friendFocusStateChanged")
     static let presentFriendFocusJoinRequest = Notification.Name("presentFriendFocusJoinRequest")
     static let friendFocusPeerEvent = Notification.Name("friendFocusPeerEvent")
     static let presentActiveCrewFocusFromNotification = Notification.Name("presentActiveCrewFocusFromNotification")

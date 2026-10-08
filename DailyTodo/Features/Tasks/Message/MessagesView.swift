@@ -144,7 +144,8 @@ struct MessagesView: View {
                 showsPresence: true,
                 isPinned: backendConversation?.isPinned ?? false,
                 isMuted: backendConversation?.isMuted ?? false,
-                isFocusing: isFriendFocusing(friend)
+                isFocusing: isFriendFocusing(friend),
+                focusMinutes: FriendPresenceEngine.focusMinutes(friendPresence(for: friend))
             )
         }
 
@@ -735,7 +736,7 @@ private extension MessagesView {
                     }
 
                     if item.isFocusing {
-                        Text(tr("chat_in_focus").uppercased())
+                        Text((item.focusMinutes.map { tr("chat_in_focus_min", $0) } ?? tr("chat_in_focus")).uppercased())
                             .font(.system(size: 8.5, weight: .black, design: .monospaced))
                             .tracking(0.6)
                             .foregroundStyle(Color(arenaHex: "#7C3AED"))
@@ -1864,4 +1865,6 @@ struct MessagesHubItem: Identifiable {
     let isMuted: Bool
     /// Arkadaş şu an odak seansında mı (presence'ten). Odakta → mor nokta + "Odakta".
     var isFocusing: Bool = false
+    /// Kaç dakikadır odakta (bilinmiyorsa nil) → "ODAKTA · 12 DK".
+    var focusMinutes: Int? = nil
 }

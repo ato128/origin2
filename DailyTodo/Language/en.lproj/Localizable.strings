@@ -97,6 +97,7 @@
 "chat_direct_chat" = "Direct Chat";
 "chat_online" = "Online";
 "chat_in_focus" = "In focus";
+"chat_in_focus_min" = "In focus · %d min";
 "chat_no_messages_yet" = "No messages yet";
 "chat_sent" = "Sent";
 "chat_message_placeholder" = "Message...";
@@ -1356,6 +1357,7 @@
 "ch_for_you_first" = "For";
 "ch_for_you_italic" = "you";
 "ch_join_caps" = "JOIN";
+"ch_join_sent_caps" = "REQUESTED";
 "ch_message_caps" = "MESSAGE";
 "ch_all_caps" = "ALL";
 "ch_no_friends" = "No friends yet";

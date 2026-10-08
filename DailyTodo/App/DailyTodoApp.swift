@@ -34,6 +34,9 @@ struct DailyTodoApp: App {
     @State private var crewFocusInvitePayload: CrewFocusInvitePayload?
     @State private var friendFocusInvitePayload: FriendFocusInvitePayload?
     @State private var friendFocusJoinRequest: FriendFocusJoinRequest?
+    /// Duo session being joined right now — the socket event and the push for
+    /// the same invite both arrive; only the first one may join.
+    @State private var joiningFriendSessionID: UUID?
 
     init() {
         do {
@@ -419,6 +422,15 @@ struct DailyTodoApp: App {
             Log.debug("⚪️ FRIEND INVITE SKIPPED: already in this session")
             return
         }
+        guard joiningFriendSessionID != payload.sessionID,
+              friendFocusInvitePayload?.sessionID != payload.sessionID else { return }
+
+        // I asked to join and the host accepted → join right away (the request
+        // itself was the consent; a second "Join?" sheet is just friction).
+        if payload.autoJoin, !focusSession.hasBlockingActiveSession {
+            handleFriendFocusInviteJoin(payload)
+            return
+        }
 
         friendFocusInvitePayload = nil
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -427,7 +439,11 @@ struct DailyTodoApp: App {
     }
 
     private func handleFriendFocusInviteJoin(_ payload: FriendFocusInvitePayload) {
+        guard joiningFriendSessionID != payload.sessionID else { return }
+        joiningFriendSessionID = payload.sessionID
+
         Task {
+            defer { Task { @MainActor in joiningFriendSessionID = nil } }
             guard let dto = await FriendFocusBackendClient.shared.join(sessionID: payload.sessionID) else {
                 await MainActor.run { friendFocusInvitePayload = nil }
                 return
@@ -466,8 +482,14 @@ struct DailyTodoApp: App {
     }
 
     private var friendFocusJoinRequestMessage: String {
-        appLanguageIsEnglish()
-            ? "Start a duo focus and they'll join you."
+        let running = focusSession.isSessionActive && focusSession.activeSessionMode != .crew
+        if appLanguageIsEnglish() {
+            return running
+                ? "Your focus keeps going — they'll join you for the time that's left."
+                : "Start a duo focus and they'll join you."
+        }
+        return running
+            ? "Odağın kaldığı yerden devam eder — kalan süreye birlikte devam edersiniz."
             : "Bir düet odak başlat, o da sana katılsın."
     }
 
@@ -503,14 +525,11 @@ struct DailyTodoApp: App {
     /// katılır (tüm invite/join makinesi tekrar kullanılır).
     private func approveFriendFocusJoin(_ req: FriendFocusJoinRequest) {
         Task {
-            _ = await focusSession.startRequestedSession(
-                mode: .friend,
-                durationMinutes: 25,
-                goal: .study,
-                style: .silent,
-                friendUserID: req.requesterID,
-                friendName: req.requesterName
+            let ok = await focusSession.acceptFriendJoinRequest(
+                requesterID: req.requesterID,
+                requesterName: req.requesterName
             )
+            if ok { HapticManager.shared.success() } else { HapticManager.shared.error() }
         }
     }
 
@@ -521,7 +540,8 @@ struct DailyTodoApp: App {
         switch type {
         case "friend_focus_joined":
             let name = (userInfo["joined_name"] as? String) ?? "Arkadaşın"
-            focusSession.handleFriendFocusJoined(name: name, friendUserID: nil)
+            let joinedID = (userInfo["joined_user_id"] as? String).flatMap(UUID.init(uuidString:))
+            focusSession.handleFriendFocusJoined(name: name, friendUserID: joinedID)
 
         case "friend_focus_left", "friend_focus_declined", "friend_focus_ended":
             focusSession.handleFriendFocusPeerLeft()

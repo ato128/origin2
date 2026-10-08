@@ -428,8 +428,8 @@ struct CrewSocialFriendCardData: Identifiable, Equatable {
     }
 
     var focusText: String {
-        guard let focusMinutes else { return subtitle }
-        return "\(tr("ch_focusing")) · \(tr("rel_min_short_n", focusMinutes))"
+        guard let focusMinutes else { return tr("chat_in_focus") }
+        return tr("chat_in_focus_min", focusMinutes)
     }
 }
 

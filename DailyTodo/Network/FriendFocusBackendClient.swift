@@ -66,18 +66,26 @@ final class FriendFocusBackendClient {
         friendName: String,
         hostName: String,
         goal: String,
-        durationMinutes: Int
+        durationMinutes: Int,
+        startedAt: Date? = nil,
+        fromJoinRequest: Bool = false
     ) async -> FriendFocusSessionDTO? {
         do {
             var request = try await makeRequest(path: "/v1/friend-focus", method: "POST")
 
-            let body: [String: Any] = [
+            var body: [String: Any] = [
                 "friend_id": friendID.uuidString,
                 "friend_name": friendName,
                 "host_name": hostName,
                 "goal": goal,
                 "duration_minutes": durationMinutes
             ]
+            // Host's already-running focus: anchor the duo to its effective
+            // start so the friend continues from where the host is.
+            if let startedAt {
+                body["started_at"] = ISO8601DateFormatter().string(from: startedAt)
+            }
+            if fromJoinRequest { body["from_join_request"] = true }
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -166,5 +174,18 @@ final class FriendFocusBackendClient {
             Log.debug("FRIEND FOCUS FETCH ERROR:", error.localizedDescription)
             return nil
         }
+    }
+}
+
+extension SessionStore {
+    /// Name shown to a friend in duo-focus requests/invites.
+    var focusDisplayName: String {
+        if let user = currentUser {
+            let full = user.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !full.isEmpty { return full }
+            let uname = user.username.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !uname.isEmpty { return uname }
+        }
+        return appLanguageIsEnglish() ? "A friend" : "Arkadaşın"
     }
 }

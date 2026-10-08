@@ -414,6 +414,7 @@ private extension CrewView {
             let activeSession = activeFocusSession(for: friend)
             let resolvedOnline = resolvedOnlineState(for: friend)
             let sharedStat = socialStats.stat(for: friend.backendUserID)
+            let presence = friend.backendUserID.flatMap { friendStore.presenceByUserID[$0] }
 
             return CrewSocialFriendCardData(
                 id: friend.id,
@@ -422,8 +423,9 @@ private extension CrewView {
                 avatarSymbol: friend.avatarSymbol,
                 colorHex: friend.colorHex,
                 isOnline: resolvedOnline,
-                isFocusing: (sharedStat?.isFocusing ?? false) || activeSession != nil,
-                focusMinutes: activeSession.map { focusMinutesLeft(for: $0) },
+                isFocusing: (sharedStat?.isFocusing ?? false) || presence?.is_focusing == true || activeSession != nil,
+                // How long they've been focusing (live presence), not minutes left.
+                focusMinutes: FriendPresenceEngine.focusMinutes(presence),
                 userID: friend.backendUserID,
                 streak: sharedStat?.currentStreak,
                 level: sharedStat?.level

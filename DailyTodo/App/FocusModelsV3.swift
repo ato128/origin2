@@ -152,6 +152,9 @@ struct FocusSessionState: Codable {
     var participants: [FocusParticipant]
     var goal: FocusGoal
     var style: FocusStyle
+    /// Joined someone else's running duo: seconds of the shared countdown that
+    /// had already passed. Excluded from MY credited focus time.
+    var creditOffsetSeconds: Int? = nil
 }
 
 extension FocusParticipant {

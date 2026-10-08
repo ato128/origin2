@@ -98,14 +98,16 @@ final class UserStatsBackendClient {
         }
     }
 
-    /// Lightweight focus-state update (currently focusing + until when it ends).
-    func putFocusState(isFocusing: Bool, focusUntil: Date?) async {
-        var payload: [String: Any] = ["isFocusing": isFocusing]
-        if let focusUntil {
-            payload["focusUntil"] = ISO8601DateFormatter().string(from: focusUntil)
-        } else {
-            payload["focusUntil"] = NSNull()
-        }
+    /// Lightweight focus-state update, sent only when the state changes (start,
+    /// pause, resume, end): focusing, when the run ends, and its effective
+    /// start so friends can show "focusing for 12 min" without any polling.
+    func putFocusState(isFocusing: Bool, focusUntil: Date?, focusStartedAt: Date?) async {
+        let iso = ISO8601DateFormatter()
+        let payload: [String: Any] = [
+            "isFocusing": isFocusing,
+            "focusUntil": focusUntil.map { iso.string(from: $0) } ?? NSNull(),
+            "focusStartedAt": focusStartedAt.map { iso.string(from: $0) } ?? NSNull()
+        ]
 
         do {
             let body = try JSONSerialization.data(withJSONObject: payload)

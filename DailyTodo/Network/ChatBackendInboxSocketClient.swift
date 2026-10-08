@@ -199,6 +199,23 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
                     }
                 }
 
+            case "friend_focus_invite", "friend_focus_joined", "friend_focus_state":
+                // Duo focus + friends' live focus state — raw JSON payload,
+                // routed to the same handlers as the matching push.
+                if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let payload = obj["payload"] as? [String: Any] {
+                    var userInfo: [AnyHashable: Any] = ["type": event.event]
+                    for (key, value) in payload where !(value is NSNull) { userInfo[key] = value }
+                    let name: Notification.Name = switch event.event {
+                    case "friend_focus_invite": .presentFriendFocusInviteSheet
+                    case "friend_focus_joined": .friendFocusPeerEvent
+                    default: .friendFocusStateChanged
+                    }
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: name, object: userInfo)
+                    }
+                }
+
             case "message_created":
                 guard let message = event.payload?.message else {
                     ChatBackendLogger.error("❌ INBOX MESSAGE_CREATED MISSING")

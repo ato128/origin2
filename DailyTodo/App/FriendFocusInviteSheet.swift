@@ -18,6 +18,8 @@ struct FriendFocusInvitePayload: Identifiable, Equatable {
     let durationMinutes: Int
     let startedAt: Date?
     var hostUserID: UUID? = nil
+    /// The host accepted MY join request — join straight away, no sheet.
+    var autoJoin: Bool = false
 
     static func == (lhs: FriendFocusInvitePayload, rhs: FriendFocusInvitePayload) -> Bool {
         lhs.sessionID == rhs.sessionID
@@ -47,13 +49,20 @@ struct FriendFocusInvitePayload: Identifiable, Equatable {
         }()
 
         let hostUserID = (userInfo["host_user_id"] as? String).flatMap(UUID.init(uuidString:))
+        let autoJoin: Bool = {
+            if let str = userInfo["auto_join"] as? String { return str == "1" || str == "true" }
+            if let flag = userInfo["auto_join"] as? Bool { return flag }
+            if let num = userInfo["auto_join"] as? NSNumber { return num.boolValue }
+            return false
+        }()
 
         return FriendFocusInvitePayload(
             sessionID: sessionID,
             hostName: hostName,
             durationMinutes: duration,
             startedAt: startedAt,
-            hostUserID: hostUserID
+            hostUserID: hostUserID,
+            autoJoin: autoJoin
         )
     }
 }

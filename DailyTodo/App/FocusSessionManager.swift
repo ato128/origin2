@@ -17,18 +17,13 @@ final class FocusSessionManager: ObservableObject {
     static let shared = FocusSessionManager()
 
     @Published var isSessionActive: Bool = false {
-        didSet {
-            guard oldValue != isSessionActive else { return }
-            let focusing = isSessionActive
-            let until = isSessionActive ? currentSession?.endDate : nil
-            Task.detached {
-                await UserStatsBackendClient.shared.putFocusState(isFocusing: focusing, focusUntil: until)
-            }
-        }
+        didSet { publishFocusStateIfChanged() }
     }
     @Published var isExpanded: Bool = false
     @Published var isMinimized: Bool = false
-    @Published var currentSession: FocusSessionState?
+    @Published var currentSession: FocusSessionState? {
+        didSet { publishFocusStateIfChanged() }
+    }
     @Published var now: Date = Date()
     @Published var completionSummary: FocusCompletionSummary?
     @Published var lastFinishedSession: FocusSessionState?
@@ -96,7 +91,8 @@ final class FocusSessionManager: ObservableObject {
         style: FocusStyle,
         preferredCrewID: UUID? = nil,
         friendUserID: UUID? = nil,
-        friendName: String? = nil
+        friendName: String? = nil,
+        fromJoinRequest: Bool = false
     ) async -> Bool {
         guard !hasBlockingActiveSession else {
             Log.debug("FOCUS START BLOCKED: another session is already active")
@@ -154,7 +150,8 @@ final class FocusSessionManager: ObservableObject {
                         friendName: friendName ?? "",
                         hostName: hostName,
                         goal: goalTitle,
-                        durationMinutes: durationMinutes
+                        durationMinutes: durationMinutes,
+                        fromJoinRequest: fromJoinRequest
                     )
                     guard let self else { return }
                     self.currentFriendSessionID = dto?.id
@@ -212,7 +209,10 @@ final class FocusSessionManager: ObservableObject {
             pausedRemainingSeconds: nil,
             participants: [host, me],
             goal: .study,
-            style: .silent
+            style: .silent,
+            // The shared countdown already ran this long before I joined —
+            // my credited focus starts now.
+            creditOffsetSeconds: max(0, Int(Date().timeIntervalSince(start)))
         )
 
         currentCrewID = nil
@@ -234,11 +234,121 @@ final class FocusSessionManager: ObservableObject {
         return true
     }
 
+    // MARK: - Friends see "Odakta · 12 dk"
+
+    private var lastPublishedFocusSignature: String?
+    private var focusPublishTask: Task<Void, Never>?
+
+    /// One small write per real state change (start / pause / resume / end /
+    /// join) — never on a timer. Friends derive the live minutes from the
+    /// effective start; the backend fans the change out to online friends.
+    private func publishFocusStateIfChanged() {
+        let session = isSessionActive ? currentSession : nil
+        let focusing = session.map { !$0.isPaused } ?? false
+
+        var until: Date?
+        var startedAt: Date?
+        if focusing, let session {
+            until = session.endDate
+            // Pauses shift endDate, so this is "now - seconds actually focused";
+            // a joined guest counts only their own part.
+            let focusedSpan = session.durationMinutes * 60 - (session.creditOffsetSeconds ?? 0)
+            startedAt = session.endDate.addingTimeInterval(-Double(focusedSpan))
+        }
+
+        let signature = "\(focusing)|\(Int(startedAt?.timeIntervalSince1970 ?? 0))|\(Int(until?.timeIntervalSince1970 ?? 0))"
+        guard signature != lastPublishedFocusSignature else { return }
+        lastPublishedFocusSignature = signature
+
+        // Chained, so a quick pause → resume can't land out of order.
+        let previous = focusPublishTask
+        focusPublishTask = Task.detached {
+            await previous?.value
+            await UserStatsBackendClient.shared.putFocusState(
+                isFocusing: focusing, focusUntil: until, focusStartedAt: startedAt
+            )
+        }
+    }
+
+    // MARK: - Accepting a friend's join request
+
+    /// Host approved a friend's request to join. A running personal (or solo
+    /// duo) focus becomes the duo IN PLACE — same countdown, nothing restarts —
+    /// and the backend session is anchored to its effective start, so the
+    /// friend's timer continues from exactly where the host is. With no running
+    /// focus a fresh duo starts instead.
+    @discardableResult
+    func acceptFriendJoinRequest(requesterID: UUID, requesterName: String) async -> Bool {
+        guard isSessionActive, var session = currentSession else {
+            return await startRequestedSession(
+                mode: .friend,
+                durationMinutes: 25,
+                goal: .study,
+                style: .silent,
+                friendUserID: requesterID,
+                friendName: requesterName,
+                fromJoinRequest: true
+            )
+        }
+
+        // A crew room has its own membership; a duo already has its pair.
+        guard session.mode != .crew else { return false }
+        if session.mode == .friend, session.participants.count >= 2 {
+            return currentFriendUserID == requesterID
+        }
+
+        if session.isPaused {
+            applyLocalResume()
+            guard let resumed = currentSession else { return false }
+            session = resumed
+        }
+        guard session.endDate.timeIntervalSinceNow > 60 else { return false }
+
+        session.mode = .friend
+        // A personal run has no participant list yet — the host leads the duo.
+        if !session.participants.contains(where: \.isHost) {
+            session.participants.insert(
+                FocusParticipant(
+                    id: currentUserID ?? UUID(),
+                    name: currentUserDisplayName,
+                    isHost: true,
+                    isReady: true,
+                    isActive: true
+                ),
+                at: 0
+            )
+        }
+        currentFriendUserID = requesterID
+        currentFriendName = requesterName
+        currentFriendSessionID = nil
+        currentSession = session
+        save()
+        Task { await syncLiveActivityIfNeeded() }
+
+        let effectiveStart = session.endDate.addingTimeInterval(-Double(session.durationMinutes * 60))
+        let dto = await FriendFocusBackendClient.shared.create(
+            friendID: requesterID,
+            friendName: requesterName,
+            hostName: currentUserDisplayName,
+            goal: session.goal.title,
+            durationMinutes: session.durationMinutes,
+            startedAt: effectiveStart,
+            fromJoinRequest: true
+        )
+        guard currentSession?.id == session.id else { return dto != nil }
+        currentFriendSessionID = dto?.id
+        save()
+        return dto != nil
+    }
+
     // MARK: - Friend session live updates (from pushes)
 
     func handleFriendFocusJoined(name: String, friendUserID: UUID?) {
         guard var session = currentSession, session.mode == .friend else { return }
-        guard !session.participants.contains(where: { !$0.isHost && $0.name == name }) else { return }
+        // Socket and push both deliver "joined" — add the friend once.
+        guard !session.participants.contains(where: {
+            !$0.isHost && ($0.name == name || (friendUserID != nil && $0.id == friendUserID))
+        }) else { return }
 
         session.participants.append(
             FocusParticipant(
@@ -897,15 +1007,20 @@ final class FocusSessionManager: ObservableObject {
     
 
         let ended = Date()
-        let totalSeconds = session.durationMinutes * 60
+        // A guest who joined mid-way is credited only from their join.
+        let creditOffset = session.creditOffsetSeconds ?? 0
+        let totalSeconds = max(60, session.durationMinutes * 60 - creditOffset)
 
         let completedMinutes = max(1, resolvedCompletedMinutes(for: session))
-        let completedSeconds = max(1, elapsedSeconds)
+        let completedSeconds = max(1, elapsedSeconds - creditOffset)
+        let creditedStart = creditOffset > 0
+            ? ended.addingTimeInterval(-Double(completedSeconds))
+            : session.startDate
 
         FocusCompletionRecorder.shared.saveCompletedSession(
             ownerUserID: resolvedOwnerID,
             title: activeSessionDisplayTitle,
-            startedAt: session.startDate,
+            startedAt: creditedStart,
             endedAt: ended,
             totalSeconds: totalSeconds,
             completedSeconds: completedSeconds,
@@ -923,7 +1038,7 @@ final class FocusSessionManager: ObservableObject {
                     ownerUserID: resolvedOwnerID,
                     friendBackendUserID: friendUserID,
                     title: session.goal.title,
-                    startedAt: session.startDate,
+                    startedAt: creditedStart,
                     durationMinutes: max(1, completedSeconds / 60)
                 )
             }
@@ -1132,13 +1247,14 @@ final class FocusSessionManager: ObservableObject {
     }
 
     private func resolvedCompletedMinutes(for session: FocusSessionState) -> Int {
+        let creditOffset = session.creditOffsetSeconds ?? 0
         if session.isPaused {
             let remaining = session.pausedRemainingSeconds ?? 0
-            let elapsedSeconds = max(0, session.durationMinutes * 60 - remaining)
+            let elapsedSeconds = max(0, session.durationMinutes * 60 - remaining - creditOffset)
             return max(1, elapsedSeconds / 60)
         }
 
-        let elapsed = max(0, session.durationMinutes * 60 - remainingSeconds)
+        let elapsed = max(0, session.durationMinutes * 60 - remainingSeconds - creditOffset)
         return max(1, elapsed / 60)
     }
 

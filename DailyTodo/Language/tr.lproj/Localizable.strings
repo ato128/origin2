@@ -97,6 +97,7 @@
 "chat_direct_chat" = "Direkt Sohbet";
 "chat_online" = "Online";
 "chat_in_focus" = "Odakta";
+"chat_in_focus_min" = "Odakta · %d dk";
 "chat_no_messages_yet" = "Henüz mesaj yok";
 "chat_sent" = "Gönderildi";
 "chat_message_placeholder" = "Mesaj...";
@@ -1358,6 +1359,7 @@
 "ch_for_you_first" = "Senin";
 "ch_for_you_italic" = "için";
 "ch_join_caps" = "KATIL";
+"ch_join_sent_caps" = "İSTENDİ";
 "ch_message_caps" = "MESAJ";
 "ch_all_caps" = "TÜMÜ";
 "ch_no_friends" = "Henüz arkadaş yok";
