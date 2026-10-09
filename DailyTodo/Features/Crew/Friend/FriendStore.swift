@@ -34,7 +34,6 @@ final class FriendStore: ObservableObject {
     @Published var friendChatSummaries: [FriendChatThreadSummary] = []
 
     private var lastForegroundRefreshAt: Date? = nil
-    private var friendshipsRealtimeChannel: RealtimeChannelV2?
     private var subscribedFriendshipsRealtimeUserID: UUID?
     // Backend friend-event observers (replace Supabase friendships realtime).
     private var friendEventCancellables: Set<AnyCancellable> = []
@@ -48,13 +47,6 @@ final class FriendStore: ObservableObject {
         lastForegroundRefreshAt = Date()
     }
 
-    private var sharedWeekItemsChannel: RealtimeChannelV2?
-    private var subscribedSharedWeekFriendshipID: UUID?
-    private var friendPresenceChannel: RealtimeChannelV2?
-    private var friendTypingChannel: RealtimeChannelV2?
-    private var typingResetTask: Task<Void, Never>?
-    private var friendMessagesChannel: RealtimeChannelV2?
-    private var subscribedFriendshipID: UUID?
 
     // MARK: - Presence heartbeat / live re-evaluation
     // Presence realtime tek başına yetmez: bir arkadaş uygulamayı kapatınca
@@ -573,54 +565,6 @@ final class FriendStore: ObservableObject {
 
     // MARK: - Shared Week Realtime
 
-    func subscribeToSharedWeekItemsRealtime(friendshipID: UUID, ownerUserID: UUID, viewerUserID: UUID) {
-        if subscribedSharedWeekFriendshipID == friendshipID, sharedWeekItemsChannel != nil { return }
-
-        Task {
-            if let oldChannel = sharedWeekItemsChannel { try? await oldChannel.unsubscribe() }
-            await MainActor.run {
-                self.sharedWeekItemsChannel = nil
-                self.subscribedSharedWeekFriendshipID = nil
-            }
-
-            let channel = SupabaseManager.shared.client.realtimeV2.channel("shared-week-items-\(friendshipID.uuidString)")
-
-            for action in [InsertAction.self, UpdateAction.self, DeleteAction.self] as [Any] {
-                if let insertType = action as? InsertAction.Type {
-                    _ = channel.onPostgresChange(insertType, schema: "public", table: "friend_week_share_items", filter: "friendship_id=eq.\(friendshipID.uuidString)") { [weak self] _ in
-                        Task { @MainActor in await self?.loadSharedWeekItems(friendshipID: friendshipID, ownerUserID: ownerUserID, viewerUserID: viewerUserID) }
-                    }
-                }
-            }
-
-            _ = channel.onPostgresChange(InsertAction.self, schema: "public", table: "friend_week_share_items", filter: "friendship_id=eq.\(friendshipID.uuidString)") { [weak self] _ in
-                Task { @MainActor in await self?.loadSharedWeekItems(friendshipID: friendshipID, ownerUserID: ownerUserID, viewerUserID: viewerUserID) }
-            }
-            _ = channel.onPostgresChange(UpdateAction.self, schema: "public", table: "friend_week_share_items", filter: "friendship_id=eq.\(friendshipID.uuidString)") { [weak self] _ in
-                Task { @MainActor in await self?.loadSharedWeekItems(friendshipID: friendshipID, ownerUserID: ownerUserID, viewerUserID: viewerUserID) }
-            }
-            _ = channel.onPostgresChange(DeleteAction.self, schema: "public", table: "friend_week_share_items", filter: "friendship_id=eq.\(friendshipID.uuidString)") { [weak self] _ in
-                Task { @MainActor in await self?.loadSharedWeekItems(friendshipID: friendshipID, ownerUserID: ownerUserID, viewerUserID: viewerUserID) }
-            }
-
-            await MainActor.run {
-                self.sharedWeekItemsChannel = channel
-                self.subscribedSharedWeekFriendshipID = friendshipID
-            }
-            try? await channel.subscribeWithError()
-        }
-    }
-
-    func unsubscribeSharedWeekItemsRealtime() {
-        Task {
-            if let oldChannel = sharedWeekItemsChannel { try? await oldChannel.unsubscribe() }
-            await MainActor.run {
-                self.sharedWeekItemsChannel = nil
-                self.subscribedSharedWeekFriendshipID = nil
-            }
-        }
-    }
-
     // MARK: - Remove Friend
 
     func removeFriendship(friendshipID: UUID, currentUserID: UUID, modelContext: ModelContext) async throws {
@@ -631,10 +575,6 @@ final class FriendStore: ObservableObject {
         }
 
         let backendUserID = localFriend.backendUserID
-
-        if subscribedFriendshipID == friendshipID { unsubscribeFriendMessagesRealtime() }
-        if subscribedSharedWeekFriendshipID == friendshipID { unsubscribeSharedWeekItemsRealtime() }
-        unsubscribeTypingRealtime()
 
         do {
             // Backend deletes the edge + fans out "friend_removed" to both sides.
@@ -1276,140 +1216,8 @@ final class FriendStore: ObservableObject {
         )
     }
 
-    func unsubscribeFriendMessagesRealtime() {
-        Task {
-            if let old = friendMessagesChannel { try? await old.unsubscribe() }
-            await MainActor.run {
-                self.friendMessagesChannel = nil
-                self.subscribedFriendshipID = nil
-            }
-        }
-    }
-
-    func userDidType(
-        friendshipID: UUID,
-        currentUserID: UUID?,
-        currentUserName: String
-    ) {
-        guard let currentUserID else { return }
-
-        typingResetTask?.cancel()
-
-        typingResetTask = Task { [weak self] in
-            guard let self else { return }
-
-            await self.setTyping(
-                friendshipID: friendshipID,
-                currentUserID: currentUserID,
-                currentUserName: currentUserName,
-                isTyping: true
-            )
-
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
-
-            guard !Task.isCancelled else { return }
-
-            await self.setTyping(
-                friendshipID: friendshipID,
-                currentUserID: currentUserID,
-                currentUserName: currentUserName,
-                isTyping: false
-            )
-        }
-    }
-
     // MARK: - Typing Realtime
 
-    func subscribeToTypingRealtime(friendshipID: UUID, currentUserID: UUID?) {
-        Task {
-            if let oldChannel = friendTypingChannel { try? await oldChannel.unsubscribe() }
-            await MainActor.run { self.friendTypingChannel = nil }
-
-            let channel = SupabaseManager.shared.client.realtimeV2.channel("friend-typing-\(friendshipID.uuidString)")
-
-            _ = channel.onPostgresChange(InsertAction.self, schema: "public", table: "friend_typing_status", filter: "friendship_id=eq.\(friendshipID.uuidString)") { [weak self] action in
-                guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                        let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
-                        guard dto.user_id != currentUserID else { return }
-                        self.typingStatusByFriendship[friendshipID] = dto.is_typing
-                    } catch { Log.debug("TYPING INSERT DECODE ERROR:", error.localizedDescription) }
-                }
-            }
-
-            _ = channel.onPostgresChange(UpdateAction.self, schema: "public", table: "friend_typing_status", filter: "friendship_id=eq.\(friendshipID.uuidString)") { [weak self] action in
-                guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                        let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
-                        guard dto.user_id != currentUserID else { return }
-                        self.typingStatusByFriendship[friendshipID] = dto.is_typing
-                    } catch { Log.debug("TYPING UPDATE DECODE ERROR:", error.localizedDescription) }
-                }
-            }
-
-            _ = channel.onPostgresChange(DeleteAction.self, schema: "public", table: "friend_typing_status", filter: "friendship_id=eq.\(friendshipID.uuidString)") { [weak self] _ in
-                Task { @MainActor [weak self] in self?.typingStatusByFriendship[friendshipID] = false }
-            }
-
-            await MainActor.run { self.friendTypingChannel = channel }
-            try? await channel.subscribeWithError()
-        }
-    }
-
-    func unsubscribeTypingRealtime() {
-        Task {
-            if let oldChannel = friendTypingChannel { try? await oldChannel.unsubscribe() }
-            await MainActor.run { self.friendTypingChannel = nil }
-        }
-    }
-
-    func setTyping(
-        friendshipID: UUID,
-        currentUserID: UUID?,
-        currentUserName: String,
-        isTyping: Bool
-    ) async {
-        guard let currentUserID else { return }
-
-        struct Payload: Encodable {
-            let friendship_id: UUID
-            let user_id: UUID
-            let user_name: String
-            let is_typing: Bool
-            let updated_at: String
-        }
-
-        let payload = Payload(
-            friendship_id: friendshipID,
-            user_id: currentUserID,
-            user_name: currentUserName,
-            is_typing: isTyping,
-            updated_at: ISO8601DateFormatter().string(from: Date())
-        )
-
-        do {
-            try await SupabaseManager.shared.client
-                .from("friend_typing_status")
-                .upsert(
-                    payload,
-                    onConflict: "friendship_id,user_id"
-                )
-                .execute()
-        } catch {
-            if isCancellationLikeError(error) {
-                return
-            }
-
-            Log.debug("SET TYPING ERROR:", error.localizedDescription)
-        }
-    }
-    
     private func isCancellationLikeError(_ error: Error) -> Bool {
         if error is CancellationError {
             return true
@@ -2604,23 +2412,14 @@ final class FriendStore: ObservableObject {
     // MARK: - Presence Realtime
 
     func unsubscribePresenceRealtime() {
-        Task {
-            if let oldChannel = friendPresenceChannel { try? await oldChannel.unsubscribe() }
-            await MainActor.run { self.friendPresenceChannel = nil }
-        }
+        // Presence is polled from the backend (/v1/presence) — no channel to close.
     }
 
     func subscribeToPresenceRealtime(for userIDs: [UUID]) {
         // Supabase presence realtime kaldırıldı. Online durumu artık backend
         // socket'inden geliyor: presenceTick her ~20sn'de bir loadPresence ile
-        // /v1/presence'ı poll'ler. Varsa eski Supabase kanalını kapat + anlık
-        // ilk durumu hemen çek.
+        // /v1/presence'ı poll'ler. Anlık ilk durumu hemen çek.
         retainedPresenceOtherIDs = Array(Set(userIDs))
-
-        if let old = friendPresenceChannel {
-            friendPresenceChannel = nil
-            Task { try? await old.unsubscribe() }
-        }
 
         Task { await loadPresence(for: userIDs) }
     }
@@ -2727,116 +2526,4 @@ final class FriendStore: ObservableObject {
         )
     }
     
-    func subscribeToFriendMessagesRealtime(friendshipID: UUID, currentUserID: UUID?) {
-        let currentUserIDCopy = currentUserID
-
-        Task {
-            if let old = friendMessagesChannel {
-                try? await old.unsubscribe()
-                try? await Task.sleep(nanoseconds: 300_000_000)
-            }
-
-            await MainActor.run {
-                self.friendMessagesChannel = nil
-                self.subscribedFriendshipID = nil
-            }
-
-            let channel = SupabaseManager.shared.client.realtimeV2
-                .channel("friend-messages-\(friendshipID.uuidString)")
-
-            _ = channel.onPostgresChange(
-                InsertAction.self,
-                schema: "public",
-                table: "friend_messages",
-                filter: "friendship_id=eq.\(friendshipID.uuidString)"
-            ) { [weak self] action in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                        let dto = try JSONDecoder().decode(FriendMessageDTO.self, from: jsonData)
-                        let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
-
-                        self.appendFriendMessage(item, friendshipID: friendshipID)
-
-                        if dto.sender_id != currentUserIDCopy {
-                            await self.markMessagesDelivered(
-                                friendshipID: friendshipID,
-                                currentUserID: currentUserIDCopy
-                            )
-                        }
-
-                        if dto.sender_id != currentUserIDCopy,
-                           self.activeChatFriendshipID == friendshipID,
-                           self.isAppActive {
-                            await self.markMessagesSeen(
-                                friendshipID: friendshipID,
-                                currentUserID: currentUserIDCopy
-                            )
-                        }
-                    } catch {
-                        Log.debug("FRIEND REALTIME INSERT DECODE ERROR:", error.localizedDescription)
-                    }
-                }
-            }
-
-            _ = channel.onPostgresChange(
-                UpdateAction.self,
-                schema: "public",
-                table: "friend_messages",
-                filter: "friendship_id=eq.\(friendshipID.uuidString)"
-            ) { [weak self] action in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                        let dto = try JSONDecoder().decode(FriendMessageDTO.self, from: jsonData)
-                        let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
-
-                        self.appendFriendMessage(item, friendshipID: friendshipID)
-                    } catch {
-                        Log.debug("FRIEND REALTIME UPDATE DECODE ERROR:", error.localizedDescription)
-                    }
-                }
-            }
-
-            _ = channel.onPostgresChange(
-                DeleteAction.self,
-                schema: "public",
-                table: "friend_messages",
-                filter: "friendship_id=eq.\(friendshipID.uuidString)"
-            ) { [weak self] action in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-
-                    if let idString = action.oldRecord["id"] as? String,
-                       let deletedID = UUID(uuidString: idString) {
-                        var items = self.friendMessagesByFriendship[friendshipID] ?? []
-                        items.removeAll { $0.serverID == deletedID }
-                        self.friendMessagesByFriendship[friendshipID] = items
-                        self.recomputeUnreadState(for: friendshipID)
-                    }
-                }
-            }
-
-            await MainActor.run {
-                self.friendMessagesChannel = channel
-                self.subscribedFriendshipID = friendshipID
-            }
-
-            do {
-                try await channel.subscribeWithError()
-                Log.debug("✅ FRIEND MESSAGE REALTIME SUBSCRIBED:", friendshipID.uuidString)
-            } catch {
-                Log.debug("FRIEND MESSAGE REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
-
-                await MainActor.run {
-                    self.friendMessagesChannel = nil
-                    self.subscribedFriendshipID = nil
-                }
-            }
-        }
-    }
 }

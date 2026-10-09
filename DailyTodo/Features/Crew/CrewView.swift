@@ -167,7 +167,6 @@ struct CrewView: View {
                     await crewStore.loadCrewHomeSnapshot()
                 }
 
-                crewStore.subscribeToGlobalFocusRealtime()
                 crewStore.startObservingFocusSocketEvents()
 
                 friendStore.subscribeToFriendshipsRealtime(currentUserID: userID)
@@ -206,8 +205,6 @@ struct CrewView: View {
                     await reloadAllCrewAndFriendData(forceCrews: true)
 
                     if let newID {
-                        crewStore.subscribeToCrewsListRealtime(for: newID)
-                        crewStore.subscribeToGlobalFocusRealtime()
                         friendStore.subscribeToFriendshipsRealtime(currentUserID: newID)
 
                         let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in

@@ -158,9 +158,6 @@ struct CrewChatView: View {
 
             Task { @MainActor in
                 ChatBackendSocketClient.shared.disconnect()
-
-                crewStore.unsubscribeCrewAuxRealtime()
-                crewStore.unsubscribeCrewFocusRealtime()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .chatBackendTyping)) { note in

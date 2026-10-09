@@ -154,15 +154,11 @@ struct BackendCrewDetailView: View {
             playEntranceAnimations()
         }
         .onAppear {
-            crewStore.subscribeToCrewRealtime(crewID: crew.id)
             weeklyGoalMinutes = crewStore.weeklyGoalMinutes(for: crew.id)
 
             Task {
                 await loadCrewDetail()
             }
-        }
-        .onDisappear {
-            crewStore.unsubscribe()
         }
         .onChange(of: crewPhotoItem) { _, newItem in
             guard let newItem else { return }

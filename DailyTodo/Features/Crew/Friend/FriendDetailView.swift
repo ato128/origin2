@@ -255,11 +255,6 @@ struct FriendDetailView: View {
                 friendshipID: friendshipID,
                 currentUserID: session.currentUser?.id
             )
-
-            friendStore.subscribeToFriendMessagesRealtime(
-                friendshipID: friendshipID,
-                currentUserID: session.currentUser?.id
-            )
         }
         .fullScreenCover(isPresented: $showChat) {
             // FriendChatView bir NavigationStack bağlamı bekliyor (Home→Mesajlar

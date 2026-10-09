@@ -21,6 +21,7 @@ struct SharedWeekView: View {
 
     @State private var selectedDay: Int = 0
     @State private var now = Date()
+    @Environment(\.scenePhase) private var scenePhase
 
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -74,21 +75,11 @@ struct SharedWeekView: View {
         }
         .task {
             await refreshSharedWeek()
-
-            guard
-                let friendshipID,
-                let currentUserID = session.currentUser?.id,
-                let friendUserID
-            else { return }
-
-            friendStore.subscribeToSharedWeekItemsRealtime(
-                friendshipID: friendshipID,
-                ownerUserID: friendUserID,
-                viewerUserID: currentUserID
-            )
         }
-        .onDisappear {
-            friendStore.unsubscribeSharedWeekItemsRealtime()
+        // No live channel: refresh on open, on pull, and when the app comes back.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await refreshSharedWeek() }
         }
     }
 }

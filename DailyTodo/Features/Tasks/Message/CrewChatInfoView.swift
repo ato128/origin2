@@ -91,11 +91,6 @@ struct CrewChatInfoView: View {
             Task {
                 await crewStore.loadFocusRecords(for: resolvedCrewID)
             }
-
-            crewStore.subscribeToCrewRealtime(crewID: resolvedCrewID)
-        }
-        .onDisappear {
-            crewStore.unsubscribe()
         }
         .onChange(of: leaderboardTotalFocusMinutes) { _, newValue in
             crew.totalFocusMinutes = newValue

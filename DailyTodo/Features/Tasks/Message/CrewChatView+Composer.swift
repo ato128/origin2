@@ -275,21 +275,9 @@ extension CrewChatView {
         guard !clean.isEmpty || photoToSend != nil else { return }
         guard let senderID = session.currentUser?.id else { return }
 
-        let senderName = currentDisplayName()
 
         typingStopTask?.cancel()
         isCurrentlyTyping = false
-
-        if let myID = session.currentUser?.id {
-            Task(priority: .utility) {
-                await crewStore.sendTypingEvent(
-                    crewID: crew.id,
-                    userID: myID,
-                    name: senderName,
-                    isTyping: false
-                )
-            }
-        }
 
         Haptics.impact(.light)
 

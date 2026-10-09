@@ -101,9 +101,6 @@ extension CrewChatView {
             for: crewStore.crewMembers.filter { $0.crew_id == crew.id }
         )
 
-        await crewStore.loadCrewTypingStatuses(for: crew.id)
-        crewStore.subscribeToCrewAuxRealtime(crewID: crew.id)
-
         await syncChatBackendCrewIfNeeded()
     }
 
