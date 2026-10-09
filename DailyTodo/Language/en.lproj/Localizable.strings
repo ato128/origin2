@@ -2345,7 +2345,7 @@
 "ai_sg_ch_progress_focus" = "%d / %d minutes";
 
 /* Insights — clean data dashboard */
-"insd_focus_week_caps" = "FOCUS · THIS WEEK";
+"insd_focus_week_caps" = "FOCUS · LAST 7 DAYS";
 "insd_today" = "Today";
 "insd_sessions_label" = "Sessions";
 "insd_total" = "Total";
@@ -2353,11 +2353,47 @@
 "insd_h" = "h";
 "insd_min" = "m";
 "insd_focus_untitled" = "Focus";
-"insd_tasks_caps" = "TASKS · THIS WEEK";
+"insd_tasks_caps" = "TASKS · LAST 7 DAYS";
 "insd_completed_label" = "completed";
 "insd_focus_detail_title" = "Focus History";
 "insd_avg" = "Avg session";
 "insd_all_sessions_caps" = "ALL SESSIONS";
+"insd_last14_caps" = "LAST 14 DAYS";
+"insd_hours_window" = "LAST 30 DAYS";
+"insd_hours_empty" = "Your peak hours show up here after %d focus sessions.";
+"insd_vs_friends_caps" = "YOU vs FRIENDS";
+"insd_vs_friends_empty" = "When your friends share their stats, you'll see how you stack up here.";
+"insd_you" = "You";
+"insd_show_all" = "Show all (%d)";
+"insd_sum_caps" = "YOUR WEEK";
+"insd_sum_none" = "No focus sessions in the last 7 days. A short 25-minute session is a great start.";
+"insd_sum_up" = "You focused %@ in the last 7 days — %d%% more than the week before.";
+"insd_sum_down" = "You focused %@ in the last 7 days — %d%% behind the week before.";
+"insd_sum_total" = "You focused %@ in the last 7 days.";
+"insd_sum_best_day" = "Your best day was %@: %@.";
+"insd_sum_days" = "You focused on %d of the last 7 days.";
+"insd_sum_peak" = "You focus best around %02d:00.";
+"insd_sum_tasks" = "You completed %d tasks.";
+"insd_sum_tasks_one" = "You completed 1 task.";
+"insd_goal_caps" = "WEEKLY GOAL";
+"insd_goal_reached" = "Goal reached! Anything more is a bonus.";
+"insd_goal_last_day" = "Last day · %@ to go";
+"insd_goal_pace" = "%d days left · ~%@ a day does it";
+"insd_goal_suggested_hint" = "Suggested goal · tap to make it yours";
+"insd_goal_sheet_title" = "YOUR WEEKLY FOCUS GOAL";
+"insd_goal_suggestion" = "Suggested from your recent weeks: %@";
+"insd_goal_save" = "Save";
+"insd_courses_caps" = "COURSES · LAST 7 DAYS";
+"insd_courses_other" = "Other";
+"insd_courses_hint" = "Pick a course when you start a focus to see your time per course here.";
+"insd_courses_neglect" = "You haven't focused on %@ in the last 7 days — your exam is in %d days.";
+"insd_courses_neglect_tomorrow" = "You haven't focused on %@ in the last 7 days — your exam is tomorrow.";
+"fv_course_caps" = "COURSE";
+"fv_course_none" = "No course";
+"fv_course_none_sub" = "Pick one to track time per course";
+"fv_course_sub" = "This session counts toward it";
+"fv_pick_course" = "Pick a Course";
+"fv_pick_course_sub" = "The session counts toward this course, so Insights can show your time per course.";
 
 /* Updo AI — question photo + teacher follow-ups */
 "ai_attach" = "Attach";

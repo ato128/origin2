@@ -19,6 +19,8 @@ final class FocusSessionRecord {
     var totalSeconds: Int
     var completedSeconds: Int
     var isCompleted: Bool
+    /// Course the user picked for this session (nil = none / older records).
+    var courseName: String? = nil
 
     init(
         id: UUID = UUID(),
@@ -28,7 +30,8 @@ final class FocusSessionRecord {
         endedAt: Date,
         totalSeconds: Int,
         completedSeconds: Int,
-        isCompleted: Bool
+        isCompleted: Bool,
+        courseName: String? = nil
     ) {
         self.id = id
         self.ownerUserID = ownerUserID
@@ -38,6 +41,7 @@ final class FocusSessionRecord {
         self.totalSeconds = totalSeconds
         self.completedSeconds = completedSeconds
         self.isCompleted = isCompleted
+        self.courseName = courseName
     }
 }
 

@@ -10,16 +10,71 @@ import SwiftUI
 import SwiftData
 import Combine
 
+// The analytics cards (Pro) — Equatable so InsightsView's per-scroll-frame
+// re-render (scrollOffset state) does NOT re-evaluate the dashboard body.
+// `InsightsDataSignature` changes on any real data change (session saved or
+// extended, task closed, new day), so the cards never go stale.
+private struct UnlockedAnalyticsSection: View, Equatable {
+    let signature: InsightsDataSignature
+    let ownerID: String?
+    let courses: [InsightsCourseInfo]
+    let exams: [InsightsExamInfo]
+    let focusSessions: [FocusSessionRecord]
+    let tasks: [DTTaskItem]
+    let friends: [Friend]
+    let myName: String
+    let myStreak: Int
+    let myLevel: Int
+    let accent: Color
+
+    static func == (lhs: UnlockedAnalyticsSection, rhs: UnlockedAnalyticsSection) -> Bool {
+        lhs.signature == rhs.signature &&
+        lhs.ownerID == rhs.ownerID &&
+        lhs.myStreak == rhs.myStreak &&
+        lhs.myLevel == rhs.myLevel &&
+        lhs.myName == rhs.myName &&
+        lhs.accent == rhs.accent
+    }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            // Clean, data-first focus + tasks (tap focus for full history).
+            InsightsDataDashboard(
+                focusSessions: focusSessions,
+                tasks: tasks,
+                accent: accent,
+                ownerID: ownerID,
+                courses: courses,
+                exams: exams,
+                friends: friends,
+                myName: myName,
+                myStreak: myStreak,
+                myLevel: myLevel
+            )
+
+            // Which days actually fed the streak (task AND focus), this month.
+            InsightsStreakCalendarCard(
+                tasks: tasks,
+                focusSessions: focusSessions,
+                accent: accent
+            )
+            .insightsCardReveal()
+        }
+    }
+}
+
 // Real-analytics backdrop for the locked (free) state. The frost itself is Apple's
 // `.ultraThinMaterial` (a GPU backdrop blur composited every frame for free — the
 // smooth "Apple blur" the user asked for), applied OVER this view in `lockedAnalytics`.
 // This view just holds the real cards; it's Equatable so InsightsView's per-scroll-frame
-// re-render (scrollOffset state) does NOT re-evaluate the heavy dashboard body. Cheap
-// equality on the data counts is enough: nothing changes during a scroll → butter-smooth.
+// re-render (scrollOffset state) does NOT re-evaluate the heavy dashboard body.
 private struct LockedAnalyticsBackdrop: View, Equatable {
+    let signature: InsightsDataSignature
+    let ownerID: String?
+    let courses: [InsightsCourseInfo]
+    let exams: [InsightsExamInfo]
     let focusSessions: [FocusSessionRecord]
     let tasks: [DTTaskItem]
-    let allFocusSessions: [FocusSessionRecord]
     let friends: [Friend]
     let myName: String
     let myStreak: Int
@@ -27,10 +82,8 @@ private struct LockedAnalyticsBackdrop: View, Equatable {
     let accent: Color
 
     static func == (lhs: LockedAnalyticsBackdrop, rhs: LockedAnalyticsBackdrop) -> Bool {
-        lhs.focusSessions.count == rhs.focusSessions.count &&
-        lhs.tasks.count == rhs.tasks.count &&
-        lhs.allFocusSessions.count == rhs.allFocusSessions.count &&
-        lhs.friends.count == rhs.friends.count &&
+        lhs.signature == rhs.signature &&
+        lhs.ownerID == rhs.ownerID &&
         lhs.myStreak == rhs.myStreak &&
         lhs.myLevel == rhs.myLevel &&
         lhs.myName == rhs.myName
@@ -42,7 +95,9 @@ private struct LockedAnalyticsBackdrop: View, Equatable {
                 focusSessions: focusSessions,
                 tasks: tasks,
                 accent: accent,
-                allFocusSessions: allFocusSessions,
+                ownerID: ownerID,
+                courses: courses,
+                exams: exams,
                 friends: friends,
                 myName: myName,
                 myStreak: myStreak,
@@ -651,9 +706,28 @@ struct InsightsView: View {
         }
 
         // Offline fallback: the locally synced friend list from the last visit.
-        return localFriends.filter {
+        return myLocalFriends.count
+    }
+
+    /// Active courses (name + color) for the per-course split.
+    private var insightsCourses: [InsightsCourseInfo] {
+        studentStore.courses
+            .filter { !$0.isArchived }
+            .map { InsightsCourseInfo(name: $0.name, colorHex: $0.colorHex) }
+    }
+
+    /// Upcoming, not-yet-done exams for the "you haven't studied X" nudge.
+    private var insightsExams: [InsightsExamInfo] {
+        filteredExams
+            .filter { !$0.isCompleted }
+            .map { InsightsExamInfo(courseName: $0.courseName, date: $0.examDate) }
+    }
+
+    /// This account's locally synced friends (a shared device can hold others').
+    private var myLocalFriends: [Friend] {
+        localFriends.filter {
             $0.ownerUserID == nil || $0.ownerUserID == currentUserIDString
-        }.count
+        }
     }
 
     /// Instagram-style counts, Updo-style chrome: three hairline-divided cells.
@@ -995,27 +1069,30 @@ struct InsightsView: View {
         }
     }
 
-    @ViewBuilder
     private var analyticsCards: some View {
-        // Clean, data-first focus + tasks (tap focus for full history).
-        InsightsDataDashboard(
-            focusSessions: filteredFocusSessions,
-            tasks: filteredTasks,
-            accent: insightsAccent,
-            allFocusSessions: focusSessions,
-            friends: localFriends,
+        let focus = filteredFocusSessions
+        let tasks = filteredTasks
+        let friends = myLocalFriends
+        let courses = insightsCourses
+        let exams = insightsExams
+
+        return UnlockedAnalyticsSection(
+            signature: InsightsDataSignature(
+                focusSessions: focus, tasks: tasks, friends: friends,
+                courses: courses, exams: exams
+            ),
+            ownerID: currentUserIDString,
+            courses: courses,
+            exams: exams,
+            focusSessions: focus,
+            tasks: tasks,
+            friends: friends,
             myName: resolvedUserName,
             myStreak: progression.currentStreak,
-            myLevel: storedIdentityLevel
-        )
-
-        // Which days actually fed the streak (task AND focus), this month.
-        InsightsStreakCalendarCard(
-            tasks: filteredTasks,
-            focusSessions: filteredFocusSessions,
+            myLevel: storedIdentityLevel,
             accent: insightsAccent
         )
-        .insightsCardReveal()
+        .equatable()
     }
 
     // Locked (free) analytics: the REAL analytics cards frosted with Apple's
@@ -1034,10 +1111,19 @@ struct InsightsView: View {
 
         return ZStack {
             LockedAnalyticsBackdrop(
+                signature: InsightsDataSignature(
+                    focusSessions: filteredFocusSessions,
+                    tasks: filteredTasks,
+                    friends: myLocalFriends,
+                    courses: insightsCourses,
+                    exams: insightsExams
+                ),
+                ownerID: currentUserIDString,
+                courses: insightsCourses,
+                exams: insightsExams,
                 focusSessions: filteredFocusSessions,
                 tasks: filteredTasks,
-                allFocusSessions: focusSessions,
-                friends: localFriends,
+                friends: myLocalFriends,
                 myName: resolvedUserName,
                 myStreak: progression.currentStreak,
                 myLevel: storedIdentityLevel,

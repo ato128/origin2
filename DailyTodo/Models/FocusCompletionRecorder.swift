@@ -26,6 +26,7 @@ final class FocusCompletionRecorder {
         let totalSeconds: Int
         let completedSeconds: Int
         let isCompleted: Bool
+        var courseName: String? = nil
 
         var stableKey: String {
             [
@@ -56,7 +57,8 @@ final class FocusCompletionRecorder {
         endedAt: Date,
         totalSeconds: Int,
         completedSeconds: Int,
-        isCompleted: Bool
+        isCompleted: Bool,
+        courseName: String? = nil
     ) {
         let pending = PendingFocusRecord(
             id: UUID(),
@@ -66,7 +68,8 @@ final class FocusCompletionRecorder {
             endedAt: endedAt,
             totalSeconds: totalSeconds,
             completedSeconds: completedSeconds,
-            isCompleted: isCompleted
+            isCompleted: isCompleted,
+            courseName: courseName
         )
 
         savePendingIfNeeded(pending)
@@ -148,7 +151,8 @@ final class FocusCompletionRecorder {
             endedAt: pending.endedAt,
             totalSeconds: pending.totalSeconds,
             completedSeconds: pending.completedSeconds,
-            isCompleted: pending.isCompleted
+            isCompleted: pending.isCompleted,
+            courseName: pending.courseName
         )
 
         context.insert(record)

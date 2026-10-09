@@ -92,13 +92,44 @@ final class FocusSessionManager: ObservableObject {
         preferredCrewID: UUID? = nil,
         friendUserID: UUID? = nil,
         friendName: String? = nil,
-        fromJoinRequest: Bool = false
+        fromJoinRequest: Bool = false,
+        courseName: String? = nil
     ) async -> Bool {
         guard !hasBlockingActiveSession else {
             Log.debug("FOCUS START BLOCKED: another session is already active")
             return false
         }
 
+        let started = await launchRequestedSession(
+            mode: mode,
+            durationMinutes: durationMinutes,
+            goal: goal,
+            style: style,
+            preferredCrewID: preferredCrewID,
+            friendUserID: friendUserID,
+            friendName: friendName,
+            fromJoinRequest: fromJoinRequest
+        )
+
+        // Tag the running session with its course so the saved record (and
+        // Insights' per-course split) knows what it was for.
+        if started, let courseName, !courseName.isEmpty, currentSession != nil {
+            currentSession?.courseName = courseName
+            save()
+        }
+        return started
+    }
+
+    private func launchRequestedSession(
+        mode: FocusMode,
+        durationMinutes: Int,
+        goal: FocusGoal,
+        style: FocusStyle,
+        preferredCrewID: UUID?,
+        friendUserID: UUID?,
+        friendName: String?,
+        fromJoinRequest: Bool
+    ) async -> Bool {
         switch mode {
         case .personal:
             startLocalSession(
@@ -1024,7 +1055,8 @@ final class FocusSessionManager: ObservableObject {
             endedAt: ended,
             totalSeconds: totalSeconds,
             completedSeconds: completedSeconds,
-            isCompleted: completedSeconds >= totalSeconds - 5
+            isCompleted: completedSeconds >= totalSeconds - 5,
+            courseName: session.courseName
         )
 
         // Friend duo: tell the other side we're done and store the shared

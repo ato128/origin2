@@ -11,6 +11,7 @@ struct FocusView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var focusSession: FocusSessionManager
     @EnvironmentObject var crewStore: CrewStore
+    @EnvironmentObject var studentStore: StudentStore
     
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
@@ -24,6 +25,10 @@ struct FocusView: View {
     
     @State private var showCustomDurationSheet = false
     @State private var showGoalPicker = false
+    @State private var showCoursePicker = false
+    /// Last course picked for a focus — remembered so a study streak on one
+    /// course is a single tap. Empty = no course.
+    @AppStorage("focus.lastCourseName") private var selectedCourseName: String = ""
     @State private var showStylePicker = false
     @State private var showCrewStartSheet = false
     
@@ -98,6 +103,9 @@ struct FocusView: View {
         }
         .sheet(isPresented: $showGoalPicker) {
             goalPickerSheet
+        }
+        .sheet(isPresented: $showCoursePicker) {
+            coursePickerSheet
         }
         .sheet(isPresented: $showStylePicker) {
             stylePickerSheet
@@ -454,6 +462,18 @@ private extension FocusView {
                 )
 
                 editorialDivider
+
+                if !activeCourses.isEmpty {
+                    editorialSettingRow(
+                        title: tr("fv_course_caps"),
+                        value: resolvedCourseName ?? tr("fv_course_none"),
+                        subtitle: resolvedCourseName == nil ? tr("fv_course_none_sub") : tr("fv_course_sub"),
+                        icon: "book.closed.fill",
+                        action: { showCoursePicker = true }
+                    )
+
+                    editorialDivider
+                }
 
                 editorialSettingRow(
                     title: tr("fv_sound_caps"),
@@ -907,7 +927,8 @@ private extension FocusView {
                 durationMinutes: resolvedMinutes,
                 goal: selectedGoal,
                 style: selectedStyle,
-                preferredCrewID: selectedCrewID
+                preferredCrewID: selectedCrewID,
+                courseName: resolvedCourseName
             )
 
             if !started {
@@ -1881,7 +1902,8 @@ private extension FocusView {
                 goal: selectedGoal,
                 style: selectedStyle,
                 friendUserID: friendID,
-                friendName: friendName
+                friendName: friendName,
+                courseName: resolvedCourseName
             )
 
             if !started {
@@ -2056,6 +2078,86 @@ private extension FocusView {
             .padding(20)
         }
         .presentationDetents([.medium, .large])
+    }
+
+    // MARK: - Course
+
+    private var activeCourses: [Course] {
+        studentStore.courses
+            .filter { !$0.isArchived }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// The remembered course, if it is still one of the active courses.
+    private var resolvedCourseName: String? {
+        guard !selectedCourseName.isEmpty,
+              activeCourses.contains(where: { $0.name == selectedCourseName }) else { return nil }
+        return selectedCourseName
+    }
+
+    var coursePickerSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text(tr("fv_pick_course"))
+                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.primary)
+
+                Text(tr("fv_pick_course_sub"))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                ScrollView {
+                    VStack(spacing: 10) {
+                        courseOption(name: nil, colorHex: nil)
+                        ForEach(activeCourses, id: \.id) { course in
+                            courseOption(name: course.name, colorHex: course.colorHex)
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+            }
+            .padding(20)
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func courseOption(name: String?, colorHex: String?) -> some View {
+        let isSelected = resolvedCourseName == name
+        return Button {
+            selectedCourseName = name ?? ""
+            showCoursePicker = false
+        } label: {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(colorHex.map { Color(arenaHex: $0) } ?? UpdoTheme.filmy(0.18))
+                    .frame(width: 12, height: 12)
+                    .frame(width: 38, height: 38)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(UpdoTheme.filmy(0.06))
+                    )
+
+                Text(name ?? tr("fv_course_none"))
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .foregroundStyle(name == nil ? .secondary : .primary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.blue)
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(UpdoTheme.filmy(0.05))
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     var stylePickerSheet: some View {

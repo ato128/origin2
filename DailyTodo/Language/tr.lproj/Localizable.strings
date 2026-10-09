@@ -712,7 +712,7 @@
 
 "insd_hours_caps" = "EN VERİMLİ SAATLERİN";
 "insd_streak_cal_caps" = "SERİ TAKVİMİ";
-"insd_cal_full" = "görev + focus";
+"insd_cal_full" = "görev + odak";
 "insd_cal_half" = "yarım";
 "insd_hours_peak" = "Genelde %02d:00 civarı odaklanıyorsun.";
 
@@ -2346,7 +2346,7 @@
 "ai_sg_ch_progress_focus" = "%d / %d dakika";
 
 /* Insights — clean data dashboard */
-"insd_focus_week_caps" = "ODAK · BU HAFTA";
+"insd_focus_week_caps" = "ODAK · SON 7 GÜN";
 "insd_today" = "Bugün";
 "insd_sessions_label" = "Seans";
 "insd_total" = "Toplam";
@@ -2354,11 +2354,47 @@
 "insd_h" = "s";
 "insd_min" = "dk";
 "insd_focus_untitled" = "Odak";
-"insd_tasks_caps" = "GÖREVLER · BU HAFTA";
+"insd_tasks_caps" = "GÖREVLER · SON 7 GÜN";
 "insd_completed_label" = "tamamlandı";
 "insd_focus_detail_title" = "Odak Geçmişi";
 "insd_avg" = "Ort. seans";
 "insd_all_sessions_caps" = "TÜM SEANSLAR";
+"insd_last14_caps" = "SON 14 GÜN";
+"insd_hours_window" = "SON 30 GÜN";
+"insd_hours_empty" = "%d odak seansından sonra en verimli saatlerin burada çıkacak.";
+"insd_vs_friends_caps" = "SEN vs ARKADAŞLARIN";
+"insd_vs_friends_empty" = "Arkadaşların istatistiklerini paylaşınca buradan kıyaslamayı görürsün.";
+"insd_you" = "Sen";
+"insd_show_all" = "Tümünü göster (%d)";
+"insd_sum_caps" = "HAFTANIN ÖZETİ";
+"insd_sum_none" = "Son 7 günde odak seansı yok. 25 dakikalık kısa bir seansla başlayabilirsin.";
+"insd_sum_up" = "Son 7 günde %@ odaklandın — önceki haftadan %%%d fazla.";
+"insd_sum_down" = "Son 7 günde %@ odaklandın — önceki haftanın %%%d gerisindesin.";
+"insd_sum_total" = "Son 7 günde %@ odaklandın.";
+"insd_sum_best_day" = "En iyi günün %@ oldu: %@.";
+"insd_sum_days" = "Son 7 günün %d gününde odaklandın.";
+"insd_sum_peak" = "En verimli saatin %02d:00 civarı.";
+"insd_sum_tasks" = "%d görev tamamladın.";
+"insd_sum_tasks_one" = "1 görev tamamladın.";
+"insd_goal_caps" = "HAFTALIK HEDEF";
+"insd_goal_reached" = "Hedef tamam! Fazlası bonus.";
+"insd_goal_last_day" = "Bugün son gün · %@ kaldı";
+"insd_goal_pace" = "%d gün kaldı · günde ~%@ yeter";
+"insd_goal_suggested_hint" = "Önerilen hedef · dokunup kendine göre ayarla";
+"insd_goal_sheet_title" = "HAFTALIK ODAK HEDEFİN";
+"insd_goal_suggestion" = "Son haftalarına göre önerimiz: %@";
+"insd_goal_save" = "Kaydet";
+"insd_courses_caps" = "DERSLER · SON 7 GÜN";
+"insd_courses_other" = "Diğer";
+"insd_courses_hint" = "Odak başlatırken ders seç; hangi derse ne kadar çalıştığını burada gör.";
+"insd_courses_neglect" = "Son 7 günde %@ dersine hiç odaklanmadın — sınavına %d gün var.";
+"insd_courses_neglect_tomorrow" = "Son 7 günde %@ dersine hiç odaklanmadın — sınavın yarın.";
+"fv_course_caps" = "DERS";
+"fv_course_none" = "Ders seçilmedi";
+"fv_course_none_sub" = "Ders seç, analizde dağılımını gör";
+"fv_course_sub" = "Bu seans bu derse yazılır";
+"fv_pick_course" = "Ders Seç";
+"fv_pick_course_sub" = "Seans bu derse yazılır; analizde hangi derse ne kadar çalıştığını görürsün.";
 
 /* Updo AI — question photo + teacher follow-ups */
 "ai_attach" = "Ekle";

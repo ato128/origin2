@@ -155,6 +155,8 @@ struct FocusSessionState: Codable {
     /// Joined someone else's running duo: seconds of the shared countdown that
     /// had already passed. Excluded from MY credited focus time.
     var creditOffsetSeconds: Int? = nil
+    /// Course this session is for (by name — survives course re-syncs).
+    var courseName: String? = nil
 }
 
 extension FocusParticipant {
