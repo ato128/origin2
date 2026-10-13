@@ -19,15 +19,37 @@ struct AIMessage: Identifiable, Codable {
     var actionPayload: String? = nil // JSON or simple string
     /// A question photo the user attached (file name in `AIChatImageStore`).
     var imageFile: String? = nil
+    /// The subject chat this message is filed under (nil = the general chat).
+    var threadID: UUID? = nil
 
     var anthropicMessage: [String: String] {
         ["role": role == "user" ? "user" : "assistant", "content": text]
     }
 }
 
+/// A subject chat ("Fizik 1", "Kimya") the coach files lessons into on its own.
+struct AIChatThread: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var title: String
+    var updatedAt: Date
+
+    var icon: String { AIChatTopics.icon(for: title) }
+}
+
 @MainActor
 final class UpdoAIChatStore: ObservableObject {
-    @Published var messages: [AIMessage] = []
+    /// One store for every chat surface (Home + presented), so two copies can't
+    /// overwrite each other's history on persist.
+    static let shared = UpdoAIChatStore()
+
+    /// Every stored message across all chats.
+    @Published var messages: [AIMessage] = [] { didSet { refreshVisible() } }
+    /// What the open chat shows: a pinned subject chat, or the general feed
+    /// (general messages + everything said this session, wherever it was filed).
+    @Published private(set) var visibleMessages: [AIMessage] = []
+    @Published private(set) var threads: [AIChatThread] = []
+    /// nil = general chat with automatic subject routing; else a pinned subject chat.
+    @Published private(set) var activeThreadID: UUID? = nil
     @Published var isSending: Bool = false
     @Published var error: String? = nil
     @Published var lastPreviewText: String = ""
@@ -50,14 +72,175 @@ final class UpdoAIChatStore: ObservableObject {
     private static let historyCharsPerTurn = 1_500
 
     private let storageKey = "updo_ai_messages_v1"
+    private let threadsKey = "updo_ai_threads_v1"
     private let previewKey = "updo_ai_last_preview"
-    /// Only the tail is ever shown (and only the last 8 travel to the model);
+    /// Only the tail is ever shown (and only the last 20 travel to the model);
     /// an unbounded history made every persist() re-encode the whole chat.
-    private let maxStoredMessages = 200
+    /// Capped per chat so general chatter can't push a subject's history out.
+    private let maxStoredPerThread = 150
 
-    init() {
+    /// Messages written this session. The general feed keeps showing them even
+    /// after they're filed into a subject chat, so routing is invisible while
+    /// chatting; on the next visit they live only in their own chat.
+    private var sessionIDs: Set<UUID> = []
+    /// The chat the conversation is currently in (for follow-ups like "peki 2. adım?").
+    private var sessionThreadID: UUID?
+    private var sessionThreadAt: Date?
+    private var backgroundedAt: Date?
+    /// Away this long → a new visit: the general feed sheds the filed messages.
+    private static let sessionGap: TimeInterval = 10 * 60
+    private var lifecycle: Set<AnyCancellable> = []
+
+    private init() {
         load()
         lastPreviewText = UserDefaults.standard.string(forKey: previewKey) ?? ""
+
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak self] _ in Task { @MainActor in self?.backgroundedAt = .now } }
+            .store(in: &lifecycle)
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .sink { [weak self] _ in Task { @MainActor in self?.startNewVisitIfAway() } }
+            .store(in: &lifecycle)
+    }
+
+    // MARK: - Chats (threads)
+
+    var activeThread: AIChatThread? {
+        activeThreadID.flatMap { id in threads.first { $0.id == id } }
+    }
+
+    /// Most recently used first.
+    var sortedThreads: [AIChatThread] {
+        threads.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    func selectThread(_ id: UUID?) {
+        guard !isSending, activeThreadID != id else { return }
+        activeThreadID = id
+        refreshVisible()
+    }
+
+    private func refreshVisible() {
+        if let tid = activeThreadID {
+            visibleMessages = messages.filter { $0.threadID == tid }
+        } else {
+            visibleMessages = messages.filter { $0.threadID == nil || sessionIDs.contains($0.id) }
+        }
+    }
+
+    private func startNewVisitIfAway() {
+        defer { backgroundedAt = nil }
+        guard let away = backgroundedAt, Date().timeIntervalSince(away) >= Self.sessionGap, !isSending else { return }
+        sessionIDs.removeAll()
+        sessionThreadID = nil
+        sessionThreadAt = nil
+        activeThreadID = nil
+        refreshVisible()
+    }
+
+    /// Appends to the open chat: a pinned chat files it there; the general feed
+    /// keeps it visible for the rest of the session.
+    private func appendToOpenChat(_ msg: AIMessage) {
+        var msg = msg
+        msg.threadID = activeThreadID
+        if activeThreadID == nil { sessionIDs.insert(msg.id) }
+        messages.append(msg)
+        if let tid = activeThreadID { touchThread(tid) }
+    }
+
+    private func touchThread(_ id: UUID) {
+        guard let i = threads.firstIndex(where: { $0.id == id }) else { return }
+        threads[i].updatedAt = .now
+        persistThreads()
+    }
+
+    /// Finds the chat for a model-chosen subject title, creating it if new.
+    /// "Fizik-1" / "Fizik I" / "fizik 1" are the same chat; a bare "Fizik"
+    /// joins the most recent "Fizik …" chat.
+    private func threadID(forTitle raw: String) -> UUID? {
+        let title = AIChatTopics.cleanTitle(raw)
+        let key = AIChatTopics.key(title)
+        guard key.count >= 2 else { return nil }
+        if let hit = threads.first(where: { AIChatTopics.key($0.title) == key }) { return hit.id }
+        if !key.contains(where: \.isNumber),
+           let family = sortedThreads.first(where: { AIChatTopics.key($0.title).hasPrefix(key) }) {
+            return family.id
+        }
+        let thread = AIChatThread(title: title, updatedAt: .now)
+        threads.append(thread)
+        persistThreads()
+        return thread.id
+    }
+
+    /// Before the reply arrives: which chat is this message probably about?
+    /// Picks the history the model sees, so a physics question continues the
+    /// saved physics chat.
+    private func guessThread(for text: String) -> UUID? {
+        if let family = AIChatTopics.localSubject(in: text) {
+            let key = AIChatTopics.key(family)
+            if let t = sortedThreads.first(where: { AIChatTopics.key($0.title).hasPrefix(key) }) { return t.id }
+        }
+        if let tid = sessionThreadID, let at = sessionThreadAt,
+           Date().timeIntervalSince(at) < 15 * 60, threads.contains(where: { $0.id == tid }) {
+            return tid
+        }
+        return nil
+    }
+
+    /// After the reply: the model's tag wins; without one, an explicit subject
+    /// word, else stay in the chat we were in.
+    private func resolveThread(topic: String?, userText: String, guess: UUID?) -> UUID? {
+        if let topic {
+            return AIChatTopics.isGeneral(topic) ? nil : threadID(forTitle: topic)
+        }
+        if let family = AIChatTopics.localSubject(in: userText) {
+            return threadID(forTitle: family)
+        }
+        return guess
+    }
+
+    /// Files a finished exchange into its chat (invisible in the open feed).
+    private func file(_ ids: [UUID], into threadID: UUID?) {
+        for i in messages.indices where ids.contains(messages[i].id) {
+            messages[i].threadID = threadID
+        }
+        if let threadID { touchThread(threadID) }
+        sessionThreadID = threadID
+        sessionThreadAt = .now
+    }
+
+    /// Model-facing routing rule appended to the app context in the general chat.
+    private func topicInstruction() -> String {
+        let en = appLanguageIsEnglish()
+        let existing = sortedThreads.prefix(12).map(\.title).joined(separator: ", ")
+        if en {
+            return """
+            CHAT TOPIC (hidden tag for the app): start EVERY reply with one line [[topic: X]] and then answer. The app removes the tag; never mention it.
+            - If the message is about the content of a specific course or academic subject (a question, concept, formula, homework), X = that course's short name. Infer the exact branch from the formulas and the topic, e.g. kinematics, Newton's laws, work-energy, momentum → "Physics 1"; electric fields, Coulomb, circuits, magnetism → "Physics 2". If a matching course is in the student's Courses list, use exactly that name.
+            - Existing subject chats: \(existing.isEmpty ? "none yet" : existing). If one fits, repeat its name exactly.
+            - A follow-up to the previous message ("and step 2?") keeps the previous X.
+            - Plans, tasks, focus, motivation, using the app, greetings or small talk → X = general.
+            """
+        }
+        return """
+        SOHBET KONUSU (uygulama için gizli etiket): HER cevabın en başına tek satır [[konu: X]] yaz, sonra cevaba geç. Etiketi uygulama siler; ondan asla bahsetme.
+        - Mesaj belirli bir dersin/akademik alanın içeriğiyle ilgiliyse (soru, kavram, formül, ödev) X = o dersin kısa adı. Dalı formüllerden ve konudan sen çıkar, ör. kinematik, Newton yasaları, iş-enerji, momentum → "Fizik 1"; elektrik alan, Coulomb, devreler, manyetizma → "Fizik 2". Öğrencinin Dersler listesinde uyan bir ders varsa TAM o adı kullan.
+        - Mevcut ders sohbetleri: \(existing.isEmpty ? "henüz yok" : existing). Biri uyuyorsa adını aynen tekrar et.
+        - Önceki mesajın devamıysa ("peki 2. adım?") önceki X'i koru.
+        - Plan, görev, odak, motivasyon, uygulama kullanımı, selamlaşma veya sohbet → X = genel.
+        """
+    }
+
+    /// The turns the model sees: the open chat's tail, plus — in the general
+    /// chat — the likely subject chat's saved history so it picks up where
+    /// that lesson left off.
+    private func historyMessages(guess: UUID?) -> [AIMessage] {
+        var pool = Array(visibleMessages.suffix(Self.historyTurns))
+        if activeThreadID == nil, let guess {
+            let seen = Set(pool.map(\.id))
+            pool += messages.filter { $0.threadID == guess && !seen.contains($0.id) }.suffix(10)
+        }
+        return Array(pool.sorted { $0.timestamp < $1.timestamp }.suffix(Self.historyTurns))
     }
 
     // MARK: - Send
@@ -88,16 +271,22 @@ final class UpdoAIChatStore: ObservableObject {
             imageFile = AIChatImageStore.save(jpeg)
         }
 
+        // Routing: a pinned chat keeps everything; the general chat lets the
+        // model tag each reply's subject and files the exchange there.
+        let pinned = activeThreadID
+        let guess = pinned ?? guessThread(for: trimmed)
+        let system = pinned == nil ? contextPrompt + "\n\n" + topicInstruction() : contextPrompt
+
         var userMsg = AIMessage(role: "user", text: trimmed, timestamp: .now)
         userMsg.imageFile = imageFile
-        messages.append(userMsg)
+        appendToOpenChat(userMsg)
         persist()
         isSending = true
         error = nil
 
         // Last 20 turns so a longer explanation keeps its thread; each turn is
         // clipped so one very long old answer can't balloon the input cost.
-        let history: [[String: Any]] = Array(messages.suffix(Self.historyTurns)).compactMap { msg in
+        let history: [[String: Any]] = historyMessages(guess: guess).compactMap { msg in
             guard msg.role == "user" || msg.role == "assistant" else { return nil }
             var content = msg.text
             if content.count > Self.historyCharsPerTurn {
@@ -114,12 +303,13 @@ final class UpdoAIChatStore: ObservableObject {
         do {
             let usesBYO = BYOKeyStore.shared.readKey() != nil
             var replyText = ""
+            var topic: String? = nil
 
             if usesBYO {
                 // BYO key path stays on the non-streaming endpoint (the stream
                 // endpoint uses our own OpenAI key). Typewriter-reveal the result.
-                replyText = try await sendNonStreaming(
-                    contextPrompt: contextPrompt, history: history, credits: credits, onTool: onTool
+                (replyText, topic) = try await sendNonStreaming(
+                    contextPrompt: system, history: history, credits: credits, onTool: onTool
                 )
             } else {
                 // AGENTIC LOOP (Phase 2). Native OpenAI tool-calling across turns:
@@ -144,18 +334,20 @@ final class UpdoAIChatStore: ObservableObject {
 
                     stream.reset()
                     var turnText = ""
+                    var tagFilter = AITopicTagFilter()
                     var turnTool: AIToolCall? = nil
                     var receivedAny = false
                     var streamError: Error? = nil
                     do {
                         for try await event in AIService.shared.coachChatStream(
-                            system: contextPrompt, messages: convo, maxTokens: Self.replyTokenBudget
+                            system: system, messages: convo, maxTokens: Self.replyTokenBudget
                         ) {
                             switch event {
                             case .delta(let chunk):
                                 receivedAny = true
                                 turnText += chunk
-                                stream.append(chunk)
+                                // The leading [[konu: …]] tag never reaches the screen.
+                                stream.append(tagFilter.feed(chunk))
                             case .tool(let tool):
                                 receivedAny = true
                                 turnTool = tool
@@ -176,16 +368,21 @@ final class UpdoAIChatStore: ObservableObject {
                     } catch {
                         streamError = error
                     }
+                    stream.append(tagFilter.flush())
 
                     if let e = streamError {
                         // First turn, nothing produced, endpoint unavailable → the
                         // existing non-streaming fallback keeps chat working.
                         if iteration == 1, !receivedAny, Self.isStreamFallbackEligible(e) {
                             stream.reset()
-                            replyText = try await sendNonStreaming(
-                                contextPrompt: contextPrompt, history: history, credits: credits, onTool: onTool
+                            (replyText, topic) = try await sendNonStreaming(
+                                contextPrompt: system, history: history, credits: credits, onTool: onTool
                             )
-                            commitReply(replyText)
+                            let replyID = commitReply(replyText)
+                            if pinned == nil {
+                                file([userMsg.id, replyID], into: resolveThread(topic: topic, userText: trimmed, guess: guess))
+                                persist()
+                            }
                             isSending = false
                             return
                         }
@@ -221,7 +418,9 @@ final class UpdoAIChatStore: ObservableObject {
                         continue
                     }
 
-                    let trimmed = turnText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let (clean, tag) = AITopicTag.extract(from: turnText)
+                    if let tag = tagFilter.topic ?? tag { topic = tag }
+                    let trimmed = clean.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty { producedText = trimmed }
                     break
                 }
@@ -241,7 +440,11 @@ final class UpdoAIChatStore: ObservableObject {
                 }
             }
 
-            commitReply(replyText)
+            let replyID = commitReply(replyText)
+            if pinned == nil {
+                file([userMsg.id, replyID], into: resolveThread(topic: topic, userText: trimmed, guess: guess))
+                persist()
+            }
         } catch {
             stream.reset()
             // Keep the user message visible — append an error reply instead of removing
@@ -259,7 +462,7 @@ final class UpdoAIChatStore: ObservableObject {
                 errText = tr("ais_generic")
             }
             let errMsg = AIMessage(role: "assistant", text: errText, timestamp: .now)
-            messages.append(errMsg)
+            appendToOpenChat(errMsg)
             self.error = errText
             persist()
         }
@@ -275,35 +478,40 @@ final class UpdoAIChatStore: ObservableObject {
         history: [[String: Any]],
         credits: DailyCreditsManager,
         onTool: @MainActor (AIToolCall) -> String
-    ) async throws -> String {
+    ) async throws -> (text: String, topic: String?) {
         let (fullText, tool) = try await AIService.shared.coachChat(
             system: contextPrompt, messages: history, maxTokens: Self.replyTokenBudget
         )
         credits.noteMessageSent()
         let replyText: String
+        var topic: String? = nil
         if let tool {
             replyText = onTool(tool)
         } else {
-            guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            let (clean, tag) = AITopicTag.extract(from: fullText)
+            guard !clean.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw AIServiceError.invalidResponse
             }
-            replyText = fullText
+            replyText = clean.trimmingCharacters(in: .whitespacesAndNewlines)
+            topic = tag
         }
         await revealReply(replyText)
-        return replyText
+        return (replyText, topic)
     }
 
     /// Appends the finished reply and clears the live bubble in the SAME main-
     /// actor turn, so SwiftUI renders one frame: the streaming row disappears and
     /// the committed row takes its place (no empty/typing flash in between).
-    private func commitReply(_ text: String) {
+    @discardableResult
+    private func commitReply(_ text: String) -> UUID {
         let reply = AIMessage(role: "assistant", text: text, timestamp: .now)
         streamedMessageID = stream.hasContent ? reply.id : nil
-        messages.append(reply)
+        appendToOpenChat(reply)
         stream.reset()
         lastPreviewText = text
         UserDefaults.standard.set(text, forKey: previewKey)
         persist()
+        return reply.id
     }
 
     /// A streaming failure is "endpoint unavailable" (backend not deployed yet,
@@ -331,7 +539,7 @@ final class UpdoAIChatStore: ObservableObject {
     /// Used by the schedule-scan flow to talk the user through "send photos →
     /// added to your week".
     func appendAssistant(_ text: String) {
-        messages.append(AIMessage(role: "assistant", text: text, timestamp: .now))
+        appendToOpenChat(AIMessage(role: "assistant", text: text, timestamp: .now))
         lastPreviewText = text
         UserDefaults.standard.set(text, forKey: previewKey)
         persist()
@@ -340,8 +548,8 @@ final class UpdoAIChatStore: ObservableObject {
     /// Appends a user message + an assistant confirmation locally, without any
     /// network call or credit spend. Used by the token-free command interpreter.
     func appendLocalExchange(userText: String, assistantText: String) {
-        messages.append(AIMessage(role: "user", text: userText, timestamp: .now))
-        messages.append(AIMessage(role: "assistant", text: assistantText, timestamp: .now))
+        appendToOpenChat(AIMessage(role: "user", text: userText, timestamp: .now))
+        appendToOpenChat(AIMessage(role: "assistant", text: assistantText, timestamp: .now))
         lastPreviewText = assistantText
         UserDefaults.standard.set(assistantText, forKey: previewKey)
         persist()
@@ -350,27 +558,68 @@ final class UpdoAIChatStore: ObservableObject {
     // MARK: - Persistence
 
     func load() {
+        if let data = UserDefaults.standard.data(forKey: threadsKey),
+           let saved = try? JSONDecoder().decode([AIChatThread].self, from: data) {
+            threads = saved
+        }
         guard let data = UserDefaults.standard.data(forKey: storageKey),
               let saved = try? JSONDecoder().decode([AIMessage].self, from: data) else { return }
         messages = saved
     }
 
     func persist() {
-        if messages.count > maxStoredMessages {
-            let dropped = messages.prefix(messages.count - maxStoredMessages)
-            dropped.compactMap(\.imageFile).forEach(AIChatImageStore.delete)
-            messages.removeFirst(dropped.count)
+        var counts: [UUID?: Int] = [:]
+        for m in messages { counts[m.threadID, default: 0] += 1 }
+        if counts.values.contains(where: { $0 > maxStoredPerThread }) {
+            // Keep each chat's newest messages; drop the oldest overflow.
+            var keep: [UUID?: Int] = [:]
+            var kept: [AIMessage] = []
+            for m in messages.reversed() {
+                let n = keep[m.threadID, default: 0]
+                if n < maxStoredPerThread {
+                    keep[m.threadID] = n + 1
+                    kept.append(m)
+                } else if let file = m.imageFile {
+                    AIChatImageStore.delete(file)
+                }
+            }
+            messages = kept.reversed()
         }
         if let data = try? JSONEncoder().encode(messages) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
     }
 
-    func clearHistory() {
-        messages = []
+    private func persistThreads() {
+        if let data = try? JSONEncoder().encode(threads) {
+            UserDefaults.standard.set(data, forKey: threadsKey)
+        }
+    }
+
+    /// Clears what's open: a subject chat is deleted outright; the general
+    /// chat loses its own messages (subject chats stay).
+    func clearOpenChat() {
+        guard !isSending else { return }
+        if let tid = activeThreadID {
+            deleteThread(tid)
+            return
+        }
+        messages.filter { $0.threadID == nil }.compactMap(\.imageFile).forEach(AIChatImageStore.delete)
+        sessionIDs.removeAll()
+        messages.removeAll { $0.threadID == nil }
         stream.reset()
-        AIChatImageStore.deleteAll()
         persist()
+    }
+
+    func deleteThread(_ id: UUID) {
+        messages.filter { $0.threadID == id }.compactMap(\.imageFile).forEach(AIChatImageStore.delete)
+        threads.removeAll { $0.id == id }
+        if activeThreadID == id { activeThreadID = nil }
+        if sessionThreadID == id { sessionThreadID = nil }
+        messages.removeAll { $0.threadID == id }
+        stream.reset()
+        persist()
+        persistThreads()
     }
 }
 
@@ -676,5 +925,142 @@ final class AIStudyMemory: ObservableObject {
 
     private func persist() {
         UserDefaults.standard.set(notes, forKey: storageKey)
+    }
+}
+
+// MARK: - Subject routing
+//
+//  In the general chat the model starts each reply with a hidden
+//  "[[konu: Fizik 1]]" line naming the lesson it's about (or "genel"). The
+//  stream filter keeps that line off the screen; the store files the exchange
+//  into that subject's chat. Purely client-side — no extra request, no tokens
+//  beyond a few words.
+
+enum AITopicTag {
+    private static let regex = try? NSRegularExpression(
+        pattern: #"\[\[\s*(?:konu|topic)\s*:\s*([^\]\n]{0,60})\]\]\s*"#,
+        options: [.caseInsensitive]
+    )
+
+    /// Parses the inside of a tag ("konu: Fizik 1" → "Fizik 1").
+    static func value(inside raw: String) -> String? {
+        let body = raw.split(separator: ":", maxSplits: 1).last.map(String.init) ?? raw
+        let v = body.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'“”")))
+        return v.isEmpty ? nil : v
+    }
+
+    /// Removes every tag from a finished reply; returns the first tag's value.
+    static func extract(from text: String) -> (clean: String, topic: String?) {
+        guard let regex else { return (text, nil) }
+        let ns = text as NSString
+        let range = NSRange(location: 0, length: ns.length)
+        var topic: String? = nil
+        if let m = regex.firstMatch(in: text, range: range), m.numberOfRanges > 1 {
+            topic = value(inside: ns.substring(with: m.range(at: 1)))
+        }
+        let clean = regex.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+        return (clean, topic)
+    }
+}
+
+/// Holds back the start of a streamed reply until it knows whether it opens
+/// with a topic tag, so the tag never flashes on screen.
+struct AITopicTagFilter {
+    private(set) var topic: String?
+    private var buffer = ""
+    private var decided = false
+
+    mutating func feed(_ chunk: String) -> String {
+        if decided { return chunk }
+        buffer += chunk
+        let lead = String(buffer.drop(while: { $0.isWhitespace }))
+        if lead.isEmpty || lead == "[" { return "" }
+        guard lead.hasPrefix("[[") else { return release(lead) }
+        if let close = lead.range(of: "]]") {
+            let inside = String(lead[lead.index(lead.startIndex, offsetBy: 2) ..< close.lowerBound])
+            topic = AITopicTag.value(inside: inside)
+            return release(String(lead[close.upperBound...].drop(while: { $0.isWhitespace })))
+        }
+        // An unclosed "[[" this long isn't our tag — show it as written.
+        return lead.count > 80 ? release(lead) : ""
+    }
+
+    /// End of the turn: whatever is still held back is real text.
+    mutating func flush() -> String {
+        guard !decided else { return "" }
+        return release(String(buffer.drop(while: { $0.isWhitespace })))
+    }
+
+    private mutating func release(_ text: String) -> String {
+        decided = true
+        buffer = ""
+        return text
+    }
+}
+
+enum AIChatTopics {
+    /// "Fizik-1", "Fizik I", "fizik 1" → "fizik1".
+    /// Turkish-aware lowercase ("İ"→i, "I"→ı→i) with accents dropped.
+    static func normalize(_ s: String) -> String {
+        s.lowercased(with: Locale(identifier: "tr"))
+            .replacingOccurrences(of: "ı", with: "i")
+            .folding(options: .diacriticInsensitive, locale: nil)
+    }
+
+    static func key(_ title: String) -> String {
+        let folded = normalize(title)
+        let roman = ["i": "1", "ii": "2", "iii": "3", "iv": "4"]
+        let tokens = folded.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
+        return tokens.enumerated()
+            .map { $0.offset > 0 ? (roman[$0.element] ?? $0.element) : $0.element }
+            .joined()
+    }
+
+    static func isGeneral(_ topic: String) -> Bool {
+        ["genel", "general", "none", "yok", "sohbet", "chat"].contains(key(topic))
+    }
+
+    /// A tidy chat name: no quotes/markdown, capped, first letter uppercased.
+    static func cleanTitle(_ raw: String) -> String {
+        let t = raw
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'“”*_`#.")))
+        let capped = String(t.prefix(28)).trimmingCharacters(in: .whitespaces)
+        guard let first = capped.first else { return capped }
+        return String(first).uppercased(with: Locale(identifier: "tr")) + capped.dropFirst()
+    }
+
+    /// Fallback when the model skipped its tag: an explicitly named subject.
+    private static let families: [(tr: String, en: String, words: [String])] = [
+        ("Fizik", "Physics", ["fizik", "physics"]),
+        ("Kimya", "Chemistry", ["kimya", "chemistry"]),
+        ("Matematik", "Math", ["matematik", "math", "kalkulus", "calculus", "turev", "integral", "derivative"]),
+        ("Biyoloji", "Biology", ["biyoloji", "biology"]),
+        ("Edebiyat", "Literature", ["edebiyat", "literature"]),
+        ("Coğrafya", "Geography", ["cografya", "geography"]),
+        ("Tarih", "History", ["tarih dersi", "inkilap", "history"]),
+        ("İngilizce", "English", ["ingilizce"]),
+        ("Programlama", "Programming", ["programlama", "programming", "algoritma", "algorithm"]),
+    ]
+
+    static func localSubject(in text: String) -> String? {
+        let f = normalize(text)
+        guard let hit = families.first(where: { fam in fam.words.contains { f.contains($0) } }) else { return nil }
+        return appLanguageIsEnglish() ? hit.en : hit.tr
+    }
+
+    static func icon(for title: String) -> String {
+        let k = key(title)
+        func has(_ words: String...) -> Bool { words.contains { k.contains($0) } }
+        if has("fizik", "physic") { return "atom" }
+        if has("kimya", "chem") { return "flask.fill" }
+        if has("matemat", "math", "kalkulus", "calculus", "cebir", "algebra", "geometri", "geometry", "istatist", "statist") { return "function" }
+        if has("biyoloj", "biolog") { return "leaf.fill" }
+        if has("tarih", "histor", "inkilap") { return "building.columns.fill" }
+        if has("edebiyat", "literat", "turkce", "turkish") { return "text.book.closed.fill" }
+        if has("cografya", "geograph") { return "globe.europe.africa.fill" }
+        if has("ingilizce", "english", "almanca", "german", "fransizca", "french", "dil", "language") { return "character.bubble.fill" }
+        if has("program", "kod", "code", "bilgisayar", "computer", "algoritma", "algorithm", "yazilim", "software") { return "chevron.left.forwardslash.chevron.right" }
+        if has("ekonomi", "econom", "finans", "muhasebe") { return "chart.line.uptrend.xyaxis" }
+        return "book.closed.fill"
     }
 }

@@ -48,6 +48,44 @@ extension Notification.Name {
     static let openWeekTab = Notification.Name("openWeekTab")
 }
 
+// MARK: - Home dock (mini tab bar under the Home chat)
+
+/// How much room the Home chat leaves under its composer for the tab bar
+/// (0 while the keyboard is up — the bar hides then).
+private struct HomeDockReserveKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    var homeDockReserve: CGFloat {
+        get { self[HomeDockReserveKey.self] }
+        set { self[HomeDockReserveKey.self] = newValue }
+    }
+}
+
+/// Keyboard up/down, published on the keyboard's own will-show/hide timing so
+/// the Home tab bar can leave and come back in step with it.
+@MainActor
+final class KeyboardVisibility: ObservableObject {
+    @Published private(set) var isVisible = false
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        let center = NotificationCenter.default
+        center.publisher(for: UIResponder.keyboardWillShowNotification)
+            .map { _ in true }
+            .merge(with: center.publisher(for: UIResponder.keyboardWillHideNotification).map { _ in false })
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] visible in
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.88)) {
+                    self?.isVisible = visible
+                }
+            }
+            .store(in: &cancellables)
+    }
+}
+
 private enum PendingChatRoute: Identifiable, Equatable {
     case friend(friendshipID: UUID)
     case crew(crewID: UUID)
@@ -86,22 +124,55 @@ struct MainTabView: View {
     @State private var tab: AppTab = .tasks
     @State private var pendingChatRoute: PendingChatRoute?
     @State private var showReferralReward = false
+    /// Home shows a mini tab bar under the chat; a tap grows it to full size.
+    @State private var homeBarExpanded = false
+    @State private var homeBarCollapseTask: Task<Void, Never>?
+    @StateObject private var keyboard = KeyboardVisibility()
 
     private var activeTab: AppTab { forcedTab ?? tab }
+
+    private var isOnHome: Bool { activeTab == .tasks }
+    private var tabBarCompact: Bool { isOnHome && !homeBarExpanded }
+    /// On Home the keyboard belongs to the chat composer: the bar steps aside.
+    private var tabBarHidden: Bool { isOnHome && keyboard.isVisible }
+
+    private var homeDockReserve: CGFloat {
+        guard !tabBarHidden else { return 0 }
+        return (tabBarCompact ? HomeTabBar.compactHeight : HomeTabBar.fullHeight) + 10
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             // Aktif ekran
             screenForTab(activeTab)
+                .environment(\.homeDockReserve, homeDockReserve)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .transition(.opacity)
 
             // Custom tab bar
-            HomeTabBar(selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 6)
+            HomeTabBar(
+                selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab,
+                isCompact: tabBarCompact,
+                onExpand: expandHomeBar,
+                onReselect: { reselected in
+                    if reselected == .tasks { collapseHomeBar() }
+                }
+            )
+            .padding(.horizontal, tabBarCompact ? 0 : 22)
+            .padding(.bottom, 6)
+            .offset(y: tabBarHidden ? 120 : 0)
+            .opacity(tabBarHidden ? 0 : 1)
+            .allowsHitTesting(!tabBarHidden)
         }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
+        // Home: the chat composer rides the keyboard (bar hides). Other tabs keep
+        // their old behavior — the layout ignores the keyboard.
+        .ignoresSafeArea(.keyboard, edges: isOnHome ? [] : .bottom)
+        .animation(.spring(response: 0.42, dampingFraction: 0.84), value: tabBarCompact)
+        .animation(.spring(response: 0.38, dampingFraction: 0.88), value: tabBarHidden)
+        .onChange(of: activeTab) { _, newTab in
+            // Back on Home → the bar shrinks again (animated).
+            if newTab == .tasks { collapseHomeBar() }
+        }
         .fullScreenCover(item: $pendingChatRoute) { route in
             NavigationStack {
                 pendingChatDestination(route)
@@ -218,15 +289,11 @@ private extension MainTabView {
     func screenForTab(_ tab: AppTab) -> some View {
         switch tab {
         case .tasks:
+            // Home IS the Updo AI chat now (the old dashboard is HomeView).
             NavigationStack {
-                HomeView(
-                    onAddTask: { setTab(.week) },
+                HomeAIChatScreen(
                     onOpenWeek: { setTab(.week) },
-                    onOpenInsights: { setTab(.insights) },
-                    onOpenFocus: { setTab(.focus) },
-                    onOpenCrew: { setTab(.crew) },
-                    onOpenChat: { setTab(.crew) },
-                    onOpenTasks: { setTab(.week) }
+                    onAddTask: { setTab(.week) }
                 )
             }
 
@@ -259,6 +326,24 @@ private extension MainTabView {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
             tab = newTab
         }
+    }
+
+    /// Mini bar tapped on Home → full size; shrinks back by itself if the
+    /// user stays on Home.
+    func expandHomeBar() {
+        homeBarCollapseTask?.cancel()
+        homeBarExpanded = true
+        homeBarCollapseTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled, activeTab == .tasks else { return }
+            homeBarExpanded = false
+        }
+    }
+
+    func collapseHomeBar() {
+        homeBarCollapseTask?.cancel()
+        homeBarCollapseTask = nil
+        homeBarExpanded = false
     }
 
     // MARK: - Unified progression hub
@@ -530,6 +615,14 @@ private extension MainTabView {
 
 struct HomeTabBar: View {
     @Binding var selectedTab: AppTab
+    /// Mini form under the Home chat: icons only, smaller; a tap anywhere on it
+    /// asks the host to grow it (`onExpand`) instead of switching tabs.
+    var isCompact: Bool = false
+    var onExpand: () -> Void = {}
+    var onReselect: (AppTab) -> Void = { _ in }
+
+    static let fullHeight: CGFloat = 66
+    static let compactHeight: CGFloat = 44
 
     @Namespace private var namespace
 
@@ -537,20 +630,35 @@ struct HomeTabBar: View {
     /// yoksa normal SF Symbol. Mevcut kullanıcının fotoğrafının tek kaynağı.
     @ObservedObject private var avatarStore = ProfileAvatarStore.shared
 
-    private let barHeight: CGFloat = 66
+    private var barHeight: CGFloat { isCompact ? Self.compactHeight : Self.fullHeight }
+    private var barRadius: CGFloat { barHeight / 2 }
 
     private var cyan: Color { Color(arenaHex: "#2DD4FF") }
     private var blue: Color { Color(arenaHex: "#1593FF") }
     private var violet: Color { Color(arenaHex: "#7C3AED") }
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: isCompact ? 2 : 5) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 tabButton(tab)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, isCompact ? 6 : 8)
         .frame(height: barHeight)
+        .overlay {
+            // Mini bar: one tap grows it; the tabs themselves aren't hit yet.
+            if isCompact {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        let generator = UIImpactFeedbackGenerator(style: .soft)
+                        generator.impactOccurred(intensity: 0.55)
+                        onExpand()
+                    }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel(tr("tabbar_expand_a11y"))
+            }
+        }
         // Eski bar, artık GERÇEK Liquid Glass üstünde: TEK cam yüzey = navigasyon
         // katmanı (iOS 26 .glassEffect / altında .ultraThinMaterial). Seçili "pill"
         // camın üstünde aurora tint — cam-üstüne-cam YOK (hem skill kuralı hem akıcı:
@@ -558,12 +666,12 @@ struct HomeTabBar: View {
         .background(
             ZStack {
                 // 1) Liquid glass (materyal derinliği/kırılması)
-                RoundedRectangle(cornerRadius: 33, style: .continuous)
+                RoundedRectangle(cornerRadius: barRadius, style: .continuous)
                     .fill(.clear)
-                    .liquidGlass(in: RoundedRectangle(cornerRadius: 33, style: .continuous))
+                    .liquidGlass(in: RoundedRectangle(cornerRadius: barRadius, style: .continuous))
 
                 // 2) Koyu mavi scrim — camı eski barın koyuluğunda LACİVERT'e boyar.
-                RoundedRectangle(cornerRadius: 33, style: .continuous)
+                RoundedRectangle(cornerRadius: barRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
@@ -577,12 +685,12 @@ struct HomeTabBar: View {
             }
         )
         .overlay(barBorder)
-        .clipShape(RoundedRectangle(cornerRadius: 33, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: barRadius, style: .continuous))
         .shadow(color: UpdoTheme.cardShadow(0.30), radius: 22, y: 13)
     }
 
     private var barBorder: some View {
-        RoundedRectangle(cornerRadius: 33, style: .continuous)
+        RoundedRectangle(cornerRadius: barRadius, style: .continuous)
             .stroke(
                 LinearGradient(
                     colors: [
@@ -604,7 +712,7 @@ struct HomeTabBar: View {
         Button {
             select(tab)
         } label: {
-            HStack(spacing: isSelected ? 8 : 0) {
+            HStack(spacing: isSelected && !isCompact ? 8 : 0) {
                 ZStack {
                     if isSelected {
                         Circle()
@@ -626,8 +734,9 @@ struct HomeTabBar: View {
                     tabGlyph(tab, isSelected: isSelected)
                 }
                 .frame(width: 34, height: 34)
+                .scaleEffect(isCompact ? 0.8 : 1)
 
-                if isSelected {
+                if isSelected && !isCompact {
                     Text(tab.title)
                         .font(.system(size: 12, weight: .black))
                         .foregroundStyle(activeTextGradient)
@@ -640,13 +749,13 @@ struct HomeTabBar: View {
                         )
                 }
             }
-            .frame(maxWidth: isSelected ? 112 : 48)
-            .frame(height: 49)
+            .frame(maxWidth: isCompact ? 38 : (isSelected ? 112 : 48))
+            .frame(height: isCompact ? 34 : 49)
             .background {
                 if isSelected {
                     // Seçili "pill" = camın ÜSTÜNDE aurora tint (ikinci bir materyal DEĞİL).
                     // matchedGeometry ile sekmeler arası kayar — "geçiş" bu ışıklı pill.
-                    RoundedRectangle(cornerRadius: 24.5, style: .continuous)
+                    RoundedRectangle(cornerRadius: isCompact ? 17 : 24.5, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
@@ -659,7 +768,7 @@ struct HomeTabBar: View {
                             )
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 24.5, style: .continuous)
+                            RoundedRectangle(cornerRadius: isCompact ? 17 : 24.5, style: .continuous)
                                 .stroke(
                                     LinearGradient(
                                         colors: [
@@ -748,6 +857,7 @@ struct HomeTabBar: View {
             let generator = UIImpactFeedbackGenerator(style: .soft)
             generator.prepare()
             generator.impactOccurred(intensity: 0.45)
+            onReselect(tab)
             return
         }
 

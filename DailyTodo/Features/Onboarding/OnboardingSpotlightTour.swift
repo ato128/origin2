@@ -93,7 +93,6 @@ struct OnboardingSpotlightTour: View {
         .init(tab: .tasks, anchorID: "home.ai", titleKey: "spot_t_home_ai", descKey: "spot_d_home_ai"),
         .init(tab: .tasks, anchorID: "home.messages", titleKey: "spot_t_home_msg", descKey: "spot_d_home_msg"),
         .init(tab: .tasks, anchorID: "home.streak", titleKey: "spot_t_home_streak", descKey: "spot_d_home_streak"),
-        .init(tab: .tasks, anchorID: "home.timeline", titleKey: "spot_t_home_timeline", descKey: "spot_d_home_timeline"),
         // WEEK
         .init(tab: .week, anchorID: "week.days", titleKey: "spot_t_week_days", descKey: "spot_d_week_days"),
         .init(tab: .week, anchorID: "week.schedule", titleKey: "spot_t_week_schedule", descKey: "spot_d_week_schedule"),

@@ -2934,6 +2934,8 @@ private struct TimelineDetailSheet: View {
 struct StreakFlameBadge: View {
 
     let streak: Int
+    /// Toolbar size (34pt glass capsule) for the Home chat's top bar.
+    var compact: Bool = false
     var onTap: () -> Void = {}
 
     // 0…1 "heat" — how hot the flame burns. Saturates around a 30-day streak.
@@ -2972,13 +2974,23 @@ struct StreakFlameBadge: View {
             flameStack(scale: scale, lift: lift, glowOpacity: glowOpacity)
 
             Text("\(streak)")
-                .font(.system(size: 16, weight: .black, design: .rounded))
+                .font(.system(size: compact ? 14 : 16, weight: .black, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(isLit ? .white : UpdoTheme.filmy(0.55))
         }
-        .padding(.horizontal, 11)
-        .frame(height: 48)
-        .background(badgeBackground(glowOpacity: glowOpacity))
+        .scaleEffect(compact ? 0.82 : 1)
+        .padding(.horizontal, compact ? 8 : 11)
+        .frame(height: compact ? 34 : 48)
+        .background {
+            if compact {
+                Capsule()
+                    .fill(.clear)
+                    .liquidGlass(in: Capsule(), tint: fCoral.opacity(isLit ? 0.16 : 0))
+                    .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
+            } else {
+                badgeBackground(glowOpacity: glowOpacity)
+            }
+        }
     }
 
     private func flameStack(scale: CGFloat, lift: CGFloat, glowOpacity: Double) -> some View {
@@ -3225,3 +3237,161 @@ private struct StreakBubbleTriangle: Shape {
     }
 }
 
+
+// MARK: - Home = Updo AI chat
+//
+// The Home tab is the Updo AI conversation itself. This screen wraps the
+// embedded chat with what Home still owns: the streak flame (+ its bubble) on
+// the left and the messages button on the right. The old dashboard (HomeView)
+// stays in the codebase so the switch is a one-line revert in MainTabView.
+
+struct HomeAIChatScreen: View {
+    let onOpenWeek: () -> Void
+    let onAddTask: () -> Void
+
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var store: TodoStore
+    @EnvironmentObject private var crewStore: CrewStore
+    @EnvironmentObject private var studentStore: StudentStore
+
+    @Query(sort: \FriendMessage.createdAt, order: .reverse) private var allFriendMessages: [FriendMessage]
+    @Query private var allFocusRecords: [FocusSessionRecord]
+
+    @ObservedObject private var progression = ProgressionManager.shared
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var showMessages = false
+    @State private var showStreakBubble = false
+    @State private var streakBubbleMode: StreakBubbleMode = .info
+    @State private var bubbleStreakValue = 0
+
+    private let lastSeenStreakKey = "home.lastSeenStreak"
+    private var accentWarm: Color { Color(arenaHex: "#FF5A44") }
+
+    private var currentUserID: String? { session.currentUser?.id.uuidString }
+
+    private var unreadMessageCount: Int {
+        let friendUnread = allFriendMessages.filter { !$0.isRead && !$0.isFromMe }.count
+        let crewUnread = crewStore.crewMembers
+            .filter { $0.user_id.uuidString == currentUserID }
+            .compactMap(\.unread_count)
+            .reduce(0, +)
+        return friendUnread + crewUnread
+    }
+
+    private var completedToday: Bool {
+        store.items.contains { task in
+            guard task.isDone, let date = task.completedAt else { return false }
+            return Calendar.current.isDateInToday(date)
+        }
+    }
+
+    private var focusedToday: Bool {
+        allFocusRecords.contains {
+            ($0.ownerUserID == currentUserID || $0.ownerUserID == nil)
+            && $0.countsTowardStats && Calendar.current.isDateInToday($0.endedAt)
+        }
+    }
+
+    var body: some View {
+        UpdoAIView(
+            embeddedInHome: true,
+            homeLeading: AnyView(flameBadge),
+            homeTrailing: AnyView(messagesButton),
+            onDismissAndOpenWeek: onOpenWeek,
+            onDismissAndAddTask: onAddTask
+        )
+        .overlay(alignment: .topLeading) {
+            if showStreakBubble {
+                StreakBubble(
+                    streak: bubbleStreakValue,
+                    mode: streakBubbleMode,
+                    todayTaskDone: completedToday,
+                    todayFocusDone: focusedToday,
+                    onClose: { showStreakBubble = false }
+                )
+                .padding(.leading, 40)
+                .padding(.top, 2)
+                .transition(.opacity)
+                .zIndex(10)
+            }
+        }
+        .fullScreenCover(isPresented: $showMessages) {
+            MessagesView()
+        }
+        .onAppear { evaluateStreakChange() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { evaluateStreakChange() }
+        }
+    }
+
+    private var flameBadge: some View {
+        StreakFlameBadge(streak: progression.currentStreak, compact: true) {
+            toggleStreakInfo()
+        }
+        .tourAnchor("home.streak")
+    }
+
+    private var messagesButton: some View {
+        Button {
+            showMessages = true
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(unreadMessageCount > 0 ? accentWarm : UpdoTheme.filmy(0.75))
+                    .frame(width: 34, height: 34)
+                    .liquidGlass(in: Circle())
+                    .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+
+                if unreadMessageCount > 0 {
+                    Text("\(min(unreadMessageCount, 9))")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundStyle(.black)
+                        .frame(minWidth: 17, minHeight: 17)
+                        .background(Circle().fill(accentWarm))
+                        .offset(x: 3, y: -3)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tr("spot_t_home_msg"))
+        .tourAnchor("home.messages")
+    }
+
+    /// Same rule as the old Home: if the streak grew since last seen, the
+    /// "streak up" bubble shows itself for a moment.
+    private func evaluateStreakChange() {
+        let current = progression.currentStreak
+        let defaults = UserDefaults.standard
+        let hasSeen = defaults.object(forKey: lastSeenStreakKey) != nil
+        let lastSeen = defaults.integer(forKey: lastSeenStreakKey)
+
+        if hasSeen && current > lastSeen && current > 0 {
+            bubbleStreakValue = current
+            streakBubbleMode = .increased
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
+                showStreakBubble = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
+                if streakBubbleMode == .increased {
+                    withAnimation(.easeIn(duration: 0.25)) { showStreakBubble = false }
+                }
+            }
+        }
+
+        defaults.set(current, forKey: lastSeenStreakKey)
+    }
+
+    private func toggleStreakInfo() {
+        if showStreakBubble && streakBubbleMode == .info {
+            withAnimation(.easeIn(duration: 0.2)) { showStreakBubble = false }
+            return
+        }
+        bubbleStreakValue = progression.currentStreak
+        streakBubbleMode = .info
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
+            showStreakBubble = true
+        }
+    }
+}

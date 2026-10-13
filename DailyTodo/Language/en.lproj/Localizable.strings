@@ -2422,3 +2422,13 @@
 "snb_wb_14_title" = "Ready for a fresh start?";
 "snb_wb_14_body" = "Your goals are still here. Build a new routine with Updo AI in minutes.";
 "snb_wb_opener" = "Welcome back! 👋 Let's ease back in: I can put together a short, doable plan for today. Shall we start?";
+
+"ai_menu_a11y" = "Menu";
+"tabbar_expand_a11y" = "Show tabs";
+"ai_threads_header" = "Chats";
+"ai_threads_general" = "General Chat";
+"ai_threads_hint" = "Subject questions get their own chat automatically";
+"ai_thread_delete_title" = "Delete Chat";
+"ai_thread_delete" = "Delete";
+"ai_thread_delete_confirm" = "The %@ chat and all its messages will be permanently deleted.";
+"ai_clear_confirm_general" = "Messages in the general chat will be permanently deleted. Your subject chats stay.";

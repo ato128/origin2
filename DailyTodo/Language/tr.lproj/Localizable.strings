@@ -2423,3 +2423,13 @@
 "snb_wb_14_title" = "Yeni bir başlangıç?";
 "snb_wb_14_body" = "Hedeflerin hâlâ burada. Updo AI ile birkaç dakikada yeni bir rutin kur.";
 "snb_wb_opener" = "Tekrar hoş geldin! 👋 Kaldığın yerden kolayca başlayalım: istersen sana bugün için kısa, yapılabilir bir plan hazırlayayım. Başlayalım mı?";
+
+"ai_menu_a11y" = "Menü";
+"tabbar_expand_a11y" = "Sekmeleri göster";
+"ai_threads_header" = "Sohbetler";
+"ai_threads_general" = "Genel Sohbet";
+"ai_threads_hint" = "Ders soruların kendi sohbetine otomatik ayrılır";
+"ai_thread_delete_title" = "Sohbeti Sil";
+"ai_thread_delete" = "Sil";
+"ai_thread_delete_confirm" = "%@ sohbeti ve içindeki tüm mesajlar kalıcı olarak silinecek.";
+"ai_clear_confirm_general" = "Genel sohbetteki mesajlar kalıcı olarak silinecek. Ders sohbetlerin kalır.";

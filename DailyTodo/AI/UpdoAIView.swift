@@ -17,10 +17,16 @@ struct UpdoAIView: View {
     /// Opened from an Updo AI notification: shown as Updo AI's first line, so
     /// the student can just answer it (no credit spent until they reply).
     var openerMessage: String? = nil
+    /// Home IS the chat: no own NavigationStack/dismiss, a custom header
+    /// (☰ menu + flame · title · messages) and room for the mini tab bar.
+    var embeddedInHome: Bool = false
+    var homeLeading: AnyView? = nil
+    var homeTrailing: AnyView? = nil
     let onDismissAndOpenWeek: () -> Void
     let onDismissAndAddTask: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.homeDockReserve) private var homeDockReserve
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var store: TodoStore
@@ -30,7 +36,7 @@ struct UpdoAIView: View {
     @Query(sort: \FocusSessionRecord.startedAt, order: .reverse) private var allFocus: [FocusSessionRecord]
     @Query(sort: \Course.updatedAt, order: .reverse) private var allCourses: [Course]
 
-    @StateObject private var chatStore = UpdoAIChatStore()
+    @ObservedObject private var chatStore = UpdoAIChatStore.shared
     @ObservedObject private var credits = DailyCreditsManager.shared
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
@@ -284,7 +290,7 @@ struct UpdoAIView: View {
 
     // MARK: - Computed
 
-    private var showSmartChips: Bool { chatStore.messages.isEmpty && inputText.isEmpty }
+    private var showSmartChips: Bool { chatStore.visibleMessages.isEmpty && inputText.isEmpty }
 
     private var canSend: Bool {
         // Credits are checked in `routeUserInput` for the LLM path only — local
@@ -296,82 +302,76 @@ struct UpdoAIView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottom) {
-                ArenaBackground(
-                    primaryGlow: Color(arenaHex: "#7C3AED"),
-                    secondaryGlow: Color(arenaHex: "#2DD4FF"),
-                    warmGlow: Color(arenaHex: "#FF5A44")
-                )
-                // Living purple/blue backlight (Gemini-style) + a soft bottom
-                // grounding. Attached as an overlay on the full-screen background so
-                // it can NEVER affect the chat's layout — the message list sits
-                // exactly as before. Pure GPU (gradients only), no jank.
-                .overlay {
-                    ZStack {
-                        // Apple-style darkening rising from the very bottom — grounds
-                        // the composer. A plain gradient (no blur) → essentially free.
-                        LinearGradient(
-                            colors: [.clear, .clear, Color.black.opacity(0.34)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        // Ambient light on top of the grounding so the glow reads.
-                        AIChatAmbientGlow(isActive: chatStore.isSending || !inputText.isEmpty)
-                    }
-                    .allowsHitTesting(false)
-                }
-                .ignoresSafeArea()
-
-                messagesScrollView
-
-                if showToast {
-                    toastBanner
-                        .padding(.bottom, 96)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .zIndex(10)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) { dismissButton }
-                ToolbarItem(placement: .principal) { navTitle }
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 8) {
-                        Button {
-                            showBYOKeySheet = true
-                        } label: {
-                            Image(systemName: "key.fill")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(
-                                    BYOKeyStore.shared.hasKey
-                                    ? Color(arenaHex: "#34D44A")
-                                    : UpdoTheme.filmy(0.7)
-                                )
-                                .frame(width: 34, height: 34)
-                                .liquidGlass(in: Circle())
-                                .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+        Group {
+            if embeddedInHome {
+                // Same floating glass toolbar as the presented chat:
+                // ☰ + flame · title · messages.
+                chatScene
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            HStack(spacing: 8) {
+                                homeMenuButton
+                                homeLeading
+                            }
+                            .fixedSize()
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(tr("byo_title"))
-
-                        trashButton
+                        ToolbarItem(placement: .principal) { navTitle.fixedSize() }
+                        ToolbarItem(placement: .topBarTrailing) { homeTrailing }
                     }
+                    .toolbarBackground(.hidden, for: .navigationBar)
+            } else {
+                NavigationStack {
+                    chatScene
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) { dismissButton }
+                            ToolbarItem(placement: .principal) { navTitle }
+                            ToolbarItem(placement: .topBarTrailing) {
+                                HStack(spacing: 8) {
+                                    Button {
+                                        showBYOKeySheet = true
+                                    } label: {
+                                        Image(systemName: "key.fill")
+                                            .font(.system(size: 13, weight: .bold))
+                                            .foregroundStyle(
+                                                BYOKeyStore.shared.hasKey
+                                                ? Color(arenaHex: "#34D44A")
+                                                : UpdoTheme.filmy(0.7)
+                                            )
+                                            .frame(width: 34, height: 34)
+                                            .liquidGlass(in: Circle())
+                                            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(tr("byo_title"))
+
+                                    trashButton
+                                }
+                            }
+                        }
+                        // Floating chrome: content flows behind; each element carries its own material
+                        .toolbarBackground(.hidden, for: .navigationBar)
                 }
             }
-            // Floating chrome: content flows behind; each element carries its own material
-            .toolbarBackground(.hidden, for: .navigationBar)
         }
         .updoColorScheme()
-        .alert(tr("ai_clear_title"), isPresented: $showClearAlert) {
-            Button(tr("ai_clear"), role: .destructive) {
-                chatStore.clearHistory()
+        .alert(
+            chatStore.activeThread == nil ? tr("ai_clear_title") : tr("ai_thread_delete_title"),
+            isPresented: $showClearAlert
+        ) {
+            Button(chatStore.activeThread == nil ? tr("ai_clear") : tr("ai_thread_delete"), role: .destructive) {
+                chatStore.clearOpenChat()
                 executedActionIDs.removeAll()
                 dismissedActionIDs.removeAll()
             }
             Button(tr("common_cancel"), role: .cancel) {}
         } message: {
-            Text(tr("ai_clear_confirm"))
+            if let thread = chatStore.activeThread {
+                Text(tr("ai_thread_delete_confirm", thread.title))
+            } else {
+                Text(tr("ai_clear_confirm_general"))
+            }
         }
         .sheet(isPresented: $showBYOKeySheet) {
             BYOKeySheet()
@@ -434,6 +434,50 @@ struct UpdoAIView: View {
             showOpenerIfNeeded()
             sendSeedIfNeeded()
             autoStartScanIfNeeded()
+            consumeHomeOpenerIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .presentUpdoAIWithOpener)) { _ in
+            consumeHomeOpenerIfNeeded()
+        }
+    }
+
+    /// The chat surface itself (background + messages + toast), shared by the
+    /// presented chat and the Home-embedded one.
+    private var chatScene: some View {
+        ZStack(alignment: .bottom) {
+            ArenaBackground(
+                primaryGlow: Color(arenaHex: "#7C3AED"),
+                secondaryGlow: Color(arenaHex: "#2DD4FF"),
+                warmGlow: Color(arenaHex: "#FF5A44")
+            )
+            // Living purple/blue backlight (Gemini-style) + a soft bottom
+            // grounding. Attached as an overlay on the full-screen background so
+            // it can NEVER affect the chat's layout — the message list sits
+            // exactly as before. Pure GPU (gradients only), no jank.
+            .overlay {
+                ZStack {
+                    // Apple-style darkening rising from the very bottom — grounds
+                    // the composer. A plain gradient (no blur) → essentially free.
+                    LinearGradient(
+                        colors: [.clear, .clear, Color.black.opacity(0.34)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    // Ambient light on top of the grounding so the glow reads.
+                    AIChatAmbientGlow(isActive: chatStore.isSending || !inputText.isEmpty)
+                }
+                .allowsHitTesting(false)
+            }
+            .ignoresSafeArea()
+
+            messagesScrollView
+
+            if showToast {
+                toastBanner
+                    .padding(.bottom, 96 + homeDockReserve)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(10)
+            }
         }
     }
 
@@ -445,11 +489,30 @@ struct UpdoAIView: View {
               let opener = openerMessage?.trimmingCharacters(in: .whitespacesAndNewlines),
               !opener.isEmpty else { return }
         didShowOpener = true
-        guard chatStore.messages.last?.text != opener else { return }
+        guard chatStore.visibleMessages.last?.text != opener else { return }
         Analytics.shared.track("ai_nudge_opened")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             chatStore.appendAssistant(opener)
         }
+    }
+
+    /// Home-embedded chat: an Updo AI notification's opener lands right here
+    /// as the coach's next line (the presented chat gets it via `openerMessage`).
+    private func consumeHomeOpenerIfNeeded() {
+        guard embeddedInHome, let opener = AINudgeStore.pendingOpener else { return }
+        AINudgeStore.pendingOpener = nil
+        let trimmed = opener.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, chatStore.visibleMessages.last?.text != trimmed else { return }
+        Analytics.shared.track("ai_nudge_opened")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            chatStore.appendAssistant(trimmed)
+        }
+    }
+
+    /// Leaves the chat after an action that moves elsewhere. On Home the chat
+    /// is the page itself, so there is nothing to dismiss.
+    private func leaveChat() {
+        if !embeddedInHome { dismiss() }
     }
 
     /// When the chat is opened from the Home "what do you want to do today?" bar,
@@ -594,20 +657,103 @@ struct UpdoAIView: View {
         }
     }
 
+    // MARK: - Home toolbar (embedded)
+
+    /// ChatGPT-style ☰: the chats (general + the subject chats the coach filed
+    /// lessons into), your own ChatGPT key, and clearing/deleting the open chat.
+    private var homeMenuButton: some View {
+        Menu {
+            Section(tr("ai_threads_header")) {
+                Button {
+                    switchChat(to: nil)
+                } label: {
+                    Label(tr("ai_threads_general"),
+                          systemImage: chatStore.activeThreadID == nil ? "checkmark" : "bubble.left.and.text.bubble.right")
+                }
+
+                ForEach(chatStore.sortedThreads) { thread in
+                    Button {
+                        switchChat(to: thread.id)
+                    } label: {
+                        Label(thread.title,
+                              systemImage: chatStore.activeThreadID == thread.id ? "checkmark" : thread.icon)
+                    }
+                }
+
+                if chatStore.threads.isEmpty {
+                    Text(tr("ai_threads_hint"))
+                }
+            }
+
+            Section {
+                Button {
+                    showBYOKeySheet = true
+                } label: {
+                    Label(tr("byo_title"), systemImage: "key.fill")
+                }
+
+                Button(role: .destructive) {
+                    showClearAlert = true
+                } label: {
+                    if chatStore.activeThread != nil {
+                        Label(tr("ai_thread_delete_title"), systemImage: "trash")
+                    } else {
+                        Label(tr("ai_clear_title"), systemImage: "trash")
+                    }
+                }
+                .disabled(chatStore.visibleMessages.isEmpty)
+            }
+        } label: {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(UpdoTheme.filmy(0.75))
+                .frame(width: 34, height: 34)
+                .liquidGlass(in: Circle())
+                .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                .overlay(alignment: .topTrailing) {
+                    // Green dot = their own ChatGPT key is active.
+                    if BYOKeyStore.shared.hasKey {
+                        Circle()
+                            .fill(Color(arenaHex: "#34D44A"))
+                            .frame(width: 7, height: 7)
+                            .offset(x: -3, y: 3)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tr("ai_menu_a11y"))
+    }
+
+    private func switchChat(to id: UUID?) {
+        guard !chatStore.isSending else { return }
+        withAnimation(.easeInOut(duration: 0.22)) {
+            chatStore.selectThread(id)
+        }
+    }
+
     /// Floating title pill — content scrolls behind it, like iMessage. The orb
-    /// is alive: it talks while the AI is thinking/streaming.
+    /// is alive: it talks while the AI is thinking/streaming. In a subject
+    /// chat it names the subject instead.
     private var navTitle: some View {
         HStack(spacing: 7) {
             UpdoAIOrb(mode: chatStore.isSending ? .speaking : .idle, size: 17)
 
-            Text("Updo")
-                .font(.system(size: 14, weight: .black))
-                .foregroundStyle(UpdoTheme.textPrimary)
-            +
-            Text(" AI")
-                .font(.system(size: 14, weight: .semibold, design: .serif))
-                .italic()
-                .foregroundStyle(UpdoTheme.cyan)
+            if let thread = chatStore.activeThread {
+                Label(thread.title, systemImage: thread.icon)
+                    .labelStyle(.titleAndIcon)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .lineLimit(1)
+            } else {
+                Text("Updo")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                +
+                Text(" AI")
+                    .font(.system(size: 14, weight: .semibold, design: .serif))
+                    .italic()
+                    .foregroundStyle(UpdoTheme.cyan)
+            }
 
             if subscriptionManager.isProAI {
                 // Premium AI = açık. Azalan sayaç yerine sınırsız göster.
@@ -634,14 +780,14 @@ struct UpdoAIView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    if chatStore.messages.isEmpty {
+                    if chatStore.visibleMessages.isEmpty {
                         // Empty state lives centered in the conversation area
                         emptyStateView
                             .padding(.horizontal, 16)
                             .frame(maxWidth: .infinity)
                             .frame(minHeight: 460)
                     } else {
-                        let visible = Array(chatStore.messages.suffix(50))
+                        let visible = Array(chatStore.visibleMessages.suffix(50))
                         ForEach(visible) { msg in
                             messageRow(msg)
                                 .padding(.horizontal, 16)
@@ -663,14 +809,17 @@ struct UpdoAIView: View {
                     Color.clear.frame(height: 8).id("bottom")
                 }
                 .animation(.default, value: showSmartChips)
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: chatStore.messages.count)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: chatStore.visibleMessages.count)
             }
             .scrollDismissesKeyboard(.interactively)
-            .defaultScrollAnchor(chatStore.messages.isEmpty ? .center : .bottom)
+            .defaultScrollAnchor(chatStore.visibleMessages.isEmpty ? .center : .bottom)
+            // A different chat is a fresh scroll view, opened at its latest message.
+            .id(chatStore.activeThreadID)
+            .transition(.opacity)
             .safeAreaInset(edge: .bottom) { bottomBar }
-            .onChange(of: chatStore.messages.count) { _, _ in
+            .onChange(of: chatStore.visibleMessages.count) { _, _ in
                 withAnimation(.easeOut(duration: 0.22)) { proxy.scrollTo("bottom", anchor: .bottom) }
-                if let last = chatStore.messages.last, last.role == "assistant" {
+                if let last = chatStore.visibleMessages.last, last.role == "assistant" {
                     hapticResponse.notificationOccurred(.success)
                 }
             }
@@ -732,7 +881,7 @@ struct UpdoAIView: View {
     /// offer the next learning move in one tap: a hint, a simpler take, a quiz.
     private func showsFollowUps(for msg: AIMessage) -> Bool {
         guard msg.role == "assistant", !chatStore.isSending,
-              chatStore.messages.last?.id == msg.id,
+              chatStore.visibleMessages.last?.id == msg.id,
               msg.text.count >= 280,
               cachedPlan(msg.text).count < 2 else { return false }
         return true
@@ -771,7 +920,7 @@ struct UpdoAIView: View {
 
     /// Sohbetteki en son asistan (AI) mesajı mı? Orb yalnız onun yanında gösterilir.
     private func isLastAssistantMessage(_ msg: AIMessage) -> Bool {
-        chatStore.messages.last(where: { $0.role == "assistant" })?.id == msg.id
+        chatStore.visibleMessages.last(where: { $0.role == "assistant" })?.id == msg.id
     }
 
     // MARK: - Empty State
@@ -911,6 +1060,13 @@ struct UpdoAIView: View {
             }
 
             inputBar
+                .tourAnchor(embeddedInHome ? "home.ai" : "ai.input")
+
+            // Home: room for the mini tab bar under the composer (0 while the
+            // keyboard is up — the bar hides and the composer rides the keyboard).
+            if embeddedInHome {
+                Color.clear.frame(height: homeDockReserve)
+            }
         }
         .padding(.bottom, 6)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: showSmartChips)
@@ -1330,7 +1486,7 @@ struct UpdoAIView: View {
                 _ = await FocusSessionManager.shared.startRequestedSession(
                     mode: .personal, durationMinutes: mins, goal: .study, style: .silent
                 )
-                dismiss()
+                showFocusAfterStart()
             }
             return aiUsesTurkish
                 ? "\(mins) dk'lık odak seansı başlatıyorum — kolay gelsin! 🎯"
@@ -1868,15 +2024,15 @@ struct UpdoAIView: View {
         switch aiFold(screen) {
         case "insights", "analiz", "istatistik", "gelisim":
             NotificationCenter.default.post(name: .openInsightsTab, object: nil)
-            dismiss()
+            leaveChat()
             return aiUsesTurkish ? "Analizlerini açıyorum." : "Opening your insights."
         case "crew", "sosyal", "arkadas", "arkadaslar":
             NotificationCenter.default.post(name: .openCrewTab, object: nil)
-            dismiss()
+            leaveChat()
             return aiUsesTurkish ? "Çalışma grubunu açıyorum." : "Opening your crew."
         case "focus", "odak":
             NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
-            dismiss()
+            leaveChat()
             return aiUsesTurkish ? "Focus sekmesini açıyorum." : "Opening focus."
         default:
             onDismissAndOpenWeek()
@@ -1940,7 +2096,7 @@ struct UpdoAIView: View {
 
     /// En son, henüz eklenmemiş/kapatılmamış plan kartı olan asistan mesajı.
     private func pendingPlanCard() -> (msgID: UUID, items: [UpdoAIPlanItem])? {
-        for msg in chatStore.messages.reversed() where msg.role == "assistant" {
+        for msg in chatStore.visibleMessages.reversed() where msg.role == "assistant" {
             if executedActionIDs.contains(msg.id) || dismissedActionIDs.contains(msg.id) { continue }
             let items = cachedPlan(msg.text)
             if !items.isEmpty { return (msg.id, items) }
@@ -2022,6 +2178,15 @@ struct UpdoAIView: View {
                 goal: .study,
                 style: .silent
             )
+            showFocusAfterStart()
+        }
+    }
+
+    /// Presented chat: back to Home (its focus card). Home chat: the Focus tab.
+    private func showFocusAfterStart() {
+        if embeddedInHome {
+            NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
+        } else {
             dismiss()
         }
     }
@@ -2063,10 +2228,10 @@ struct UpdoAIView: View {
             onDismissAndOpenWeek()
         case .insights:
             NotificationCenter.default.post(name: .openInsightsTab, object: nil)
-            dismiss()
+            leaveChat()
         case .crew:
             NotificationCenter.default.post(name: .openCrewTab, object: nil)
-            dismiss()
+            leaveChat()
         }
     }
 
