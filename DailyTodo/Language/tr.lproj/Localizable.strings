@@ -2433,3 +2433,12 @@
 "ai_thread_delete" = "Sil";
 "ai_thread_delete_confirm" = "%@ sohbeti ve içindeki tüm mesajlar kalıcı olarak silinecek.";
 "ai_clear_confirm_general" = "Genel sohbetteki mesajlar kalıcı olarak silinecek. Ders sohbetlerin kalır.";
+"fn_title" = "Formüller ve Kurallar";
+"fn_caps" = "FORMÜLLER & KURALLAR";
+"fn_card_empty" = "Updo AI'a sorduğun derslerden kendiliğinden dolar";
+"fn_card_count" = "formül · %d ders";
+"fn_course_meta" = "%d formül · %d konu";
+"fn_empty_title" = "Defterin henüz boş";
+"fn_empty_sub" = "Updo AI'a ders sorusu sorduğunda kullanılan formüller ve kurallar burada ders ve konuya göre kendiliğinden birikir.";
+"fn_copy" = "Kopyala";
+"fn_delete" = "Sil";

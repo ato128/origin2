@@ -153,6 +153,7 @@ struct InsightsView: View {
     // Premium
     @State private var premiumState: PremiumState = .free
     @State private var showPremium = false
+    @State private var showFormulaNotebook = false
 
     // Sheet'ler
     @State private var showUpdoAI = false
@@ -380,6 +381,10 @@ struct InsightsView: View {
         }
         .sheet(isPresented: $showPremium) {
             PaywallView(context: "insights_premium")
+        }
+        .sheet(isPresented: $showFormulaNotebook) {
+            FormulaNotebookView()
+                .presentationDragIndicator(.visible)
         }
         .onReceive(SubscriptionManager.shared.$isPro) { isPro in
             withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
@@ -1054,6 +1059,10 @@ struct InsightsView: View {
                 lockedAnalytics
             }
 
+            // Formulas & rules Updo AI used, sorted course → topic (free for all).
+            FormulaNotebookCard { showFormulaNotebook = true }
+                .insightsCardReveal()
+
             // Exam planner.
             InsightsPremiumLabCard(
                 isPremium: premiumState != .free,
@@ -1618,5 +1627,264 @@ private struct InsightsScrollOffsetBridge: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+// MARK: - Formulas & rules notebook
+//
+//  Everything Updo AI used while solving/explaining, collected automatically
+//  (see AIFormulaNotebook): course → topic → formula.
+
+private let notebookTint = Color(arenaHex: AppArenaPalette.purple)
+
+struct FormulaNotebookCard: View {
+    let onOpen: () -> Void
+    @ObservedObject private var notebook = AIFormulaNotebook.shared
+
+    var body: some View {
+        Button(action: onOpen) {
+            InsightsGlassCard(tint: notebookTint) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle().fill(notebookTint.opacity(0.16)).frame(width: 36, height: 36)
+                        Image(systemName: "function")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(notebookTint)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(tr("fn_caps"))
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                            .tracking(1.6)
+                            .foregroundStyle(notebookTint.opacity(0.95))
+
+                        if notebook.entries.isEmpty {
+                            Text(tr("fn_card_empty"))
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(UpdoTheme.filmy(0.55))
+                                .lineLimit(2)
+                        } else {
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                                Text("\(notebook.entries.count)")
+                                    .font(.system(size: 19, weight: .bold))
+                                    .foregroundStyle(UpdoTheme.textPrimary)
+                                    .monospacedDigit()
+                                Text(tr("fn_card_count", notebook.courses.count))
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(UpdoTheme.filmy(0.5))
+                            }
+                        }
+                    }
+
+                    Spacer(minLength: 10)
+
+                    HStack(spacing: -6) {
+                        ForEach(notebook.courses.prefix(3), id: \.self) { course in
+                            Image(systemName: AIChatTopics.icon(for: course))
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(notebookTint)
+                                .frame(width: 26, height: 26)
+                                .background(Circle().fill(UpdoTheme.surfaceHigh))
+                                .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                        }
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(UpdoTheme.filmy(0.35))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tr("fn_title"))
+    }
+}
+
+struct FormulaNotebookView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var notebook = AIFormulaNotebook.shared
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ArenaBackground(
+                    primaryGlow: notebookTint,
+                    secondaryGlow: Color(arenaHex: AppArenaPalette.cyan),
+                    warmGlow: Color(arenaHex: AppArenaPalette.gold),
+                    intensity: 0.7
+                )
+
+                if notebook.entries.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(notebook.courses, id: \.self) { course in
+                                NavigationLink {
+                                    FormulaCourseView(course: course)
+                                } label: {
+                                    courseRow(course)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            }
+            .navigationTitle(tr("fn_title"))
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .accessibilityLabel(tr("event_close"))
+                }
+            }
+        }
+        .updoColorScheme()
+    }
+
+    private func courseRow(_ course: String) -> some View {
+        let items = notebook.entries(inCourse: course)
+        let topicCount = Set(items.map { AIChatTopics.key($0.topic) }).count
+        return HStack(spacing: 14) {
+            Image(systemName: AIChatTopics.icon(for: course))
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(notebookTint)
+                .frame(width: 46, height: 46)
+                .background(notebookTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(course)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                Text(tr("fn_course_meta", items.count, topicCount))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(UpdoTheme.filmy(0.35))
+        }
+        .padding(14)
+        .background(UpdoTheme.surfaceHigh.opacity(0.7), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(UpdoTheme.border, lineWidth: 1))
+        .contentShape(Rectangle())
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "function")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(notebookTint)
+                .frame(width: 76, height: 76)
+                .background(notebookTint.opacity(0.14), in: Circle())
+            Text(tr("fn_empty_title"))
+                .font(.title3.weight(.bold))
+                .foregroundStyle(UpdoTheme.textPrimary)
+            Text(tr("fn_empty_sub"))
+                .font(.subheadline)
+                .foregroundStyle(UpdoTheme.filmy(0.6))
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 36)
+    }
+}
+
+/// One course: its topics in the order they were studied, each with its formulas.
+struct FormulaCourseView: View {
+    let course: String
+    @ObservedObject private var notebook = AIFormulaNotebook.shared
+
+    var body: some View {
+        ZStack {
+            ArenaBackground(
+                primaryGlow: notebookTint,
+                secondaryGlow: Color(arenaHex: AppArenaPalette.cyan),
+                warmGlow: Color(arenaHex: AppArenaPalette.gold),
+                intensity: 0.7
+            )
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 22) {
+                    ForEach(notebook.topics(inCourse: course), id: \.topic) { group in
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                Text(group.topic.uppercased(with: Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")))
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .tracking(1.4)
+                                    .foregroundStyle(notebookTint)
+                                Text("\(group.items.count)")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(UpdoTheme.filmy(0.4))
+                            }
+                            .padding(.leading, 4)
+
+                            ForEach(group.items) { entry in
+                                FormulaEntryCard(entry: entry)
+                                    .contextMenu {
+                                        Button {
+                                            UIPasteboard.general.string = entry.body
+                                        } label: {
+                                            Label(tr("fn_copy"), systemImage: "doc.on.doc")
+                                        }
+                                        Button(role: .destructive) {
+                                            withAnimation { notebook.delete(entry.id) }
+                                        } label: {
+                                            Label(tr("fn_delete"), systemImage: "trash")
+                                        }
+                                    }
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+            }
+        }
+        .navigationTitle(course)
+        .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+private struct FormulaEntryCard: View {
+    let entry: AIFormulaEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: entry.kind == .formula ? "function" : "text.quote")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(notebookTint)
+                Text(entry.name)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+            }
+
+            if entry.kind == .formula {
+                AIDisplayMath(latex: entry.body)
+            } else {
+                AIInline.text(entry.body)
+                    .font(.body)
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !entry.note.isEmpty {
+                AIInline.text(entry.note)
+                    .font(.footnote)
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UpdoTheme.surfaceHigh.opacity(0.7), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 }

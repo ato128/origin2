@@ -2432,3 +2432,12 @@
 "ai_thread_delete" = "Delete";
 "ai_thread_delete_confirm" = "The %@ chat and all its messages will be permanently deleted.";
 "ai_clear_confirm_general" = "Messages in the general chat will be permanently deleted. Your subject chats stay.";
+"fn_title" = "Formulas & Rules";
+"fn_caps" = "FORMULAS & RULES";
+"fn_card_empty" = "Fills up on its own from what you ask Updo AI";
+"fn_card_count" = "formulas · %d courses";
+"fn_course_meta" = "%d formulas · %d topics";
+"fn_empty_title" = "Your notebook is empty";
+"fn_empty_sub" = "When you ask Updo AI a study question, the formulas and rules it uses collect here by course and topic.";
+"fn_copy" = "Copy";
+"fn_delete" = "Delete";

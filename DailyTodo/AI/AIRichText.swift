@@ -487,7 +487,7 @@ private struct AIRichBlockView: View, Equatable {
 }
 
 /// A centred display equation; scrolls sideways instead of wrapping when wide.
-private struct AIDisplayMath: View {
+struct AIDisplayMath: View {
     let latex: String
 
     var body: some View {

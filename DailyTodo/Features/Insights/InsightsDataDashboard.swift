@@ -537,8 +537,6 @@ struct InsightsDataDashboard: View {
                     .insightsReveal(revealOnScroll)
             }
 
-            tasksCard(data)
-                .insightsReveal(revealOnScroll)
         }
         .sheet(isPresented: $showGoalEditor) {
             InsightsWeeklyGoalSheet(
@@ -823,61 +821,6 @@ struct InsightsDataDashboard: View {
                             .fill(coral.opacity(0.12))
                     )
                 }
-            }
-        }
-    }
-
-    // MARK: - Tasks card
-
-    private func tasksCard(_ data: Summary) -> some View {
-        // Compact: one number plus a quiet day-dot strip reads in a single glance.
-        InsightsGlassCard(tint: green) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(green.opacity(0.14)).frame(width: 36, height: 36)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(green)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(tr("insd_tasks_caps"))
-                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                        .tracking(1.6)
-                        .foregroundStyle(green.opacity(0.92))
-
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("\(data.tasksThisWeek)")
-                            .font(.system(size: 19, weight: .bold))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                            .monospacedDigit()
-                        Text(tr("insd_completed_label"))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(UpdoTheme.filmy(0.5))
-                    }
-                }
-
-                Spacer(minLength: 10)
-
-                taskDayDots(data.taskDays)
-            }
-        }
-    }
-
-    /// Seven small dots — filled when that day closed at least one task.
-    private func taskDayDots(_ days: [(date: Date, count: Int)]) -> some View {
-        HStack(spacing: 3) {
-            ForEach(Array(days.enumerated()), id: \.offset) { _, day in
-                VStack(spacing: 4) {
-                    Circle()
-                        .fill(day.count > 0 ? green : UpdoTheme.filmy(0.10))
-                        .frame(width: 7, height: 7)
-                    Text(InsightsFocusMath.weekdayLetter(day.date))
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(UpdoTheme.filmy(isToday(day.date) ? 0.85 : 0.32))
-                        .fixedSize()
-                }
-                .frame(width: 13)
             }
         }
     }

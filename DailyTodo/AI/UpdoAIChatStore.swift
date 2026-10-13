@@ -199,6 +199,20 @@ final class UpdoAIChatStore: ObservableObject {
         return guess
     }
 
+    /// After a reply: files the exchange into its chat (general chat only) and
+    /// saves any formulas/rules it carried into the notebook under that course.
+    private func finishExchange(userMsgID: UUID, replyID: UUID, tags: [AIHiddenTag],
+                                pinned: UUID?, guess: UUID?, userText: String) {
+        var threadID = pinned
+        if pinned == nil {
+            threadID = resolveThread(topic: tags.topic, userText: userText, guess: guess)
+            file([userMsgID, replyID], into: threadID)
+        }
+        let course = threadID.flatMap { id in threads.first { $0.id == id }?.title }
+        AIFormulaNotebook.shared.add(tags, chatCourse: course)
+        persist()
+    }
+
     /// Files a finished exchange into its chat (invisible in the open feed).
     private func file(_ ids: [UUID], into threadID: UUID?) {
         for i in messages.indices where ids.contains(messages[i].id) {
@@ -275,7 +289,8 @@ final class UpdoAIChatStore: ObservableObject {
         // model tag each reply's subject and files the exchange there.
         let pinned = activeThreadID
         let guess = pinned ?? guessThread(for: trimmed)
-        let system = pinned == nil ? contextPrompt + "\n\n" + topicInstruction() : contextPrompt
+        var system = contextPrompt + "\n\n" + AIFormulaNotebook.instruction()
+        if pinned == nil { system += "\n\n" + topicInstruction() }
 
         var userMsg = AIMessage(role: "user", text: trimmed, timestamp: .now)
         userMsg.imageFile = imageFile
@@ -303,12 +318,12 @@ final class UpdoAIChatStore: ObservableObject {
         do {
             let usesBYO = BYOKeyStore.shared.readKey() != nil
             var replyText = ""
-            var topic: String? = nil
+            var tags: [AIHiddenTag] = []
 
             if usesBYO {
                 // BYO key path stays on the non-streaming endpoint (the stream
                 // endpoint uses our own OpenAI key). Typewriter-reveal the result.
-                (replyText, topic) = try await sendNonStreaming(
+                (replyText, tags) = try await sendNonStreaming(
                     contextPrompt: system, history: history, credits: credits, onTool: onTool
                 )
             } else {
@@ -334,7 +349,7 @@ final class UpdoAIChatStore: ObservableObject {
 
                     stream.reset()
                     var turnText = ""
-                    var tagFilter = AITopicTagFilter()
+                    var tagFilter = AIHiddenTagFilter()
                     var turnTool: AIToolCall? = nil
                     var receivedAny = false
                     var streamError: Error? = nil
@@ -346,7 +361,7 @@ final class UpdoAIChatStore: ObservableObject {
                             case .delta(let chunk):
                                 receivedAny = true
                                 turnText += chunk
-                                // The leading [[konu: …]] tag never reaches the screen.
+                                // Hidden [[konu: …]] / [[formül: …]] lines never reach the screen.
                                 stream.append(tagFilter.feed(chunk))
                             case .tool(let tool):
                                 receivedAny = true
@@ -375,14 +390,12 @@ final class UpdoAIChatStore: ObservableObject {
                         // existing non-streaming fallback keeps chat working.
                         if iteration == 1, !receivedAny, Self.isStreamFallbackEligible(e) {
                             stream.reset()
-                            (replyText, topic) = try await sendNonStreaming(
+                            (replyText, tags) = try await sendNonStreaming(
                                 contextPrompt: system, history: history, credits: credits, onTool: onTool
                             )
                             let replyID = commitReply(replyText)
-                            if pinned == nil {
-                                file([userMsg.id, replyID], into: resolveThread(topic: topic, userText: trimmed, guess: guess))
-                                persist()
-                            }
+                            finishExchange(userMsgID: userMsg.id, replyID: replyID, tags: tags,
+                                           pinned: pinned, guess: guess, userText: trimmed)
                             isSending = false
                             return
                         }
@@ -418,8 +431,8 @@ final class UpdoAIChatStore: ObservableObject {
                         continue
                     }
 
-                    let (clean, tag) = AITopicTag.extract(from: turnText)
-                    if let tag = tagFilter.topic ?? tag { topic = tag }
+                    let (clean, turnTags) = AIHiddenTags.extract(from: turnText)
+                    if !turnTags.isEmpty { tags = turnTags }
                     let trimmed = clean.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty { producedText = trimmed }
                     break
@@ -441,10 +454,8 @@ final class UpdoAIChatStore: ObservableObject {
             }
 
             let replyID = commitReply(replyText)
-            if pinned == nil {
-                file([userMsg.id, replyID], into: resolveThread(topic: topic, userText: trimmed, guess: guess))
-                persist()
-            }
+            finishExchange(userMsgID: userMsg.id, replyID: replyID, tags: tags,
+                           pinned: pinned, guess: guess, userText: trimmed)
         } catch {
             stream.reset()
             // Keep the user message visible — append an error reply instead of removing
@@ -478,25 +489,25 @@ final class UpdoAIChatStore: ObservableObject {
         history: [[String: Any]],
         credits: DailyCreditsManager,
         onTool: @MainActor (AIToolCall) -> String
-    ) async throws -> (text: String, topic: String?) {
+    ) async throws -> (text: String, tags: [AIHiddenTag]) {
         let (fullText, tool) = try await AIService.shared.coachChat(
             system: contextPrompt, messages: history, maxTokens: Self.replyTokenBudget
         )
         credits.noteMessageSent()
         let replyText: String
-        var topic: String? = nil
+        var tags: [AIHiddenTag] = []
         if let tool {
             replyText = onTool(tool)
         } else {
-            let (clean, tag) = AITopicTag.extract(from: fullText)
+            let (clean, found) = AIHiddenTags.extract(from: fullText)
             guard !clean.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw AIServiceError.invalidResponse
             }
             replyText = clean.trimmingCharacters(in: .whitespacesAndNewlines)
-            topic = tag
+            tags = found
         }
         await revealReply(replyText)
-        return (replyText, topic)
+        return (replyText, tags)
     }
 
     /// Appends the finished reply and clears the live bubble in the SAME main-
@@ -928,73 +939,121 @@ final class AIStudyMemory: ObservableObject {
     }
 }
 
-// MARK: - Subject routing
+// MARK: - Hidden tags (subject routing + formula notebook)
 //
-//  In the general chat the model starts each reply with a hidden
-//  "[[konu: Fizik 1]]" line naming the lesson it's about (or "genel"). The
-//  stream filter keeps that line off the screen; the store files the exchange
-//  into that subject's chat. Purely client-side — no extra request, no tokens
-//  beyond a few words.
+//  The model writes small machine lines the student never sees:
+//  "[[konu: Fizik 1]]" at the start (which chat this belongs to) and
+//  "[[formül: Fizik 1 | Kinematik | Konum | x = x_0 + v_0 t | …]]" at the end
+//  (formulas/rules worth keeping). The stream filter keeps them off the screen;
+//  the store files the exchange and saves the formulas. Purely client-side —
+//  no extra request, only a few extra output tokens.
 
-enum AITopicTag {
+struct AIHiddenTag: Equatable {
+    /// Normalized kind: "konu", "formul" or "kural".
+    let kind: String
+    let value: String
+}
+
+extension Array where Element == AIHiddenTag {
+    var topic: String? { first { $0.kind == "konu" }?.value }
+}
+
+enum AIHiddenTags {
     private static let regex = try? NSRegularExpression(
-        pattern: #"\[\[\s*(?:konu|topic)\s*:\s*([^\]\n]{0,60})\]\]\s*"#,
-        options: [.caseInsensitive]
+        pattern: #"\[\[\s*([^\]\n:]{2,12}?)\s*:\s*([^\n]*?)\]\](?!\])"#
     )
 
-    /// Parses the inside of a tag ("konu: Fizik 1" → "Fizik 1").
-    static func value(inside raw: String) -> String? {
-        let body = raw.split(separator: ":", maxSplits: 1).last.map(String.init) ?? raw
-        let v = body.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'“”")))
-        return v.isEmpty ? nil : v
+    /// "konu"/"topic" → konu, "formül"/"formula" → formul, "kural"/"rule" → kural.
+    static func kind(_ raw: String) -> String? {
+        switch AIChatTopics.normalize(raw.trimmingCharacters(in: .whitespaces)) {
+        case "konu", "topic": return "konu"
+        case "formul", "formula": return "formul"
+        case "kural", "rule": return "kural"
+        default: return nil
+        }
     }
 
-    /// Removes every tag from a finished reply; returns the first tag's value.
-    static func extract(from text: String) -> (clean: String, topic: String?) {
-        guard let regex else { return (text, nil) }
+    static func parse(inside raw: String) -> AIHiddenTag? {
+        let parts = raw.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let kind = kind(parts[0]) else { return nil }
+        let value = parts[1].trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'“”")))
+        return value.isEmpty ? nil : AIHiddenTag(kind: kind, value: value)
+    }
+
+    /// Removes every known tag from a finished reply and returns them in order.
+    static func extract(from text: String) -> (clean: String, tags: [AIHiddenTag]) {
+        guard let regex else { return (text, []) }
         let ns = text as NSString
-        let range = NSRange(location: 0, length: ns.length)
-        var topic: String? = nil
-        if let m = regex.firstMatch(in: text, range: range), m.numberOfRanges > 1 {
-            topic = value(inside: ns.substring(with: m.range(at: 1)))
+        var tags: [AIHiddenTag] = []
+        var clean = ""
+        var cursor = 0
+        for m in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            guard let tag = parse(inside: ns.substring(with: m.range(at: 1)) + ":" + ns.substring(with: m.range(at: 2)))
+            else { continue }
+            tags.append(tag)
+            clean += ns.substring(with: NSRange(location: cursor, length: m.range.location - cursor))
+            cursor = m.range.location + m.range.length
         }
-        let clean = regex.stringByReplacingMatches(in: text, range: range, withTemplate: "")
-        return (clean, topic)
+        clean += ns.substring(from: cursor)
+        return (clean.trimmingCharacters(in: .whitespacesAndNewlines), tags)
     }
 }
 
-/// Holds back the start of a streamed reply until it knows whether it opens
-/// with a topic tag, so the tag never flashes on screen.
-struct AITopicTagFilter {
-    private(set) var topic: String?
-    private var buffer = ""
-    private var decided = false
+/// Holds back any "[[" until it knows whether it's a hidden tag, so tags never
+/// flash on screen mid-stream. Anything that isn't one is released as written.
+struct AIHiddenTagFilter {
+    private var pending = ""
+    private var emittedAny = false
 
     mutating func feed(_ chunk: String) -> String {
-        if decided { return chunk }
-        buffer += chunk
-        let lead = String(buffer.drop(while: { $0.isWhitespace }))
-        if lead.isEmpty || lead == "[" { return "" }
-        guard lead.hasPrefix("[[") else { return release(lead) }
-        if let close = lead.range(of: "]]") {
-            let inside = String(lead[lead.index(lead.startIndex, offsetBy: 2) ..< close.lowerBound])
-            topic = AITopicTag.value(inside: inside)
-            return release(String(lead[close.upperBound...].drop(while: { $0.isWhitespace })))
+        pending += chunk
+        var out = ""
+        while true {
+            guard let open = pending.range(of: "[[") else {
+                // A lone trailing "[" may be the start of a tag — keep it.
+                if pending.hasSuffix("[") {
+                    out += pending.dropLast()
+                    pending = "["
+                } else {
+                    out += pending
+                    pending = ""
+                }
+                break
+            }
+            out += pending[..<open.lowerBound]
+            pending = String(pending[open.lowerBound...])
+            let rest = pending.dropFirst(2)
+            if let close = rest.range(of: "]]") {
+                let inside = String(rest[..<close.lowerBound])
+                if inside.contains("\n") || AIHiddenTags.parse(inside: inside) == nil {
+                    // Not ours ("[[" in real text) — show it.
+                    out += "[["
+                    pending = String(rest)
+                } else {
+                    pending = String(rest[close.upperBound...])
+                }
+            } else if rest.count > 400 || rest.contains("\n") {
+                out += "[["
+                pending = String(rest)
+            } else {
+                break   // wait for the closing "]]"
+            }
         }
-        // An unclosed "[[" this long isn't our tag — show it as written.
-        return lead.count > 80 ? release(lead) : ""
+        return emit(out)
     }
 
     /// End of the turn: whatever is still held back is real text.
     mutating func flush() -> String {
-        guard !decided else { return "" }
-        return release(String(buffer.drop(while: { $0.isWhitespace })))
+        defer { pending = "" }
+        return emit(pending)
     }
 
-    private mutating func release(_ text: String) -> String {
-        decided = true
-        buffer = ""
-        return text
+    private mutating func emit(_ text: String) -> String {
+        guard !emittedAny else { return text }
+        // The opening tag leaves a blank line behind — don't start with it.
+        let trimmed = String(text.drop(while: { $0.isWhitespace }))
+        if !trimmed.isEmpty { emittedAny = true }
+        return trimmed
     }
 }
 
@@ -1062,5 +1121,160 @@ enum AIChatTopics {
         if has("program", "kod", "code", "bilgisayar", "computer", "algoritma", "algorithm", "yazilim", "software") { return "chevron.left.forwardslash.chevron.right" }
         if has("ekonomi", "econom", "finans", "muhasebe") { return "chart.line.uptrend.xyaxis" }
         return "book.closed.fill"
+    }
+}
+
+// MARK: - AIFormulaNotebook
+//
+//  The formulas and rules Updo AI used while solving or explaining, collected
+//  automatically into course → topic → formula (Profile ▸ Formulas & Rules).
+//  On-device (UserDefaults), like the chat itself.
+
+struct AIFormulaEntry: Identifiable, Codable, Equatable {
+    enum Kind: String, Codable { case formula, rule }
+
+    var id = UUID()
+    var kind: Kind
+    var course: String
+    var topic: String
+    var name: String
+    /// LaTeX (no $) for a formula; one plain sentence for a rule.
+    var body: String
+    /// What the symbols mean / when to use it.
+    var note: String
+    var createdAt: Date
+}
+
+@MainActor
+final class AIFormulaNotebook: ObservableObject {
+    static let shared = AIFormulaNotebook()
+
+    @Published private(set) var entries: [AIFormulaEntry] = []
+
+    private let storageKey = "updo_ai_formula_notebook_v1"
+    private let maxEntries = 600
+
+    private init() {
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let saved = try? JSONDecoder().decode([AIFormulaEntry].self, from: data) {
+            entries = saved
+        }
+    }
+
+    /// Courses, most recently added first.
+    var courses: [String] {
+        var seen: [String: Date] = [:]
+        var title: [String: String] = [:]
+        for e in entries {
+            let k = AIChatTopics.key(e.course)
+            if (seen[k] ?? .distantPast) < e.createdAt { seen[k] = e.createdAt }
+            if title[k] == nil { title[k] = e.course }
+        }
+        return seen.sorted { $0.value > $1.value }.compactMap { title[$0.key] }
+    }
+
+    func entries(inCourse course: String) -> [AIFormulaEntry] {
+        let k = AIChatTopics.key(course)
+        return entries.filter { AIChatTopics.key($0.course) == k }
+    }
+
+    /// Topics of a course in the order they were first studied, each with its
+    /// formulas oldest → newest (how a notebook fills up).
+    func topics(inCourse course: String) -> [(topic: String, items: [AIFormulaEntry])] {
+        var order: [String] = []
+        var groups: [String: [AIFormulaEntry]] = [:]
+        var names: [String: String] = [:]
+        for e in entries(inCourse: course).sorted(by: { $0.createdAt < $1.createdAt }) {
+            let k = AIChatTopics.key(e.topic)
+            if groups[k] == nil { order.append(k); names[k] = e.topic }
+            groups[k, default: []].append(e)
+        }
+        return order.map { (names[$0] ?? $0, groups[$0] ?? []) }
+    }
+
+    func delete(_ id: UUID) {
+        entries.removeAll { $0.id == id }
+        persist()
+    }
+
+    /// Saves the reply's [[formül: …]] / [[kural: …]] lines. `chatCourse` (the
+    /// subject chat it was filed into) wins over the model's course name so the
+    /// notebook and the chats use the same titles.
+    func add(_ tags: [AIHiddenTag], chatCourse: String?) {
+        var changed = false
+        for tag in tags where tag.kind == "formul" || tag.kind == "kural" {
+            let isFormula = tag.kind == "formul"
+            var parts = tag.value.split(separator: "|", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            // A formula may itself contain "|" (|x|): fields are
+            // course | topic | name | body… | note, so re-join the middle.
+            let expected = isFormula ? 5 : 4
+            if parts.count > expected {
+                let bodyEnd = isFormula ? parts.count - 1 : parts.count
+                let body = parts[3..<bodyEnd].joined(separator: "|")
+                parts = Array(parts[0..<3]) + [body] + (isFormula ? [parts[parts.count - 1]] : [])
+            }
+            guard parts.count >= 4 else { continue }
+            var body = parts[3].trimmingCharacters(in: CharacterSet(charactersIn: "$ "))
+            if isFormula { body = AIMath.stripBoxed(body) }
+            let name = AIChatTopics.cleanTitle(parts[2])
+            guard !body.isEmpty, body.count <= 300, !name.isEmpty else { continue }
+
+            let modelCourse = AIChatTopics.cleanTitle(parts[0])
+            let course = chatCourse ?? (AIChatTopics.isGeneral(modelCourse) || modelCourse.isEmpty
+                                        ? (appLanguageIsEnglish() ? "General" : "Genel") : modelCourse)
+            let topic = parts[1].isEmpty ? name : AIChatTopics.cleanTitle(parts[1])
+            let note = parts.count > 4 ? String(parts[4].prefix(200)) : ""
+
+            let entry = AIFormulaEntry(
+                kind: isFormula ? .formula : .rule, course: course, topic: topic, name: name,
+                body: body, note: note, createdAt: .now
+            )
+            // Same course + same formula → refresh it instead of duplicating.
+            let courseKey = AIChatTopics.key(course)
+            let bodyKey = Self.bodyKey(body)
+            if let i = entries.firstIndex(where: {
+                AIChatTopics.key($0.course) == courseKey
+                    && (Self.bodyKey($0.body) == bodyKey || AIChatTopics.key($0.name) == AIChatTopics.key(name))
+            }) {
+                entries[i].body = body
+                entries[i].name = name
+                if !note.isEmpty { entries[i].note = note }
+            } else {
+                entries.append(entry)
+            }
+            changed = true
+        }
+        guard changed else { return }
+        if entries.count > maxEntries { entries.removeFirst(entries.count - maxEntries) }
+        persist()
+    }
+
+    private static func bodyKey(_ s: String) -> String {
+        s.filter { !$0.isWhitespace }.lowercased()
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder().encode(entries) {
+            UserDefaults.standard.set(data, forKey: storageKey)
+        }
+    }
+
+    /// Model-facing rule appended to every chat's app context.
+    static func instruction() -> String {
+        if appLanguageIsEnglish() {
+            return """
+            FORMULA NOTEBOOK (hidden lines for the app): if your reply uses or explains an important formula or rule the student should keep in their notes, add one line per item at the VERY END of the reply:
+            [[formula: Course | Topic | Short name | LaTeX formula without $ | what the symbols mean, briefly]]
+            For rules that aren't formulas (a grammar rule, a theorem statement): [[rule: Course | Topic | Short name | the rule in one sentence]]
+            Course = the course's short name (same as the topic tag, e.g. Physics 1); Topic = the unit (e.g. Kinematics). At most 3 lines, only general reusable formulas — never the numbers or answer of this specific problem. If there's no such formula/rule, write none. The app removes these lines; never mention them.
+            """
+        }
+        return """
+        FORMÜL DEFTERİ (uygulama için gizli satırlar): cevabında öğrencinin not alması gereken önemli bir formül veya kural kullandıysan ya da açıkladıysan, cevabın EN SONUNA her biri için ayrı satır ekle:
+        [[formül: Ders | Konu | Kısa ad | $ olmadan LaTeX formül | sembollerin kısa anlamı]]
+        Formül olmayan kurallar için (dil bilgisi kuralı, bir teoremin ifadesi): [[kural: Ders | Konu | Kısa ad | kuralın tek cümlelik ifadesi]]
+        Ders = dersin kısa adı (konu etiketiyle aynı, ör. Fizik 1); Konu = ünite (ör. Kinematik). En fazla 3 satır, sadece genel ve tekrar kullanılabilir formüller — bu sorunun sayılarını veya cevabını YAZMA. Böyle bir formül/kural yoksa hiç yazma. Uygulama bu satırları siler; onlardan asla bahsetme.
+        """
     }
 }
