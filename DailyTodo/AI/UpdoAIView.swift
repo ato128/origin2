@@ -798,7 +798,11 @@ struct UpdoAIView: View {
                             // Its own view observing only the stream: per-frame
                             // text updates re-render this bubble, nothing else.
                             AIStreamingRow(stream: chatStore.stream) {
-                                proxy.scrollTo("typing", anchor: .bottom)
+                                // Glide one line up instead of jumping, so a long
+                                // reply reads as one continuous write-on.
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    proxy.scrollTo("typing", anchor: .bottom)
+                                }
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 3)

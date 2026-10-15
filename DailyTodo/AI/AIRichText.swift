@@ -33,6 +33,17 @@ enum AIRichParser {
     /// Splits a reply into blocks. While `streaming`, a half-written trailing
     /// equation / `$…` / `**` is held back so raw LaTeX never flashes on screen.
     static func parse(_ raw: String, streaming: Bool = false) -> [AIRichBlock] {
+        // The live bubble redraws every frame while fresh glyphs settle, often
+        // with the same text — don't re-parse a long reply for nothing.
+        if streaming, let last = lastStreaming, last.text == raw { return last.blocks }
+        let blocks = parseUncached(raw, streaming: streaming)
+        if streaming { lastStreaming = (raw, blocks) }
+        return blocks
+    }
+
+    private static var lastStreaming: (text: String, blocks: [AIRichBlock])?
+
+    private static func parseUncached(_ raw: String, streaming: Bool) -> [AIRichBlock] {
         var blocks: [AIRichBlock] = []
         var prose: [String] = []
         var code: [String]? = nil
@@ -359,15 +370,45 @@ enum AIMath {
         pattern: #"\\(ln|log|lg|exp|sin|cos|tan|cot|sec|csc|arcsin|arccos|arctan|sinh|cosh|tanh)((?:_\{[^}]*\}|_[^\s{\\])?(?:\^\{[^}]*\}|\^[^\s{\\])?)\s*(?=[A-Za-z0-9]|\\[A-Za-z])"#
     )
 
-    /// Patches the handful of common commands SwiftMath doesn't know.
+    /// Commands SwiftMath doesn't know → the closest one it does. One unknown
+    /// command fails the whole formula (it then shows as italic plain text), so
+    /// this list follows what the model actually writes: \tfrac, \big(, \implies…
+    private static let rewrites: [(NSRegularExpression, String)] = [
+        (#"\\[td]frac(?![A-Za-z])"#, #"\\frac"#),
+        (#"\\[td]binom(?![A-Za-z])"#, #"\\binom"#),
+        (#"\\[Bb]igg?[lrm]?(?![A-Za-z])"#, ""),
+        (#"\\(?:display|text|script)style(?![A-Za-z])"#, ""),
+        (#"\\operatorname\*?\{([^{}]*)\}"#, #"\\mathrm{$1}"#),
+        (#"\\dots[bcimo]?(?![A-Za-z])"#, #"\\ldots"#),
+        (#"\\[lr]vert(?![A-Za-z])"#, "|"),
+        (#"\\[lr]Vert(?![A-Za-z])"#, #"\\|"#),
+        (#"\\implies(?![A-Za-z])"#, #"\\Rightarrow"#),
+        (#"\\impliedby(?![A-Za-z])"#, #"\\Leftarrow"#),
+        (#"\\therefore(?![A-Za-z])"#, #"\\Rightarrow"#),
+        (#"\\iiint(?![A-Za-z])"#, #"\\int\\!\\!\\int\\!\\!\\int"#),
+        (#"\\iint(?![A-Za-z])"#, #"\\int\\!\\!\\int"#),
+        (#"\\varnothing(?![A-Za-z])"#, #"\\emptyset"#),
+        (#"\\rightleftharpoons(?![A-Za-z])"#, #"\\leftrightarrow"#),
+        (#"\\xrightarrow(?:\[[^\]]*\])?\{([^{}]*)\}"#, #"\\;\\rightarrow^{$1}\\;"#),
+        (#"\\overrightarrow\{"#, #"\\vec{"#),
+        (#"\\(?:overset|stackrel)\{([^{}]*)\}\{([^{}]*)\}"#, "{$2}^{$1}"),
+        (#"\\underset\{([^{}]*)\}\{([^{}]*)\}"#, "{$2}_{$1}"),
+        (#"\\pmod\{([^{}]*)\}"#, #"\\ (\\mathrm{mod}\\ $1)"#),
+        (#"\\bmod(?![A-Za-z])"#, #"\\mathrm{\\ mod\\ }"#),
+        (#"\\ce\{([^{}]*)\}"#, #"\\mathrm{$1}"#),
+        (#"\\begin\{array\}\{[^{}]*\}"#, #"\\begin{matrix}"#),
+        (#"\\end\{array\}"#, #"\\end{matrix}"#),
+        (#"\\emph\{"#, #"\\mathit{"#),
+    ].map { (try! NSRegularExpression(pattern: $0.0), $0.1) }
+
+    /// Patches the common commands SwiftMath doesn't know.
     private static func prepare(_ latex: String) -> String {
         var s = stripBoxed(latex)
-            .replacingOccurrences(of: "\\dots", with: "\\ldots")
-            .replacingOccurrences(of: "\\lvert", with: "|")
-            .replacingOccurrences(of: "\\rvert", with: "|")
-            .replacingOccurrences(of: "\\lVert", with: "\\|")
-            .replacingOccurrences(of: "\\rVert", with: "\\|")
-            .replacingOccurrences(of: "\\displaystyle", with: "")
+        for (regex, template) in rewrites {
+            s = regex.stringByReplacingMatches(
+                in: s, range: NSRange(location: 0, length: (s as NSString).length), withTemplate: template
+            )
+        }
         // `\ln x` typesets as "lnx" in SwiftMath — add TeX's thin space.
         let ns = s as NSString
         s = functionSpacing.stringByReplacingMatches(
@@ -377,16 +418,27 @@ enum AIMath {
     }
 
     /// Shown when a formula can't be typeset — still readable, never raw `\frac`.
+    /// Whole command names only, so `\left` never turns into "≤ft".
     static func readableFallback(_ latex: String) -> String {
-        var s = stripBoxed(latex)
+        var s = prepare(latex)
         let map: [(String, String)] = [
-            ("\\cdot", "·"), ("\\times", "×"), ("\\div", "÷"), ("\\pm", "±"), ("\\le", "≤"), ("\\ge", "≥"),
-            ("\\neq", "≠"), ("\\approx", "≈"), ("\\infty", "∞"), ("\\to", "→"), ("\\Rightarrow", "⇒"),
-            ("\\sqrt", "√"), ("\\pi", "π"), ("\\theta", "θ"), ("\\alpha", "α"), ("\\beta", "β"),
-            ("\\Delta", "Δ"), ("\\left", ""), ("\\right", ""), ("\\,", " "), ("\\;", " "), ("\\ ", " "),
-            ("\\frac", ""), ("\\dfrac", ""), ("\\text", ""), ("\\mathrm", ""), ("\\", ""), ("{", ""), ("}", "")
+            ("cdot", "·"), ("times", "×"), ("div", "÷"), ("pm", "±"), ("leq", "≤"), ("le", "≤"), ("geq", "≥"),
+            ("ge", "≥"), ("neq", "≠"), ("ne", "≠"), ("approx", "≈"), ("infty", "∞"), ("to", "→"),
+            ("rightarrow", "→"), ("Rightarrow", "⇒"), ("implies", "⇒"), ("sqrt", "√"), ("pi", "π"),
+            ("theta", "θ"), ("alpha", "α"), ("beta", "β"), ("Delta", "Δ"), ("int", "∫"), ("sum", "Σ"),
         ]
-        for (a, b) in map { s = s.replacingOccurrences(of: a, with: b) }
+        for (name, symbol) in map {
+            s = s.replacingOccurrences(of: "\\\\\(name)(?![A-Za-z])", with: symbol, options: .regularExpression)
+        }
+        // Fractions read as (a)/(b); any other command just loses its backslash.
+        s = s.replacingOccurrences(of: #"\\frac\{([^{}]*)\}\{([^{}]*)\}"#, with: "($1)/($2)", options: .regularExpression)
+            .replacingOccurrences(of: #"\\frac([0-9])([0-9])"#, with: "$1/$2", options: .regularExpression)
+            .replacingOccurrences(of: #"\\(left|right|[Bb]igg?[lr]?|displaystyle|text|mathrm|operatorname)(?![A-Za-z])"#,
+                                  with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\\[,;:! ]"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "\\", with: "")
+            .replacingOccurrences(of: "{", with: "")
+            .replacingOccurrences(of: "}", with: "")
         return s
     }
 }

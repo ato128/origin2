@@ -210,6 +210,7 @@ final class UpdoAIChatStore: ObservableObject {
         }
         let course = threadID.flatMap { id in threads.first { $0.id == id }?.title }
         AIFormulaNotebook.shared.add(tags, chatCourse: course)
+        AIQuestionPatternBook.shared.add(tags, chatCourse: course, userText: userText)
         persist()
     }
 
@@ -290,6 +291,8 @@ final class UpdoAIChatStore: ObservableObject {
         let pinned = activeThreadID
         let guess = pinned ?? guessThread(for: trimmed)
         var system = contextPrompt + "\n\n" + AIFormulaNotebook.instruction()
+        let guessCourse = guess.flatMap { id in threads.first { $0.id == id }?.title }
+        system += "\n\n" + AIQuestionPatternBook.instruction(course: guessCourse)
         if pinned == nil { system += "\n\n" + topicInstruction() }
 
         var userMsg = AIMessage(role: "user", text: trimmed, timestamp: .now)
@@ -696,9 +699,11 @@ enum AIChatImageStore {
 // MARK: - AIStreamPacer
 //
 //  Turns a bursty token stream into a steady, ChatGPT/Claude-style write-on.
-//  Network chunks land in a backlog; a display link reveals characters at an
-//  adaptive rate (a calm base speed that accelerates with the backlog, so it
-//  never lags far behind the model) and stamps each character's reveal time.
+//  Network chunks land in a backlog; a display link reveals characters at a
+//  speed that follows the model's average arrival rate, keeps a small reserve
+//  so the write-on doesn't run dry between bursts, and eases every speed
+//  change — long replies flow continuously instead of lurching chunk by
+//  chunk and dumping the tail. Each character's reveal time is stamped.
 //  The bubble fades/settles the freshest characters in from those timestamps.
 //  Ticks only while there's something to reveal or settle — idle costs nothing.
 
@@ -722,6 +727,14 @@ final class AIStreamPacer: ObservableObject {
     private var revealed = 0
     private var revealTimes: [CFTimeInterval] = []   // newest-last, trimmed
     private var carry: Double = 0
+    /// Current reveal speed (chars/s), eased toward its target every frame.
+    private var speed: Double = 0
+    /// Smoothed arrival speed of the stream (chars/s) and this frame's arrivals.
+    private var arrivalRate: Double = 0
+    private var arrivedSinceTick = 0
+    /// Last arrival-rate sample — not reset when the link idles, so chunks that
+    /// land after a pause are spread over the real gap, not one frame.
+    private var lastRateSample: CFTimeInterval = 0
     private var finishing = false
     private var lastTick: CFTimeInterval = 0
     private var link: CADisplayLink?
@@ -732,6 +745,7 @@ final class AIStreamPacer: ObservableObject {
     func append(_ chunk: String) {
         guard !chunk.isEmpty else { return }
         chars.append(contentsOf: chunk)
+        arrivedSinceTick += chunk.count
         if frame.status != nil { frame.status = nil }
         startIfNeeded()
     }
@@ -742,7 +756,7 @@ final class AIStreamPacer: ObservableObject {
     }
 
     /// Resolves once every received character is revealed and settled. Speeds
-    /// the remaining backlog up so the tail never takes more than ~½ s.
+    /// the remaining backlog up so the tail never takes more than ~0.7 s.
     func drain() async {
         guard revealed < chars.count || !frame.tail.isEmpty else { return }
         finishing = true
@@ -756,6 +770,10 @@ final class AIStreamPacer: ObservableObject {
         revealTimes.removeAll(keepingCapacity: true)
         revealed = 0
         carry = 0
+        speed = 0
+        arrivalRate = 0
+        arrivedSinceTick = 0
+        lastRateSample = CACurrentMediaTime()
         finishing = false
         if frame != Frame() { frame = Frame() }
         resumeWaiters()
@@ -789,14 +807,30 @@ final class AIStreamPacer: ObservableObject {
         let dt = min(1.0 / 20.0, max(0, now - lastTick))
         lastTick = now
 
+        // How fast the model is actually writing, averaged over ~0.6 s so a
+        // burst of tokens doesn't read as a sudden speed-up.
+        let rateDT = min(2, max(1.0 / 120, now - lastRateSample))
+        let instant = Double(arrivedSinceTick) / rateDT
+        arrivalRate += (instant - arrivalRate) * min(1, rateDT / 0.6)
+        arrivedSinceTick = 0
+        lastRateSample = now
+
         var text = frame.text
         let backlog = chars.count - revealed
         if backlog > 0 {
-            // ~45 chars/s when the model is slow, catching up proportionally to
-            // the backlog (steady state ≈ a few tenths of a second behind).
-            var rate = 45 + Double(backlog) * 3.2
-            if finishing { rate = max(rate, Double(backlog) / 0.4) }
-            carry += rate * dt
+            // Keep pace with the model and drain the backlog over ~0.9 s, but
+            // hold a ~0.6 s reserve so the text keeps flowing through network
+            // gaps instead of stopping and lurching. At the end, finish the rest
+            // briskly (≤ ~0.7 s) rather than dumping it in one frame.
+            // (Tuned on simulated bursty streams: no stalls, ~no speed jumps.)
+            let reserve = finishing ? 0 : arrivalRate * 0.6
+            var target = arrivalRate + (Double(backlog) - reserve) / 0.9
+            if finishing { target = max(target, Double(backlog) / 0.7, 90) }
+            target = min(max(target, 40), 2000)
+            // Ease the speed itself (~0.15 s) so changes are never felt as jolts.
+            speed += (target - speed) * min(1, dt / 0.15)
+            speed = max(speed, finishing ? 90 : 40)
+            carry += speed * dt
             let n = min(backlog, Int(carry))
             if n > 0 {
                 carry -= Double(n)
@@ -811,6 +845,7 @@ final class AIStreamPacer: ObservableObject {
             }
         } else {
             carry = 0
+            speed = min(speed, arrivalRate)
         }
 
         var tail: [Double] = []
@@ -944,12 +979,13 @@ final class AIStudyMemory: ObservableObject {
 //  The model writes small machine lines the student never sees:
 //  "[[konu: Fizik 1]]" at the start (which chat this belongs to) and
 //  "[[formül: Fizik 1 | Kinematik | Konum | x = x_0 + v_0 t | …]]" at the end
-//  (formulas/rules worth keeping). The stream filter keeps them off the screen;
+//  (formulas/rules worth keeping) and, for a solved problem, one
+//  "[[tip: Fizik 1 | Kinematik | Eğik atış | … ]]" line (its question type). The stream filter keeps them off the screen;
 //  the store files the exchange and saves the formulas. Purely client-side —
 //  no extra request, only a few extra output tokens.
 
 struct AIHiddenTag: Equatable {
-    /// Normalized kind: "konu", "formul" or "kural".
+    /// Normalized kind: "konu", "formul", "kural" or "tip".
     let kind: String
     let value: String
 }
@@ -969,8 +1005,23 @@ enum AIHiddenTags {
         case "konu", "topic": return "konu"
         case "formul", "formula": return "formul"
         case "kural", "rule": return "kural"
+        case "tip", "soru tipi", "type", "pattern": return "tip"
         default: return nil
         }
+    }
+
+    private static let kindWords = ["konu", "topic", "formul", "formula", "kural", "rule", "tip", "soru tipi", "type", "pattern"]
+
+    /// "[[formül: Fizik 1 | Kinem" — a tag the reply was cut off in (token cap).
+    /// Also true for a bare start like "[[form" that can only become a tag.
+    static func isUnclosedTag(_ s: String) -> Bool {
+        guard s.hasPrefix("[["), !s.contains("]]") else { return false }
+        let inner = s.dropFirst(2)
+        if let colon = inner.firstIndex(of: ":") {
+            return kind(String(inner[..<colon])) != nil
+        }
+        let start = AIChatTopics.normalize(inner.trimmingCharacters(in: .whitespaces))
+        return !start.isEmpty && kindWords.contains { $0.hasPrefix(start) }
     }
 
     static func parse(inside raw: String) -> AIHiddenTag? {
@@ -995,6 +1046,11 @@ enum AIHiddenTags {
             cursor = m.range.location + m.range.length
         }
         clean += ns.substring(from: cursor)
+        // A reply cut off mid-tag must not show the half line.
+        if let open = clean.range(of: "[[", options: .backwards),
+           isUnclosedTag(String(clean[open.lowerBound...])) {
+            clean = String(clean[..<open.lowerBound])
+        }
         return (clean.trimmingCharacters(in: .whitespacesAndNewlines), tags)
     }
 }
@@ -1032,7 +1088,7 @@ struct AIHiddenTagFilter {
                 } else {
                     pending = String(rest[close.upperBound...])
                 }
-            } else if rest.count > 400 || rest.contains("\n") {
+            } else if rest.count > 900 || rest.contains("\n") {
                 out += "[["
                 pending = String(rest)
             } else {
@@ -1042,10 +1098,11 @@ struct AIHiddenTagFilter {
         return emit(out)
     }
 
-    /// End of the turn: whatever is still held back is real text.
+    /// End of the turn: whatever is still held back is real text — unless the
+    /// reply was cut off inside a hidden tag.
     mutating func flush() -> String {
         defer { pending = "" }
-        return emit(pending)
+        return AIHiddenTags.isUnclosedTag(pending) ? "" : emit(pending)
     }
 
     private mutating func emit(_ text: String) -> String {
@@ -1275,6 +1332,204 @@ final class AIFormulaNotebook: ObservableObject {
         [[formül: Ders | Konu | Kısa ad | $ olmadan LaTeX formül | sembollerin kısa anlamı]]
         Formül olmayan kurallar için (dil bilgisi kuralı, bir teoremin ifadesi): [[kural: Ders | Konu | Kısa ad | kuralın tek cümlelik ifadesi]]
         Ders = dersin kısa adı (konu etiketiyle aynı, ör. Fizik 1); Konu = ünite (ör. Kinematik). En fazla 3 satır, sadece genel ve tekrar kullanılabilir formüller — bu sorunun sayılarını veya cevabını YAZMA. Böyle bir formül/kural yoksa hiç yazma. Uygulama bu satırları siler; onlardan asla bahsetme.
+        """
+    }
+}
+
+// MARK: - AIQuestionPatternBook
+//
+//  The question TYPES the student brought to Updo AI: for each solved problem
+//  the model appends one hidden "[[tip: …]]" line naming the family it belongs
+//  to, how to recognize it, the reasoning to set up and the equations that
+//  should come to mind. Same type again → its count goes up, so the student
+//  sees which kinds of questions they meet most (Profile ▸ Question Types).
+
+struct AIQuestionPattern: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var course: String
+    var topic: String
+    var name: String
+    /// The clue in a question that gives this type away.
+    var cue: String
+    /// The reasoning to set up for every question of this type.
+    var steps: [String]
+    /// LaTeX (no $) — what should come to mind on sight.
+    var equations: [String]
+    /// The student's own questions of this type (latest last, max 3).
+    var examples: [String]
+    var count: Int
+    var createdAt: Date
+    var lastSeen: Date
+}
+
+@MainActor
+final class AIQuestionPatternBook: ObservableObject {
+    static let shared = AIQuestionPatternBook()
+
+    @Published private(set) var patterns: [AIQuestionPattern] = []
+
+    private let storageKey = "updo_ai_question_patterns_v1"
+    private let maxPatterns = 400
+
+    private init() {
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let saved = try? JSONDecoder().decode([AIQuestionPattern].self, from: data) {
+            patterns = saved
+        }
+    }
+
+    /// How many questions were classified in total.
+    var totalSeen: Int { patterns.reduce(0) { $0 + $1.count } }
+
+    /// The types met most often (ties → most recent).
+    var mostFrequent: [AIQuestionPattern] {
+        patterns.sorted { ($0.count, $0.lastSeen) > ($1.count, $1.lastSeen) }
+    }
+
+    /// Courses, most recently practiced first.
+    var courses: [String] {
+        var seen: [String: Date] = [:]
+        var title: [String: String] = [:]
+        for p in patterns {
+            let k = AIChatTopics.key(p.course)
+            if (seen[k] ?? .distantPast) < p.lastSeen { seen[k] = p.lastSeen }
+            if title[k] == nil { title[k] = p.course }
+        }
+        return seen.sorted { $0.value > $1.value }.compactMap { title[$0.key] }
+    }
+
+    func patterns(inCourse course: String) -> [AIQuestionPattern] {
+        let k = AIChatTopics.key(course)
+        return patterns.filter { AIChatTopics.key($0.course) == k }
+    }
+
+    /// Topics of a course (most questions first), each with its types by count.
+    func topics(inCourse course: String) -> [(topic: String, items: [AIQuestionPattern])] {
+        var groups: [String: [AIQuestionPattern]] = [:]
+        var names: [String: String] = [:]
+        for p in patterns(inCourse: course) {
+            let k = AIChatTopics.key(p.topic)
+            if names[k] == nil { names[k] = p.topic }
+            groups[k, default: []].append(p)
+        }
+        return groups
+            .map { (topic: names[$0.key] ?? $0.key,
+                    items: $0.value.sorted { ($0.count, $0.lastSeen) > ($1.count, $1.lastSeen) }) }
+            .sorted { $0.items.reduce(0) { $0 + $1.count } > $1.items.reduce(0) { $0 + $1.count } }
+    }
+
+    func pattern(_ id: UUID) -> AIQuestionPattern? {
+        patterns.first { $0.id == id }
+    }
+
+    func delete(_ id: UUID) {
+        patterns.removeAll { $0.id == id }
+        persist()
+    }
+
+    /// Saves the reply's [[tip: Course | Topic | Name | Cue | steps | equations]]
+    /// line. `chatCourse` wins over the model's course name (same as the notebook).
+    func add(_ tags: [AIHiddenTag], chatCourse: String?, userText: String) {
+        guard let tag = tags.first(where: { $0.kind == "tip" }) else { return }
+        var parts = tag.value.split(separator: "|", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        // Equations come last and may contain "|" (|x|) — re-join the tail.
+        if parts.count > 6 {
+            parts = Array(parts[0..<5]) + [parts[5...].joined(separator: "|")]
+        }
+        guard parts.count >= 5 else { return }
+
+        let name = Self.clean(parts[2], max: 48)
+        let steps = Self.list(parts[4], max: 4, length: 160)
+        guard !name.isEmpty, !steps.isEmpty else { return }
+        let equations = parts.count > 5
+            ? Self.list(parts[5], max: 3, length: 200).map { AIMath.stripBoxed($0.trimmingCharacters(in: CharacterSet(charactersIn: "$ "))) }
+            : []
+
+        let modelCourse = AIChatTopics.cleanTitle(parts[0])
+        let course = chatCourse ?? (AIChatTopics.isGeneral(modelCourse) || modelCourse.isEmpty
+                                    ? (appLanguageIsEnglish() ? "General" : "Genel") : modelCourse)
+        let topic = parts[1].isEmpty ? name : AIChatTopics.cleanTitle(parts[1])
+        let cue = Self.clean(parts[3], max: 200)
+
+        // The student's question, if it says more than "solve this".
+        let example = userText.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")
+        let keepExample = example.count >= 20
+
+        let courseKey = AIChatTopics.key(course)
+        let nameKey = AIChatTopics.key(name)
+        if let i = patterns.firstIndex(where: {
+            AIChatTopics.key($0.course) == courseKey && AIChatTopics.key($0.name) == nameKey
+        }) {
+            // Same type again: count it and keep the latest explanation.
+            patterns[i].count += 1
+            patterns[i].lastSeen = .now
+            patterns[i].steps = steps
+            if !cue.isEmpty { patterns[i].cue = cue }
+            if !equations.isEmpty { patterns[i].equations = equations }
+            if keepExample {
+                patterns[i].examples.append(String(example.prefix(180)))
+                if patterns[i].examples.count > 3 { patterns[i].examples.removeFirst() }
+            }
+        } else {
+            patterns.append(AIQuestionPattern(
+                course: course, topic: topic, name: name, cue: cue, steps: steps,
+                equations: equations, examples: keepExample ? [String(example.prefix(180))] : [],
+                count: 1, createdAt: .now, lastSeen: .now
+            ))
+        }
+        if patterns.count > maxPatterns {
+            // Drop the least seen, oldest types first.
+            let drop = patterns.sorted { ($0.count, $0.lastSeen) < ($1.count, $1.lastSeen) }
+                .prefix(patterns.count - maxPatterns).map(\.id)
+            patterns.removeAll { drop.contains($0.id) }
+        }
+        persist()
+    }
+
+    private static func clean(_ raw: String, max: Int) -> String {
+        let t = raw.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'“”*_`#")))
+        let capped = String(t.prefix(max)).trimmingCharacters(in: .whitespaces)
+        guard let first = capped.first else { return capped }
+        return String(first).uppercased(with: Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")) + capped.dropFirst()
+    }
+
+    /// "a ; b ; c" → ["a", "b", "c"]. A LaTeX "\;" (a space) isn't a separator.
+    private static func list(_ raw: String, max: Int, length: Int) -> [String] {
+        raw.replacingOccurrences(of: #"(?<!\\);"#, with: "\u{1F}", options: .regularExpression)
+            .split(separator: "\u{1F}")
+            .map { clean(String($0), max: length) }
+            .filter { !$0.isEmpty }
+            .prefix(max)
+            .map { $0 }
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder().encode(patterns) {
+            UserDefaults.standard.set(data, forKey: storageKey)
+        }
+    }
+
+    /// Model-facing rule appended to every chat's app context. Lists the types
+    /// already saved for this course so the same type keeps the same name.
+    static func instruction(course: String?) -> String {
+        let book = AIQuestionPatternBook.shared
+        let pool = course.map { book.patterns(inCourse: $0) } ?? book.patterns
+        let known = pool.sorted { ($0.count, $0.lastSeen) > ($1.count, $1.lastSeen) }
+            .prefix(15).map(\.name).joined(separator: "; ")
+
+        if appLanguageIsEnglish() {
+            return """
+            QUESTION TYPE (hidden line for the app): if the student asked you to solve a problem or question (text or photo), add ONE line at the VERY END naming the TYPE of question it is:
+            [[type: Course | Topic | Type name | How to recognize it | Step 1 ; Step 2 ; Step 3 | Equation 1 ; Equation 2]]
+            Type name = a short, general name for this family of questions (e.g. "Range in projectile motion"). How to recognize it = the clue in a question that gives this type away (one short sentence). Steps = the reasoning to set up for EVERY question of this type, at most 4 short steps separated by ";" (math inside a step goes in $…$). Equations = the general equations that should come to mind on seeing this type, LaTeX without $, at most 3, separated by ";" (leave empty if none). Never write this problem's numbers or answer. Only when solving a problem, at most one line per reply — not in chat, plans or general explanations. The app removes this line; never mention it.\(known.isEmpty ? "" : "\nTypes already saved (if the question fits one, use exactly that name): \(known)")
+            """
+        }
+        return """
+        SORU TİPİ (uygulama için gizli satır): öğrenci bir soru/problem çözdürdüyse (yazıyla ya da fotoğrafla), cevabın EN SONUNA bu sorunun TİPİNİ tek satırda yaz:
+        [[tip: Ders | Konu | Tip adı | Nasıl tanınır | Adım 1 ; Adım 2 ; Adım 3 | Denklem 1 ; Denklem 2]]
+        Tip adı = bu soru ailesinin kısa, genel adı (ör. "Eğik atışta menzil"). Nasıl tanınır = soruda bu tipi ele veren ipucu (tek kısa cümle). Adımlar = bu tipteki HER soruda kurulacak mantık, en fazla 4 kısa adım, ";" ile ayrılmış (adımdaki matematik $…$ içinde). Denklemler = bu tip görülünce akla gelmesi gereken genel denklemler, $ olmadan LaTeX, en fazla 3, ";" ile ayrılmış (yoksa boş bırak). Bu sorunun sayılarını veya cevabını YAZMA. Sadece soru çözerken, cevap başına en fazla 1 satır — sohbet, plan veya genel anlatımda yazma. Uygulama bu satırı siler; ondan asla bahsetme.\(known.isEmpty ? "" : "\nKayıtlı tipler (soru bunlardan birine uyuyorsa AYNEN o adı kullan): \(known)")
         """
     }
 }

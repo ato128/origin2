@@ -2441,3 +2441,22 @@
 "fn_empty_sub" = "When you ask Updo AI a study question, the formulas and rules it uses collect here by course and topic.";
 "fn_copy" = "Copy";
 "fn_delete" = "Delete";
+
+/* Question types (Profile) */
+"qp_title" = "Question Types";
+"qp_caps" = "QUESTION TYPES";
+"qp_card_empty" = "Questions you solve get sorted by type: how to spot it, the reasoning, the equations";
+"qp_card_count" = "types · %d questions";
+"qp_card_top" = "Most often: %@ · %d×";
+"qp_course_meta" = "%d types · %d questions";
+"qp_most_header" = "MET MOST OFTEN";
+"qp_courses_header" = "COURSES";
+"qp_empty_title" = "No question types yet";
+"qp_empty_sub" = "When you solve questions with Updo AI, each one is sorted by type: how to spot it, the reasoning to set up and the equations that should come to mind.";
+"qp_detail_meta" = "%@ · %@ · seen %d×";
+"qp_cue_header" = "HOW TO SPOT IT";
+"qp_steps_header" = "REASONING";
+"qp_eq_header" = "SHOULD COME TO MIND";
+"qp_examples_header" = "YOUR QUESTIONS OF THIS TYPE";
+"qp_practice" = "Solve a new one of this type";
+"qp_practice_seed" = "Give me a new question of the type \"%@\" (%@). Don't write the solution yet — let me try first and give me a hint if I get stuck.";

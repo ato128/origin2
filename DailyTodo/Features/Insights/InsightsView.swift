@@ -154,6 +154,7 @@ struct InsightsView: View {
     @State private var premiumState: PremiumState = .free
     @State private var showPremium = false
     @State private var showFormulaNotebook = false
+    @State private var showQuestionPatterns = false
 
     // Sheet'ler
     @State private var showUpdoAI = false
@@ -312,6 +313,16 @@ struct InsightsView: View {
     }
 
     // Seed that starts an exam-planning conversation in the Updo AI chat.
+    /// "Solve one of this type": opens that course's chat with a fresh question.
+    private func practice(_ pattern: AIQuestionPattern) {
+        showQuestionPatterns = false
+        let chats = UpdoAIChatStore.shared
+        let key = AIChatTopics.key(pattern.course)
+        chats.selectThread(chats.threads.first { AIChatTopics.key($0.title) == key }?.id)
+        aiSeed = tr("qp_practice_seed", pattern.name, pattern.course)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { showUpdoAI = true }
+    }
+
     private var examPlannerSeed: String {
         appLanguageIsEnglish()
         ? "I have an upcoming exam and want a study plan. Ask me which course, the exam date and the topics — then build a clear day-by-day plan and add the study sessions to my week."
@@ -384,6 +395,10 @@ struct InsightsView: View {
         }
         .sheet(isPresented: $showFormulaNotebook) {
             FormulaNotebookView()
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showQuestionPatterns) {
+            QuestionPatternsView(onPractice: practice)
                 .presentationDragIndicator(.visible)
         }
         .onReceive(SubscriptionManager.shared.$isPro) { isPro in
@@ -1061,6 +1076,10 @@ struct InsightsView: View {
 
             // Formulas & rules Updo AI used, sorted course → topic (free for all).
             FormulaNotebookCard { showFormulaNotebook = true }
+                .insightsCardReveal()
+
+            // Question types: how each kind of question is reasoned (free for all).
+            QuestionPatternsCard { showQuestionPatterns = true }
                 .insightsCardReveal()
 
             // Exam planner.
@@ -1881,6 +1900,394 @@ private struct FormulaEntryCard: View {
                     .foregroundStyle(UpdoTheme.filmy(0.6))
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UpdoTheme.surfaceHigh.opacity(0.7), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(UpdoTheme.border, lineWidth: 1))
+    }
+}
+
+// MARK: - Question types
+//
+//  Every problem solved with Updo AI is filed under its type (see
+//  AIQuestionPatternBook): how to recognize it, the reasoning to set up and
+//  the equations that should come to mind — course → topic → type, by count.
+
+private let patternTint = Color(arenaHex: AppArenaPalette.cyan)
+
+struct QuestionPatternsCard: View {
+    let onOpen: () -> Void
+    @ObservedObject private var book = AIQuestionPatternBook.shared
+
+    var body: some View {
+        Button(action: onOpen) {
+            InsightsGlassCard(tint: patternTint) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle().fill(patternTint.opacity(0.16)).frame(width: 36, height: 36)
+                        Image(systemName: "puzzlepiece.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(patternTint)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(tr("qp_caps"))
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                            .tracking(1.6)
+                            .foregroundStyle(patternTint.opacity(0.95))
+
+                        if let top = book.mostFrequent.first {
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                                Text("\(book.patterns.count)")
+                                    .font(.system(size: 19, weight: .bold))
+                                    .foregroundStyle(UpdoTheme.textPrimary)
+                                    .monospacedDigit()
+                                Text(tr("qp_card_count", book.totalSeen))
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(UpdoTheme.filmy(0.5))
+                            }
+                            Text(tr("qp_card_top", top.name, top.count))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(UpdoTheme.filmy(0.55))
+                                .lineLimit(1)
+                        } else {
+                            Text(tr("qp_card_empty"))
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(UpdoTheme.filmy(0.55))
+                                .lineLimit(2)
+                        }
+                    }
+
+                    Spacer(minLength: 10)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(UpdoTheme.filmy(0.35))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tr("qp_title"))
+    }
+}
+
+struct QuestionPatternsView: View {
+    let onPractice: (AIQuestionPattern) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var book = AIQuestionPatternBook.shared
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                patternBackground
+
+                if book.patterns.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 10) {
+                            // The types met most — what to master first.
+                            let top = book.mostFrequent.filter { $0.count > 1 }.prefix(3)
+                            if !top.isEmpty {
+                                sectionLabel(tr("qp_most_header"))
+                                ForEach(Array(top)) { p in
+                                    NavigationLink {
+                                        QuestionPatternDetailView(patternID: p.id, onPractice: onPractice)
+                                    } label: {
+                                        QuestionPatternRow(pattern: p, showCourse: true)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                sectionLabel(tr("qp_courses_header")).padding(.top, 12)
+                            }
+
+                            ForEach(book.courses, id: \.self) { course in
+                                NavigationLink {
+                                    QuestionPatternCourseView(course: course, onPractice: onPractice)
+                                } label: {
+                                    courseRow(course)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            }
+            .navigationTitle(tr("qp_title"))
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .accessibilityLabel(tr("event_close"))
+                }
+            }
+        }
+        .updoColorScheme()
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .bold, design: .monospaced))
+            .tracking(1.4)
+            .foregroundStyle(patternTint)
+            .padding(.leading, 4)
+    }
+
+    private func courseRow(_ course: String) -> some View {
+        let items = book.patterns(inCourse: course)
+        let seen = items.reduce(0) { $0 + $1.count }
+        return HStack(spacing: 14) {
+            Image(systemName: AIChatTopics.icon(for: course))
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(patternTint)
+                .frame(width: 46, height: 46)
+                .background(patternTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(course)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                Text(tr("qp_course_meta", items.count, seen))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(UpdoTheme.filmy(0.35))
+        }
+        .padding(14)
+        .background(UpdoTheme.surfaceHigh.opacity(0.7), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(UpdoTheme.border, lineWidth: 1))
+        .contentShape(Rectangle())
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "puzzlepiece.fill")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(patternTint)
+                .frame(width: 76, height: 76)
+                .background(patternTint.opacity(0.14), in: Circle())
+            Text(tr("qp_empty_title"))
+                .font(.title3.weight(.bold))
+                .foregroundStyle(UpdoTheme.textPrimary)
+            Text(tr("qp_empty_sub"))
+                .font(.subheadline)
+                .foregroundStyle(UpdoTheme.filmy(0.6))
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 36)
+    }
+}
+
+private var patternBackground: some View {
+    ArenaBackground(
+        primaryGlow: patternTint,
+        secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+        warmGlow: Color(arenaHex: AppArenaPalette.gold),
+        intensity: 0.7
+    )
+}
+
+/// One course: topics with the most questions first, each with its types.
+struct QuestionPatternCourseView: View {
+    let course: String
+    let onPractice: (AIQuestionPattern) -> Void
+    @ObservedObject private var book = AIQuestionPatternBook.shared
+
+    var body: some View {
+        ZStack {
+            patternBackground
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 22) {
+                    ForEach(book.topics(inCourse: course), id: \.topic) { group in
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(group.topic.uppercased(with: Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .tracking(1.4)
+                                .foregroundStyle(patternTint)
+                                .padding(.leading, 4)
+
+                            ForEach(group.items) { p in
+                                NavigationLink {
+                                    QuestionPatternDetailView(patternID: p.id, onPractice: onPractice)
+                                } label: {
+                                    QuestionPatternRow(pattern: p, showCourse: false)
+                                }
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        withAnimation { book.delete(p.id) }
+                                    } label: {
+                                        Label(tr("fn_delete"), systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+            }
+        }
+        .navigationTitle(course)
+        .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+private struct QuestionPatternRow: View {
+    let pattern: AIQuestionPattern
+    let showCourse: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                if showCourse {
+                    Text(pattern.course)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(patternTint)
+                }
+                Text(pattern.name)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .multilineTextAlignment(.leading)
+                if !pattern.cue.isEmpty {
+                    AIInline.text(pattern.cue)
+                        .font(.footnote)
+                        .foregroundStyle(UpdoTheme.filmy(0.6))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Text("×\(pattern.count)")
+                .font(.system(size: 13, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(pattern.count > 1 ? patternTint : UpdoTheme.filmy(0.4))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(patternTint.opacity(pattern.count > 1 ? 0.14 : 0.06), in: Capsule())
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UpdoTheme.surfaceHigh.opacity(0.7), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(UpdoTheme.border, lineWidth: 1))
+        .contentShape(Rectangle())
+    }
+}
+
+/// One type: recognize it → set up the reasoning → equations to recall →
+/// the student's own questions of this type → practice a new one.
+struct QuestionPatternDetailView: View {
+    let patternID: UUID
+    let onPractice: (AIQuestionPattern) -> Void
+    @ObservedObject private var book = AIQuestionPatternBook.shared
+
+    var body: some View {
+        ZStack {
+            patternBackground
+
+            if let p = book.pattern(patternID) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(tr("qp_detail_meta", p.course, p.topic, p.count))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.55))
+                            .padding(.leading, 4)
+
+                        if !p.cue.isEmpty {
+                            section(tr("qp_cue_header"), icon: "eye.fill") {
+                                AIInline.text(p.cue)
+                                    .font(.body)
+                                    .foregroundStyle(UpdoTheme.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        section(tr("qp_steps_header"), icon: "brain.head.profile") {
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(Array(p.steps.enumerated()), id: \.offset) { i, step in
+                                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                        Text("\(i + 1)")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundStyle(patternTint)
+                                            .frame(width: 22, height: 22)
+                                            .background(patternTint.opacity(0.14), in: Circle())
+                                        AIInline.text(step)
+                                            .font(.body)
+                                            .foregroundStyle(UpdoTheme.textPrimary)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                            }
+                        }
+
+                        if !p.equations.isEmpty {
+                            section(tr("qp_eq_header"), icon: "function") {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    ForEach(p.equations, id: \.self) { eq in
+                                        AIDisplayMath(latex: eq)
+                                    }
+                                }
+                            }
+                        }
+
+                        if !p.examples.isEmpty {
+                            section(tr("qp_examples_header"), icon: "text.bubble.fill") {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(p.examples.reversed(), id: \.self) { ex in
+                                        Text("“\(ex)”")
+                                            .font(.footnote)
+                                            .foregroundStyle(UpdoTheme.filmy(0.65))
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                            }
+                        }
+
+                        Button {
+                            onPractice(p)
+                        } label: {
+                            Label(tr("qp_practice"), systemImage: "sparkles")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(UpdoTheme.onAccent)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(
+                                    LinearGradient(colors: [patternTint, Color(arenaHex: AppArenaPalette.purple)],
+                                                   startPoint: .leading, endPoint: .trailing),
+                                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 6)
+                    }
+                    .padding(16)
+                }
+                .navigationTitle(p.name)
+            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func section<Content: View>(_ title: String, icon: String,
+                                         @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: icon)
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .tracking(1.2)
+                .foregroundStyle(patternTint)
+            content()
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

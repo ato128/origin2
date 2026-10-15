@@ -2442,3 +2442,22 @@
 "fn_empty_sub" = "Updo AI'a ders sorusu sorduğunda kullanılan formüller ve kurallar burada ders ve konuya göre kendiliğinden birikir.";
 "fn_copy" = "Kopyala";
 "fn_delete" = "Sil";
+
+/* Question types (Profile) */
+"qp_title" = "Soru Tipleri";
+"qp_caps" = "SORU TİPLERİ";
+"qp_card_empty" = "Çözdüğün sorular tiplerine göre ayrılır: nasıl tanınır, hangi mantık, hangi denklem";
+"qp_card_count" = "tip · %d soru";
+"qp_card_top" = "En sık: %@ · %d kez";
+"qp_course_meta" = "%d tip · %d soru";
+"qp_most_header" = "EN SIK KARŞILAŞTIKLARIN";
+"qp_courses_header" = "DERSLER";
+"qp_empty_title" = "Henüz soru tipi yok";
+"qp_empty_sub" = "Updo AI'a soru çözdürdüğünde her soru tipine göre ayrılır: bu tip nasıl tanınır, nasıl bir mantık kurulur, hangi denklem akla gelmeli.";
+"qp_detail_meta" = "%@ · %@ · %d kez karşılaştın";
+"qp_cue_header" = "NASIL TANIRSIN";
+"qp_steps_header" = "MANTIK";
+"qp_eq_header" = "AKLINA GELMESİ GEREKENLER";
+"qp_examples_header" = "BU TİPTE SORDUKLARIN";
+"qp_practice" = "Bu tipte yeni soru çöz";
+"qp_practice_seed" = "\"%@\" tipinde (%@) bana yeni bir soru ver. Çözümü hemen yazma, önce ben deneyeyim; takılırsam ipucu ver.";
