@@ -2948,30 +2948,51 @@ struct StreakFlameBadge: View {
     private let fCoral = Color(arenaHex: "#FF6A3D")
     private let fRed   = Color(arenaHex: "#EF4444")
 
+    // The flame flickers for a few seconds when it appears or is tapped, then
+    // burns still. It sits in the Home top bar for as long as the app is open;
+    // a 30 fps flicker there (glass background included) never let the GPU
+    // rest and warmed the phone.
+    @State private var flickering = false
+    @State private var flickerToken = 0
+
     var body: some View {
         Button {
             HapticManager.shared.navigation()
+            flicker(for: 3)
             onTap()
         } label: {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                content(t: t)
-            }
+            content
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tr("home_streak_ax", streak))
+        .onAppear { flicker(for: 5) }
     }
 
-    private func content(t: TimeInterval) -> some View {
-        // Two desynced sines → organic flicker. Stronger swing as the streak grows.
-        let flick: Double = (sin(t * 7.3) * 0.6 + sin(t * 11.7 + 1.1) * 0.4)
-        let swing: Double = isLit ? (0.04 + 0.06 * level) : 0.015
-        let scale: CGFloat = 1.0 + CGFloat(flick * swing)
-        let lift: CGFloat = CGFloat(flick * (isLit ? 1.2 : 0.4))
-        let glowOpacity: Double = isLit ? (0.30 + 0.55 * level + 0.10 * flick) : 0.10
+    private func flicker(for seconds: Double) {
+        flickering = true
+        flickerToken += 1
+        let token = flickerToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+            if flickerToken == token { withAnimation(.easeOut(duration: 0.4)) { flickering = false } }
+        }
+    }
 
-        return HStack(spacing: 6) {
-            flameStack(scale: scale, lift: lift, glowOpacity: glowOpacity)
+    private var baseGlow: Double { isLit ? (0.30 + 0.55 * level) : 0.10 }
+
+    private var content: some View {
+        HStack(spacing: 6) {
+            // Only the flame redraws per frame — the glass behind it stays put.
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !flickering)) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                // Two desynced sines → organic flicker. Stronger swing as the streak grows.
+                let flick: Double = flickering ? (sin(t * 7.3) * 0.6 + sin(t * 11.7 + 1.1) * 0.4) : 0
+                let swing: Double = isLit ? (0.04 + 0.06 * level) : 0.015
+                flameStack(
+                    scale: 1.0 + CGFloat(flick * swing),
+                    lift: CGFloat(flick * (isLit ? 1.2 : 0.4)),
+                    glowOpacity: isLit ? baseGlow + 0.10 * flick : baseGlow
+                )
+            }
 
             Text("\(streak)")
                 .font(.system(size: compact ? 14 : 16, weight: .black, design: .rounded))
@@ -2988,7 +3009,7 @@ struct StreakFlameBadge: View {
                     .liquidGlass(in: Capsule(), tint: fCoral.opacity(isLit ? 0.16 : 0))
                     .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
             } else {
-                badgeBackground(glowOpacity: glowOpacity)
+                badgeBackground(glowOpacity: baseGlow)
             }
         }
     }

@@ -22,7 +22,10 @@ final class FocusSessionManager: ObservableObject {
     @Published var isExpanded: Bool = false
     @Published var isMinimized: Bool = false
     @Published var currentSession: FocusSessionState? {
-        didSet { publishFocusStateIfChanged() }
+        didSet {
+            publishFocusStateIfChanged()
+            updateNowTimer()
+        }
     }
     @Published var now: Date = Date()
     @Published var completionSummary: FocusCompletionSummary?
@@ -64,7 +67,7 @@ final class FocusSessionManager: ObservableObject {
 
     private init() {
         restoreSessionIfNeeded()
-        startNowTimer()
+        updateNowTimer()
     }
 
     deinit {
@@ -989,10 +992,22 @@ final class FocusSessionManager: ObservableObject {
         timer = nil
     }
 
-    private func startNowTimer() {
-        nowTimer?.invalidate()
-        nowTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.now = Date()
+    /// `now` drives the countdown, so it ticks only while there IS a session.
+    /// It used to tick forever: every second this published object re-rendered
+    /// the app root, the Home AI chat (every message) and the tab bar — idle
+    /// CPU/GPU work that warmed the phone with no focus running at all.
+    private func updateNowTimer() {
+        if currentSession == nil {
+            nowTimer?.invalidate()
+            nowTimer = nil
+        } else if nowTimer == nil {
+            now = Date()
+            let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.now = Date() }
+            }
+            t.tolerance = 0.1
+            RunLoop.main.add(t, forMode: .common)
+            nowTimer = t
         }
     }
 
