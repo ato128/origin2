@@ -258,6 +258,19 @@ final class UpdoAIChatStore: ObservableObject {
         return Array(pool.sorted { $0.timestamp < $1.timestamp }.suffix(Self.historyTurns))
     }
 
+    /// The model only sees photos sent with the request, so a follow-up to a
+    /// question photo ("olur", "3. soruyu da çöz") re-attaches it. Only the
+    /// latest photo, only while it's among the student's last 4 messages and
+    /// under 2 hours old — older photos stay a "[📷]" marker.
+    private static func carriedPhoto(in turns: [AIMessage]) -> (id: UUID, b64: String)? {
+        let recent = turns.filter { $0.role == "user" }.suffix(4)
+        guard let photo = recent.last(where: { $0.imageFile != nil }),
+              let file = photo.imageFile,
+              Date().timeIntervalSince(photo.timestamp) < 2 * 3600,
+              let jpeg = AIChatImageStore.jpegData(file) else { return nil }
+        return (photo.id, jpeg.base64EncodedString())
+    }
+
     // MARK: - Send
 
     func send(
@@ -278,7 +291,8 @@ final class UpdoAIChatStore: ObservableObject {
         Analytics.shared.track(image == nil ? "ai_message_sent" : "ai_photo_question_sent")
 
         // A question photo: downscaled once, kept on disk for the bubble, and
-        // sent (base64) only with THIS turn — older photos never travel again.
+        // sent (base64) with this turn — and with the follow-ups right after it
+        // (see `carriedPhoto`), never with later, unrelated turns.
         var imageB64: String? = nil
         var imageFile: String? = nil
         if let image, let jpeg = AIChatImageStore.prepareJPEG(image) {
@@ -304,17 +318,20 @@ final class UpdoAIChatStore: ObservableObject {
 
         // Last 20 turns so a longer explanation keeps its thread; each turn is
         // clipped so one very long old answer can't balloon the input cost.
-        let history: [[String: Any]] = historyMessages(guess: guess).compactMap { msg in
+        let turns = historyMessages(guess: guess)
+        let carried = imageB64 == nil ? Self.carriedPhoto(in: turns) : nil
+        let history: [[String: Any]] = turns.compactMap { msg in
             guard msg.role == "user" || msg.role == "assistant" else { return nil }
             var content = msg.text
             if content.count > Self.historyCharsPerTurn {
                 content = String(content.prefix(Self.historyCharsPerTurn)) + "…"
             }
-            if msg.imageFile != nil && msg.id != userMsg.id {
+            if msg.imageFile != nil && msg.id != userMsg.id && msg.id != carried?.id {
                 content = "[📷] " + content
             }
             var m: [String: Any] = ["role": msg.role == "user" ? "user" : "assistant", "content": content]
             if msg.id == userMsg.id, let imageB64 { m["images"] = [imageB64] }
+            if msg.id == carried?.id, let b64 = carried?.b64 { m["images"] = [b64] }
             return m
         }
 
@@ -676,6 +693,11 @@ enum AIChatImageStore {
         } catch {
             return nil
         }
+    }
+
+    /// The stored JPEG as-is (already downscaled) — for re-sending to the model.
+    static func jpegData(_ name: String) -> Data? {
+        try? Data(contentsOf: directory.appendingPathComponent(name))
     }
 
     static func load(_ name: String) -> UIImage? {
