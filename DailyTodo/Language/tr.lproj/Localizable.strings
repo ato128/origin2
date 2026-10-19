@@ -586,7 +586,6 @@
 "ch_active_caps" = "AKTİF";
 "crew_title_first" = "Sosyal";
 "crew_title_accent" = "Alan";
-"iplc_after_price" = "sonra 129,99 ₺/ay";
 "crew_see_friends_close" = "Arkadaşlarını yakından gör";
 "crew_friends_locked_sub" = "Kim odakta, serisi & seviyesi kaç — Updo Premium ile aç";
 "crew_share_my_stats" = "İstatistiğimi paylaş";
@@ -1918,11 +1917,6 @@
 "ils_complete_task" = "Görev tamamla";
 "ils_streak_day" = "Seri günü";
 "ils_level_up_caps" = "YENİ SEVİYEYE GEÇ";
-"iplc_header_caps" = "PREMIUM LAB · AI ARAÇ";
-"iplc_exam_planner" = "AI Sınav Planlayıcı";
-"iplc_exam_sub" = "Final tarihini gir — AI konu planını oluştursun";
-"iplc_all_free" = "Tüm araçlar — 3 gün bedava";
-"iplc_already_active" = "Bu özellik zaten aktif!";
 "ils_progressing_lv" = "Lv.%d için ilerliyorsun";
 
 /* Tail batch 3 */

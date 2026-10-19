@@ -159,7 +159,6 @@ struct InsightsView: View {
     // Sheet'ler
     @State private var showUpdoAI = false
     @State private var aiSeed: String? = nil
-    @State private var comingSoonTool: PremiumLabTool?
     @State private var showIdentityLevelSheet = false
 
     // Identity level-up flow
@@ -323,12 +322,6 @@ struct InsightsView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { showUpdoAI = true }
     }
 
-    private var examPlannerSeed: String {
-        appLanguageIsEnglish()
-        ? "I have an upcoming exam and want a study plan. Ask me which course, the exam date and the topics — then build a clear day-by-day plan and add the study sessions to my week."
-        : "Yaklaşan bir sınavım var ve çalışma planı istiyorum. Hangi ders, sınav tarihi ve konuları sor; sonra net bir günlük plan çıkar ve çalışma seanslarını haftama ekle."
-    }
-
     // MARK: - Body
 
     var body: some View {
@@ -419,11 +412,6 @@ struct InsightsView: View {
             )
             .environmentObject(session)
             .environmentObject(studentStore)
-        }
-        .sheet(item: $comingSoonTool) { tool in
-            InsightsComingSoonSheet(tool: tool)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showIdentityLevelSheet, onDismiss: {
             guard wantsCelebrationAfterSheet else { return }
@@ -1081,19 +1069,6 @@ struct InsightsView: View {
             // Question types: how each kind of question is reasoned (free for all).
             QuestionPatternsCard { showQuestionPatterns = true }
                 .insightsCardReveal()
-
-            // Exam planner.
-            InsightsPremiumLabCard(
-                isPremium: premiumState != .free,
-                onExamPlanner: {
-                    aiSeed = examPlannerSeed
-                    showUpdoAI = true
-                },
-                onCoach: { },
-                onSmartInsights: { },
-                onUpgrade: { showPremium = true }
-            )
-            .insightsCardReveal()
         }
     }
 
@@ -1591,17 +1566,7 @@ struct InsightsView: View {
     }
 }
 
-// MARK: - PremiumLabTool Identifiable extension (sheet item)
 
-extension PremiumLabTool: Identifiable {
-    var id: String {
-        switch self {
-        case .examPlanner: return "examPlanner"
-        case .aiCoach: return "aiCoach"
-        case .smartInsights: return "smartInsights"
-        }
-    }
-}
 
 // MARK: - Card reveal + scroll offset bridge
 

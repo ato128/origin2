@@ -584,7 +584,6 @@
 "ch_active_caps" = "ACTIVE";
 "crew_title_first" = "The";
 "crew_title_accent" = "Crew";
-"iplc_after_price" = "then 129.99 ₺/mo";
 "crew_see_friends_close" = "See your friends up close";
 "crew_friends_locked_sub" = "Who's focusing, their streak & level — unlock with Updo Premium";
 "crew_share_my_stats" = "Share my stats";
@@ -1916,11 +1915,6 @@
 "ils_complete_task" = "Complete tasks";
 "ils_streak_day" = "Streak day";
 "ils_level_up_caps" = "LEVEL UP";
-"iplc_header_caps" = "PREMIUM LAB · AI TOOLS";
-"iplc_exam_planner" = "AI Exam Planner";
-"iplc_exam_sub" = "Enter your final date — let AI build your topic plan";
-"iplc_all_free" = "All tools — 3 days free";
-"iplc_already_active" = "This feature is already active!";
 "ils_progressing_lv" = "Progressing toward Lv.%d";
 
 /* Tail batch 3 */
