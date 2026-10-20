@@ -248,6 +248,7 @@ struct MessagesView: View {
     var body: some View {
         NavigationStack {
             messagesRoot
+                .updoReadableColumn()
                 .navigationBarBackButtonHidden(true)
                 .toolbar(.hidden, for: .navigationBar)
                 .task {
@@ -520,6 +521,7 @@ private extension MessagesView {
                     ForEach(onlineItems) { item in
                         NavigationLink {
                             destinationView(for: item)
+                                .updoReadableColumn()
                         } label: {
                             onlineCard(item)
                         }
@@ -553,6 +555,7 @@ private extension MessagesView {
                     ForEach(Array(filteredConversationItems.enumerated()), id: \.element.id) { index, item in
                         NavigationLink {
                             destinationView(for: item)
+                                .updoReadableColumn()
                         } label: {
                             conversationRow(item)
                         }
@@ -1752,6 +1755,7 @@ private extension MessagesView {
                         ForEach(archivedConversationItems, id: \.id) { item in
                             NavigationLink {
                                 destinationView(for: item)
+                                    .updoReadableColumn()
                             } label: {
                                 conversationRow(item)
                             }

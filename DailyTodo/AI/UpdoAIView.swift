@@ -8,6 +8,7 @@ import SwiftData
 import Combine
 import Supabase
 import PhotosUI
+import UniformTypeIdentifiers
 
 struct UpdoAIView: View {
     var seedPrompt: String? = nil
@@ -27,6 +28,11 @@ struct UpdoAIView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.homeDockReserve) private var homeDockReserve
+    /// iPad: the floating "Up do" capsule owns the top-left corner, so Home's
+    /// ☰ + flame join the trailing group instead.
+    @Environment(\.homeTopLeadingTaken) private var homeTopLeadingTaken
+    @Environment(\.padRailInset) private var padRailInset
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var store: TodoStore
@@ -70,6 +76,8 @@ struct UpdoAIView: View {
     @State private var showQuestionLibrary = false
     @State private var questionPickerItem: PhotosPickerItem? = nil
     @State private var viewerImage: UIImage? = nil
+    /// A photo is being dragged over the chat (iPad: from Photos/Files/Safari).
+    @State private var isDropTargeted = false
 
     private let hapticSend = UIImpactFeedbackGenerator(style: .light)
     private let hapticResponse = UINotificationFeedbackGenerator()
@@ -292,6 +300,31 @@ struct UpdoAIView: View {
 
     private var showSmartChips: Bool { chatStore.visibleMessages.isEmpty && inputText.isEmpty }
 
+    /// iPad at full/regular width gets its own composition (hero welcome,
+    /// suggestion grid, larger composer). Slide Over / narrow split keeps the
+    /// phone layout, which already fits there.
+    private var isPadLayout: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
+    }
+
+    /// "İyi akşamlar, Atakan" — the iPad welcome speaks to the student.
+    private var padGreeting: String {
+        let prefix: String
+        switch Calendar.current.component(.hour, from: Date()) {
+        case 5..<12: prefix = tr("hv_good_morning")
+        case 12..<18: prefix = tr("hv_good_afternoon")
+        default: prefix = tr("hv_good_evening")
+        }
+        let first = session.currentUser?.fullName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: " ").first.map(String.init) ?? ""
+        let name = first.isEmpty ? (session.currentUser?.username ?? "") : first
+        guard !name.isEmpty else {
+            return String(prefix.dropLast(prefix.hasSuffix(",") ? 1 : 0))
+        }
+        return "\(prefix) \(name)"
+    }
+
     private var canSend: Bool {
         // Credits are checked in `routeUserInput` for the LLM path only — local
         // add/remove commands are free, so the button stays usable at 0 credits.
@@ -309,20 +342,30 @@ struct UpdoAIView: View {
                 chatScene
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            HStack(spacing: 8) {
-                                homeMenuButton
-                                homeLeading
+                        if !homeTopLeadingTaken {
+                            ToolbarItem(placement: .topBarLeading) {
+                                HStack(spacing: 8) {
+                                    homeMenuButton
+                                    homeLeading
+                                }
+                                .fixedSize()
                             }
-                            .fixedSize()
+                            ToolbarItem(placement: .principal) { navTitle.fixedSize() }
+                            ToolbarItem(placement: .topBarTrailing) { homeTrailing }
                         }
-                        ToolbarItem(placement: .principal) { navTitle.fixedSize() }
-                        ToolbarItem(placement: .topBarTrailing) { homeTrailing }
+                    }
+                    // iPad: the chat draws its own top bar (below) so it moves
+                    // with the content — ☰ + flame sit right of the rail, like
+                    // the old sidebar layout — instead of the UIKit bar.
+                    .toolbar(homeTopLeadingTaken ? .hidden : .automatic, for: .navigationBar)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        if homeTopLeadingTaken { padTopBar }
                     }
                     .toolbarBackground(.hidden, for: .navigationBar)
             } else {
                 NavigationStack {
                     chatScene
+                        .updoReadableColumn()
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading) { dismissButton }
@@ -435,9 +478,13 @@ struct UpdoAIView: View {
             sendSeedIfNeeded()
             autoStartScanIfNeeded()
             consumeHomeOpenerIfNeeded()
+            consumeNotebookPageIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: .presentUpdoAIWithOpener)) { _ in
             consumeHomeOpenerIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .notebookPageToChat)) { _ in
+            consumeNotebookPageIfNeeded()
         }
     }
 
@@ -472,6 +519,12 @@ struct UpdoAIView: View {
 
             messagesScrollView
 
+            if isDropTargeted {
+                dropTargetOverlay
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .zIndex(20)
+            }
+
             if showToast {
                 toastBanner
                     .padding(.bottom, 96 + homeDockReserve)
@@ -479,6 +532,46 @@ struct UpdoAIView: View {
                     .zIndex(10)
             }
         }
+        .animation(.easeOut(duration: 0.18), value: isDropTargeted)
+        // Drop a question photo anywhere on the chat → it waits in the
+        // composer, exactly like one picked from the library.
+        .onDrop(of: [.image], isTargeted: $isDropTargeted) { providers in
+            guard let provider = providers.first(where: { $0.canLoadObject(ofClass: UIImage.self) }) else {
+                return false
+            }
+            _ = provider.loadObject(ofClass: UIImage.self) { object, _ in
+                guard let image = object as? UIImage else { return }
+                Task { @MainActor in
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { pendingImage = image }
+                }
+            }
+            return true
+        }
+    }
+
+    private var dropTargetOverlay: some View {
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        return VStack(spacing: 12) {
+            Image(systemName: "photo.badge.plus")
+                .font(.system(size: 34, weight: .medium))
+                .foregroundStyle(UpdoTheme.cyan)
+                .symbolEffect(.bounce, value: isDropTargeted)
+            Text(tr("ai_drop_photo"))
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(UpdoTheme.textPrimary)
+            Text(tr("ai_drop_photo_sub"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(shape.fill(UpdoTheme.cyan.opacity(0.07)))
+        .overlay(shape.strokeBorder(UpdoTheme.cyan.opacity(0.65), style: StrokeStyle(lineWidth: 2, dash: [9, 7])))
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12 + homeDockReserve)
+        .allowsHitTesting(false)
     }
 
     @State private var didSendSeed = false
@@ -507,6 +600,16 @@ struct UpdoAIView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             chatStore.appendAssistant(trimmed)
         }
+    }
+
+    /// A notebook page sent from the Defter waits in the composer as the
+    /// attached picture, with "About my "…" note:" typed — the student asks.
+    private func consumeNotebookPageIfNeeded() {
+        guard embeddedInHome, let page = NotebookChatHandoff.shared.consume() else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            pendingImage = page.image
+        }
+        inputText = page.prompt
     }
 
     /// Leaves the chat after an action that moves elsewhere. On Home the chat
@@ -719,9 +822,32 @@ struct UpdoAIView: View {
                             .offset(x: -3, y: 3)
                     }
                 }
+                .contentShape(.hoverEffect, Circle())
+                .hoverEffect(.highlight)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tr("ai_menu_a11y"))
+    }
+
+    /// iPad Home's own top bar: ☰ + flame · title · trailing buttons.
+    private var padTopBar: some View {
+        ZStack {
+            HStack(spacing: 8) {
+                homeMenuButton
+                homeLeading
+                Spacer(minLength: 8)
+                homeTrailing
+            }
+            navTitle.fixedSize()
+        }
+        // Across the whole chat area (not just the centered column), right
+        // of the rail. A real frame, not an offset, so every button keeps
+        // its hit area.
+        .padding(.leading, padRailInset + 16)
+        .padding(.trailing, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+        .ignoresSafeArea(.container, edges: .horizontal)
     }
 
     private func switchChat(to id: UUID?) {
@@ -790,8 +916,8 @@ struct UpdoAIView: View {
                         let visible = Array(chatStore.visibleMessages.suffix(50))
                         ForEach(visible) { msg in
                             messageRow(msg)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 3)
+                                .padding(.horizontal, isPadLayout ? 24 : 16)
+                                .padding(.vertical, isPadLayout ? 5 : 3)
                         }
 
                         if chatStore.isSending {
@@ -804,8 +930,8 @@ struct UpdoAIView: View {
                                     proxy.scrollTo("typing", anchor: .bottom)
                                 }
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, isPadLayout ? 24 : 16)
+                            .padding(.vertical, isPadLayout ? 5 : 3)
                             .id("typing")
                         }
                     }
@@ -844,6 +970,7 @@ struct UpdoAIView: View {
             text: msg.text,
             isUser: msg.role == "user",
             showsOrb: !chatStore.isSending && isLastAssistantMessage(msg),
+            wide: isPadLayout,
             imageFile: msg.imageFile,
             onTapImage: { viewerImage = $0 }
         )
@@ -918,8 +1045,10 @@ struct UpdoAIView: View {
             .frame(height: 34)
             .background(UpdoTheme.surfaceHigh, in: Capsule())
             .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
+            .contentShape(.hoverEffect, Capsule())
         }
         .buttonStyle(.plain)
+        .hoverEffect(.highlight)
     }
 
     /// Sohbetteki en son asistan (AI) mesajı mı? Orb yalnız onun yanında gösterilir.
@@ -929,7 +1058,18 @@ struct UpdoAIView: View {
 
     // MARK: - Empty State
 
+    @ViewBuilder
     private var emptyStateView: some View {
+        if isPadLayout { padEmptyStateView } else { phoneEmptyStateView }
+    }
+
+    private func runSuggestion(_ s: Suggestion) {
+        if s.opensScan { beginScheduleScan() }
+        else if s.opensExamPlanner { showExamPlanner = true }
+        else { sendQuickMessage(s.prompt) }
+    }
+
+    private var phoneEmptyStateView: some View {
         VStack(spacing: 30) {
             VStack(spacing: 16) {
                 UpdoAIOrb(mode: .idle, size: 92)
@@ -965,9 +1105,7 @@ struct UpdoAIView: View {
             VStack(spacing: 10) {
                 ForEach(suggestions) { s in
                     Button {
-                        if s.opensScan { beginScheduleScan() }
-                        else if s.opensExamPlanner { showExamPlanner = true }
-                        else { sendQuickMessage(s.prompt) }
+                        runSuggestion(s)
                     } label: {
                         HStack(spacing: 13) {
                             Image(systemName: s.icon)
@@ -1019,17 +1157,133 @@ struct UpdoAIView: View {
         .onDisappear { emptyStateAppeared = false }
     }
 
+    // MARK: - iPad welcome
+
+    /// iPad empty state: a personal greeting under the orb and the four
+    /// starting points as a 2×2 grid of cards — the width is used for choice,
+    /// not for stretching one long list.
+    private var padEmptyStateView: some View {
+        VStack(spacing: 40) {
+            VStack(spacing: 20) {
+                UpdoAIOrb(mode: .idle, size: 104)
+                    .scaleEffect(emptyStateAppeared ? 1 : 0.7)
+                    .opacity(emptyStateAppeared ? 1 : 0)
+
+                VStack(spacing: 10) {
+                    Text(padGreeting)
+                        .font(.largeTitle.weight(.bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .multilineTextAlignment(.center)
+
+                    Text(tr("ai_empty_sub").replacingOccurrences(of: "\n", with: " "))
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .opacity(emptyStateAppeared ? 1 : 0)
+                .offset(y: emptyStateAppeared ? 0 : 8)
+            }
+
+            Grid(horizontalSpacing: 14, verticalSpacing: 14) {
+                ForEach(0..<(suggestions.count + 1) / 2, id: \.self) { row in
+                    GridRow {
+                        ForEach(row * 2..<min(row * 2 + 2, suggestions.count), id: \.self) { index in
+                            padSuggestionCard(suggestions[index])
+                                .opacity(emptyStateAppeared ? 1 : 0)
+                                .offset(y: emptyStateAppeared ? 0 : 14)
+                                .animation(
+                                    .spring(response: 0.55, dampingFraction: 0.82)
+                                        .delay(0.06 * Double(index + 1)),
+                                    value: emptyStateAppeared
+                                )
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: 640)
+        }
+        .frame(maxWidth: .infinity)
+        .onAppear {
+            guard !emptyStateAppeared else { return }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                emptyStateAppeared = true
+            }
+        }
+        .onDisappear { emptyStateAppeared = false }
+    }
+
+    private func padSuggestionCard(_ s: Suggestion) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        return Button {
+            runSuggestion(s)
+        } label: {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top) {
+                    Image(systemName: s.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.cyan)
+                        .frame(width: 42, height: 42)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(UpdoTheme.cyan.opacity(0.12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(UpdoTheme.cyan.opacity(0.2), lineWidth: 1)
+                                )
+                        )
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(s.title)
+                        .font(.headline)
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    Text(s.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2, reservesSpace: true)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .liquidGlass(in: shape)
+            .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+            .contentShape(.hoverEffect, shape)
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.lift)
+    }
+
     // MARK: - Smart Chips
 
     private var smartChipsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                smartChip(icon: "doc.text.viewfinder", label: tr("ai_chip_scan")) { beginScheduleScan() }
-                smartChip(icon: "calendar", label: tr("ai_chip_week"), action: onDismissAndOpenWeek)
-                smartChip(icon: "plus.circle.fill", label: tr("hv_add_task"), action: onDismissAndAddTask)
-                smartChip(icon: "timer", label: tr("ai_chip_history")) { showFocusHistory = true }
-                smartChip(icon: "calendar.badge.clock", label: tr("ai_exam_plan")) { showExamPlanner = true }
+        // iPad: the chips fit the column, so they sit centered over the
+        // composer; only when they don't (phone) does the row scroll.
+        ViewThatFits(in: .horizontal) {
+            if isPadLayout {
+                smartChips.fixedSize()
             }
+            ScrollView(.horizontal, showsIndicators: false) {
+                smartChips
+            }
+        }
+    }
+
+    private var smartChips: some View {
+        HStack(spacing: 8) {
+            smartChip(icon: "doc.text.viewfinder", label: tr("ai_chip_scan")) { beginScheduleScan() }
+            smartChip(icon: "calendar", label: tr("ai_chip_week"), action: onDismissAndOpenWeek)
+            smartChip(icon: "plus.circle.fill", label: tr("hv_add_task"), action: onDismissAndAddTask)
+            smartChip(icon: "timer", label: tr("ai_chip_history")) { showFocusHistory = true }
+            smartChip(icon: "calendar.badge.clock", label: tr("ai_exam_plan")) { showExamPlanner = true }
         }
     }
 
@@ -1047,8 +1301,10 @@ struct UpdoAIView: View {
             .background(
                 Capsule().fill(UpdoTheme.surfaceHigh)
             )
+            .contentShape(.hoverEffect, Capsule())
         }
         .buttonStyle(.plain)
+        .hoverEffect(.highlight)
     }
 
     // MARK: - Bottom Bar (chips + iMessage-style input)
@@ -1144,20 +1400,29 @@ struct UpdoAIView: View {
                             }
                         } label: {
                             Image(systemName: "plus")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.system(size: isPadLayout ? 18 : 16, weight: .semibold))
                                 .foregroundStyle(UpdoTheme.cyan)
-                                .frame(width: 32, height: 32)
+                                .frame(width: isPadLayout ? 38 : 32, height: isPadLayout ? 38 : 32)
+                                .contentShape(.hoverEffect, Circle())
+                                .hoverEffect(.highlight)
                         }
                         .buttonStyle(.plain)
-                        .padding(.leading, 4)
-                        .padding(.bottom, 4)
+                        .padding(.leading, isPadLayout ? 6 : 4)
+                        .padding(.bottom, isPadLayout ? 6 : 4)
                         .accessibilityLabel(tr("ai_attach"))
 
                         TextField(tr("ai_input_placeholder"), text: $inputText, axis: .vertical)
                             .font(.body)
-                            .lineLimit(1...5)
+                            .lineLimit(1...(isPadLayout ? 8 : 5))
                             .padding(.leading, 4)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, isPadLayout ? 14 : 8)
+                            // Hardware keyboard on iPad: Return sends,
+                            // Shift-Return starts a new line (like Messages).
+                            .onKeyPress(.return, phases: .down) { press in
+                                guard isPadLayout, !press.modifiers.contains(.shift) else { return .ignored }
+                                if canSend { sendMessage() }
+                                return .handled
+                            }
 
                         Button(action: sendMessage) {
                             ZStack {
@@ -1177,17 +1442,20 @@ struct UpdoAIView: View {
                                         .foregroundStyle(canSend ? .black : .secondary)
                                 }
                             }
-                            .frame(width: 30, height: 30)
+                            .frame(width: isPadLayout ? 36 : 30, height: isPadLayout ? 36 : 30)
+                            .contentShape(.hoverEffect, Circle())
                             .animation(.easeInOut(duration: 0.15), value: canSend)
                             .animation(.easeInOut(duration: 0.15), value: chatStore.isSending)
                         }
                         .disabled(!canSend)
-                        .padding(.trailing, 4)
-                        .padding(.bottom, 4)
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .hoverEffect(.lift)
+                        .padding(.trailing, isPadLayout ? 7 : 4)
+                        .padding(.bottom, isPadLayout ? 7 : 4)
                     }
-                    .liquidGlass(in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+                    .liquidGlass(in: RoundedRectangle(cornerRadius: composerRadius, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 21, style: .continuous)
+                        RoundedRectangle(cornerRadius: composerRadius, style: .continuous)
                             .strokeBorder(UpdoTheme.border, lineWidth: 1)
                     )
                 }
@@ -1196,6 +1464,10 @@ struct UpdoAIView: View {
             .padding(.vertical, 8)
         }
     }
+
+    /// iPad's composer is a size up, so its corners grow with it (half the
+    /// single-line height keeps the capsule ends round).
+    private var composerRadius: CGFloat { isPadLayout ? 25 : 21 }
 
     /// The attached question photo, waiting to be sent with the next message.
     private func pendingImagePreview(_ image: UIImage) -> some View {
@@ -2292,22 +2564,28 @@ private struct AIMessageBubble: View, Equatable {
     let text: String
     let isUser: Bool
     let showsOrb: Bool
+    /// iPad column: user bubbles keep a wider margin so long questions don't
+    /// run edge to edge, and question photos show larger.
+    var wide: Bool = false
     var imageFile: String? = nil
     var onTapImage: (UIImage) -> Void = { _ in }
 
     static func == (a: Self, b: Self) -> Bool {
-        a.text == b.text && a.isUser == b.isUser && a.showsOrb == b.showsOrb && a.imageFile == b.imageFile
+        a.text == b.text && a.isUser == b.isUser && a.showsOrb == b.showsOrb
+            && a.wide == b.wide && a.imageFile == b.imageFile
     }
+
+    private var bubbleMargin: CGFloat { wide ? 140 : 64 }
 
     var body: some View {
         VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
             if let imageFile, let image = AIChatImageStore.load(imageFile) {
                 HStack {
-                    if isUser { Spacer(minLength: 64) }
+                    if isUser { Spacer(minLength: bubbleMargin) }
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: 220, maxHeight: 260)
+                        .frame(maxWidth: wide ? 340 : 220, maxHeight: wide ? 400 : 260)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -2316,7 +2594,7 @@ private struct AIMessageBubble: View, Equatable {
                         .contentShape(Rectangle())
                         .onTapGesture { onTapImage(image) }
                         .accessibilityLabel(tr("ai_photo_question"))
-                    if !isUser { Spacer(minLength: 64) }
+                    if !isUser { Spacer(minLength: bubbleMargin) }
                 }
             }
             if !text.isEmpty {
@@ -2350,7 +2628,7 @@ private struct AIMessageBubble: View, Equatable {
     private var bubbleRow: some View {
         HStack(alignment: .bottom, spacing: 6) {
             if isUser {
-                Spacer(minLength: 64)
+                Spacer(minLength: bubbleMargin)
             } else if showsOrb {
                 // Orb yalnızca SON AI mesajının yanında.
                 UpdoAIOrb(mode: .idle, size: 24)
@@ -2384,7 +2662,7 @@ private struct AIMessageBubble: View, Equatable {
                 }
 
             if !isUser {
-                Spacer(minLength: 64)
+                Spacer(minLength: bubbleMargin)
             }
         }
     }

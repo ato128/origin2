@@ -37,6 +37,13 @@ struct FriendDetailView: View {
     let friend: Friend
 
     @Environment(\.dismiss) private var dismiss
+    /// iPad Social split: this screen is the detail column — no back
+    /// button, and "leaving" clears the selection instead of popping.
+    @Environment(\.socialSplitClose) private var socialSplitClose
+
+    private func leave() {
+        if let socialSplitClose { socialSplitClose() } else { dismiss() }
+    }
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     @EnvironmentObject var friendStore: FriendStore
@@ -237,6 +244,13 @@ struct FriendDetailView: View {
         .onAppear {
             playEntrance()
 
+            #if DEBUG
+            // QA/screenshot hook: `-debugSocialChat YES` opens the chat.
+            if UserDefaults.standard.bool(forKey: "debugSocialChat") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { showChat = true }
+            }
+            #endif
+
             if let friendUserID = friend.backendUserID {
                 // Force so opening a specific profile always fetches that friend,
                 // even if a crew/insights refresh ran within the throttle window.
@@ -256,14 +270,23 @@ struct FriendDetailView: View {
                 currentUserID: session.currentUser?.id
             )
         }
-        .fullScreenCover(isPresented: $showChat) {
+        .fullScreenCover(isPresented: socialSplitClose == nil ? $showChat : .constant(false)) {
             // FriendChatView bir NavigationStack bağlamı bekliyor (Home→Mesajlar
             // yolundaki gibi); sarmadan header dinamik adanın altında kalıyor.
             NavigationStack {
                 FriendChatView(friend: friend)
                     .environmentObject(friendStore)
                     .environmentObject(session)
+                    .updoReadableColumn()
             }
+        }
+        // iPad split: the chat opens inside the detail column (like Messages),
+        // the sidebar and list stay put; its back button returns here.
+        .navigationDestination(isPresented: socialSplitClose != nil ? $showChat : .constant(false)) {
+            FriendChatView(friend: friend)
+                .environmentObject(friendStore)
+                .environmentObject(session)
+                .updoReadableColumn()
         }
         .alert("crew_remove_friend_confirm_title", isPresented: $showRemoveFriendAlert) {
             Button(tr("crew_keep_friend"), role: .cancel) { }
@@ -330,23 +353,25 @@ private extension FriendDetailView {
 
     var customHeader: some View {
         HStack {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
-                    .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-                    .frame(width: 46, height: 46)
-                    .background(
-                        RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(UpdoTheme.filmy(0.075))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
-                            )
-                    )
+            if socialSplitClose == nil {
+                Button {
+                    leave()
+                } label: {
+                    Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
+                        .font(.system(size: 19, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .frame(width: 46, height: 46)
+                        .background(
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .fill(UpdoTheme.filmy(0.075))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             Spacer()
 
@@ -899,6 +924,7 @@ private extension FriendDetailView {
                     FriendChatView(friend: friend)
                         .environmentObject(friendStore)
                         .environmentObject(session)
+                        .updoReadableColumn()
                 } label: {
                     actionTile(
                         title: !appLanguageIsEnglish() ? "Sohbet" : "Chat",
@@ -1214,7 +1240,7 @@ private extension FriendDetailView {
                 currentUserID: currentUserID,
                 modelContext: modelContext
             )
-            dismiss()
+            leave()
         } catch {
             Log.debug("REMOVE FRIEND ALERT ACTION ERROR:", error.localizedDescription)
         }

@@ -112,21 +112,25 @@ struct ActiveFocusView: View {
         GeometryReader { geo in
             let topInset = geo.safeAreaInsets.top
             let bottomInset = geo.safeAreaInsets.bottom
+            let scale = Self.stageScale(for: geo.size)
+            // iPad: the ring grows with the screen; the bars keep a readable width.
+            let barWidth: CGFloat = scale > 1 ? 760 : .infinity
 
             ZStack {
                 backgroundLayer
 
                 VStack(spacing: 0) {
                     topBar(topInset: topInset)
+                        .frame(maxWidth: barWidth)
 
                     Spacer(minLength: 8)
 
-                    centerStage
+                    centerStage(scale: scale)
                         .frame(maxWidth: .infinity)
 
                     Spacer(minLength: 14)
 
-                    bottomSection(bottomInset: bottomInset)
+                    bottomSection(bottomInset: bottomInset, maxContentWidth: barWidth)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
             }
@@ -154,6 +158,16 @@ struct ActiveFocusView: View {
 private extension ActiveFocusView {
 
     var ringSize: CGFloat { 292 }
+
+    /// iPad: how much the center stage (ring, glow, digits) grows — as large
+    /// as the width allows, leaving the top bar and controls their height.
+    /// 1 on iPhone.
+    static func stageScale(for size: CGSize) -> CGFloat {
+        guard UIDevice.current.userInterfaceIdiom == .pad, size.width > 600 else { return 1 }
+        let byWidth = size.width / 520
+        let byHeight = (size.height - 380) / 360
+        return max(1, min(1.9, byWidth, byHeight))
+    }
     var ringLineWidth: CGFloat { 16 }
 
     var stablePulseCoreOpacity: Double {
@@ -265,12 +279,14 @@ private extension ActiveFocusView {
 
     // MARK: - Center Stage
 
-    var centerStage: some View {
-        ZStack {
+    func centerStage(scale k: CGFloat) -> some View {
+        let ringSize = self.ringSize * k
+        let ringLineWidth = self.ringLineWidth * min(k, 1.5)
+        return ZStack {
             Circle()
                 .fill(theme.coreGlow.opacity(stablePulseCoreOpacity * PerformanceSettings.radialOpacityMultiplier))
-                .frame(width: 360, height: 360)
-                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 70 : 34)
+                .frame(width: 360 * k, height: 360 * k)
+                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 70 * k : 34 * k)
 
             Circle()
                 .fill(
@@ -281,11 +297,11 @@ private extension ActiveFocusView {
                         ],
                         center: .center,
                         startRadius: 12,
-                        endRadius: 170
+                        endRadius: 170 * k
                     )
                 )
-                .frame(width: 308, height: 308)
-                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 26 : 14)
+                .frame(width: 308 * k, height: 308 * k)
+                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 26 * k : 14 * k)
 
             Circle()
                 .stroke(UpdoTheme.filmy(0.065), lineWidth: ringLineWidth)
@@ -314,7 +330,7 @@ private extension ActiveFocusView {
 
             Circle()
                 .stroke(UpdoTheme.filmy(0.040), lineWidth: 1.1)
-                .frame(width: ringSize - 36, height: ringSize - 36)
+                .frame(width: ringSize - 36 * k, height: ringSize - 36 * k)
 
             Circle()
                 .fill(
@@ -327,7 +343,7 @@ private extension ActiveFocusView {
                         endPoint: .bottom
                     )
                 )
-                .frame(width: ringSize - 56, height: ringSize - 56)
+                .frame(width: ringSize - 56 * k, height: ringSize - 56 * k)
                 .overlay(
                     Circle()
                         .stroke(UpdoTheme.filmy(0.045), lineWidth: 1)
@@ -338,27 +354,27 @@ private extension ActiveFocusView {
                 FocusHeroDigits(
                     text: focusSession.timeString,
                     accent: theme.accent,
-                    size: 56
+                    size: 56 * k
                 )
-                .frame(maxWidth: ringSize - 44)
+                .frame(maxWidth: ringSize - 44 * k)
                 .opacity(focusSession.isPaused ? 0.55 : 1)
 
                 Text(statusTitle)
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .font(.system(size: 12 * min(k, 1.4), weight: .black, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(theme.accent)
 
                 Text(subtitleText)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 14 * min(k, 1.4), weight: .bold))
                     .foregroundStyle(UpdoTheme.filmy(0.46))
             }
         }
-        .frame(height: 360)
+        .frame(height: 360 * k)
     }
 
     // MARK: - Bottom Section
 
-    func bottomSection(bottomInset: CGFloat) -> some View {
+    func bottomSection(bottomInset: CGFloat, maxContentWidth: CGFloat = .infinity) -> some View {
         VStack(spacing: 14) {
             if mode != .personal {
                 compactSharedPanel
@@ -381,6 +397,8 @@ private extension ActiveFocusView {
             controls
                 .padding(.horizontal, 20)
         }
+        .frame(maxWidth: maxContentWidth)
+        .frame(maxWidth: .infinity)
         .padding(.top, 10)
         .padding(.bottom, max(bottomInset, 12) + 8)
         .background(

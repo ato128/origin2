@@ -26,8 +26,11 @@ private struct UnlockedAnalyticsSection: View, Equatable {
     let myStreak: Int
     let myLevel: Int
     let accent: Color
+    /// iPad dashboard: the streak calendar sits in the other column.
+    var includesCalendar: Bool = true
 
     static func == (lhs: UnlockedAnalyticsSection, rhs: UnlockedAnalyticsSection) -> Bool {
+        lhs.includesCalendar == rhs.includesCalendar &&
         lhs.signature == rhs.signature &&
         lhs.ownerID == rhs.ownerID &&
         lhs.myStreak == rhs.myStreak &&
@@ -53,12 +56,14 @@ private struct UnlockedAnalyticsSection: View, Equatable {
             )
 
             // Which days actually fed the streak (task AND focus), this month.
-            InsightsStreakCalendarCard(
-                tasks: tasks,
-                focusSessions: focusSessions,
-                accent: accent
-            )
-            .insightsCardReveal()
+            if includesCalendar {
+                InsightsStreakCalendarCard(
+                    tasks: tasks,
+                    focusSessions: focusSessions,
+                    accent: accent
+                )
+                .insightsCardReveal()
+            }
         }
     }
 }
@@ -122,6 +127,8 @@ private struct LockedAnalyticsBackdrop: View, Equatable {
 }
 
 struct InsightsView: View {
+    /// iPad: room for the floating tab rail on the left.
+    @Environment(\.padRailInset) private var padRailInset
     @EnvironmentObject var session: SessionStore
     @Environment(\.locale) private var locale
     @Environment(\.modelContext) private var modelContext
@@ -154,6 +161,7 @@ struct InsightsView: View {
     @State private var premiumState: PremiumState = .free
     @State private var showPremium = false
     @State private var showFormulaNotebook = false
+    @State private var showNotebook = false
     @State private var showQuestionPatterns = false
 
     // Sheet'ler
@@ -322,6 +330,133 @@ struct InsightsView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { showUpdoAI = true }
     }
 
+    /// Below this width Profile keeps the phone layout.
+    static let wideLayoutMinWidth: CGFloat = 900
+
+    /// iPad: a dashboard, not a long phone scroll — who you are in a wide
+    /// identity band on top, then your numbers in two columns (focus
+    /// analytics left; streak calendar, formulas and question types right).
+    private var wideLayout: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                headerSection
+
+                identityBand
+                    .tourAnchor("insights.main")
+
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(spacing: 14) {
+                        if progression.pendingStreakBreak {
+                            streakBreakBand
+                        }
+                        if subscription.isPro {
+                            analyticsCards(includesCalendar: false)
+                        } else {
+                            lockedAnalytics
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .tourAnchor("insights.data")
+
+                    VStack(spacing: 14) {
+                        // iPad: the notebook takes the streak calendar's place.
+                        NotebookProfileCard { showNotebook = true }
+                        FormulaNotebookCard { showFormulaNotebook = true }
+                        QuestionPatternsCard { showQuestionPatterns = true }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .top)
+                }
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 8)
+            .padding(.bottom, 32)
+            .frame(maxWidth: 1180)
+            .frame(maxWidth: .infinity)
+            .padding(.leading, padRailInset)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    /// The identity hero laid out across the width: ring · who you are ·
+    /// your circle and actions.
+    private var identityBand: some View {
+        let snapshot = identitySnapshot
+        let hasPending = pendingLevelUp != nil || snapshot.isReadyForLevelUp
+        let accent = hasPending ? Color(arenaHex: AppArenaPalette.gold) : snapshot.accent
+        let secondary = hasPending ? Color(arenaHex: AppArenaPalette.coral) : Color(arenaHex: AppArenaPalette.blue)
+        let progress = min(max(snapshot.progress, 0), 1)
+        let shape = RoundedRectangle(cornerRadius: 30, style: .continuous)
+
+        return HStack(alignment: .center, spacing: 28) {
+            Button(action: handleIdentityTap) {
+                HStack(alignment: .center, spacing: 22) {
+                    heroRing(accent: accent, secondary: secondary, progress: progress)
+                        .scaleEffect(0.78)
+                        .frame(width: 200, height: 200)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(resolvedUserName)
+                            .font(.system(size: 34, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+
+                        Text(snapshot.title)
+                            .font(.system(size: 30, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(LinearGradient(colors: [accent, secondary],
+                                                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+
+                        if let school = ProfileSchoolLine.text(for: studentStore.profile) {
+                            Text(school.uppercased())
+                                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                                .tracking(1.4)
+                                .foregroundStyle(UpdoTheme.filmy(0.42))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                                .padding(.top, 6)
+                        }
+
+                        heroMetaRow(snapshot: snapshot, hasPending: hasPending)
+                            .padding(.top, 6)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .trailing, spacing: 14) {
+                heroStatsRow
+                    .frame(width: 300)
+
+                Button(action: handleIdentityTap) {
+                    nextStepCapsule(snapshot: snapshot, hasPending: hasPending, accent: accent)
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+
+                heroActionButtons
+                    .frame(width: 300)
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        }
+        .padding(.vertical, 18)
+        .padding(.leading, 12)
+        .padding(.trailing, 26)
+        .background(
+            shape.fill(LinearGradient(colors: [accent.opacity(0.10), secondary.opacity(0.05), UpdoTheme.filmy(0.02)],
+                                      startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
+        .overlay(shape.strokeBorder(UpdoTheme.filmy(0.08), lineWidth: 1))
+        .opacity(heroEntered ? 1 : 0)
+        .offset(y: heroEntered ? 0 : 10)
+        .animation(.spring(response: 0.6, dampingFraction: 0.85), value: heroEntered)
+        .onAppear { identityDidAppear() }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -338,31 +473,37 @@ struct InsightsView: View {
                     .transition(.opacity)
             }
 
-            ScrollView {
-                ScrollOffsetReader(coordinateSpaceName: "insightsScroll")
+            GeometryReader { geo in
+                if UIDevice.current.userInterfaceIdiom == .pad && geo.size.width >= Self.wideLayoutMinWidth {
+                    wideLayout
+                } else {
+                    ScrollView {
+                        ScrollOffsetReader(coordinateSpaceName: "insightsScroll")
 
-                LazyVStack(spacing: 14) {
-                    headerSection
-                    identityHeroSection
-                        .tourAnchor("insights.main")
+                        LazyVStack(spacing: 14) {
+                            headerSection
+                            identityHeroSection()
+                                .tourAnchor("insights.main")
 
-                    // Each analytics card animates itself in as it enters the
-                    // viewport (scrollTransition inside) — no offset math, no
-                    // fragile preference plumbing.
-                    contentSection
-                        .tourAnchor("insights.data")
+                            // Each analytics card animates itself in as it enters the
+                            // viewport (scrollTransition inside) — no offset math, no
+                            // fragile preference plumbing.
+                            contentSection
+                                .tourAnchor("insights.data")
 
-                    Spacer(minLength: 110)
+                            Spacer(minLength: 110)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    }
+                    .coordinateSpace(name: "insightsScroll")
+                    .onPreferenceChange(ScrollOffsetPreference.self) { value in
+                        scrollOffset = value
+                    }
+                    .modifier(InsightsScrollOffsetBridge(offset: $scrollOffset))
+                    .scrollIndicators(.hidden)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
             }
-            .coordinateSpace(name: "insightsScroll")
-            .onPreferenceChange(ScrollOffsetPreference.self) { value in
-                scrollOffset = value
-            }
-            .modifier(InsightsScrollOffsetBridge(offset: $scrollOffset))
-            .scrollIndicators(.hidden)
 
             collapsedTopTitle
 
@@ -385,6 +526,19 @@ struct InsightsView: View {
         }
         .sheet(isPresented: $showPremium) {
             PaywallView(context: "insights_premium")
+        }
+        #if DEBUG
+        // QA/screenshot hook: `-debugOpenNotebook YES` opens the Defter.
+        .onAppear {
+            if UserDefaults.standard.bool(forKey: "debugOpenNotebook") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { showNotebook = true }
+            }
+        }
+        #endif
+        .fullScreenCover(isPresented: $showNotebook) {
+            NotebookRootView()
+                .environmentObject(session)
+                .environmentObject(studentStore)
         }
         .sheet(isPresented: $showFormulaNotebook) {
             FormulaNotebookView()
@@ -443,6 +597,7 @@ struct InsightsView: View {
             ) {
                 completeLevelUpDirectly(to: targetLevel)
             }
+            .updoReadableColumn()
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
@@ -485,6 +640,7 @@ struct InsightsView: View {
         Group {
             NavigationLink("", isActive: $goWeek) {
                 WeekView()
+                    .updoReadableColumn()
             }
 
             NavigationLink("", isActive: $goFocus) {
@@ -496,6 +652,7 @@ struct InsightsView: View {
                     onFinishFocus: { _, _, _, _, _, _ in },
                     workoutExercises: nil
                 )
+                .updoReadableColumn()
             }
         }
     }
@@ -566,7 +723,9 @@ struct InsightsView: View {
     }
 
 
-    private var identityHeroSection: some View {
+    /// `wide`: the iPad identity panel beside the cards — no scroll cue (the
+    /// cards are to the right) and no first-screen height.
+    private func identityHeroSection(wide: Bool = false) -> some View {
         let snapshot = identitySnapshot
         let hasPending = pendingLevelUp != nil || snapshot.isReadyForLevelUp
         let accent = hasPending ? Color(arenaHex: AppArenaPalette.gold) : snapshot.accent
@@ -662,6 +821,7 @@ struct InsightsView: View {
             Spacer(minLength: 12)
 
             // Scroll cue — first thing to melt away on scroll.
+            if !wide {
             VStack(spacing: 3) {
                 Text(tr("ins_hero_scroll_cue"))
                     .font(.system(size: 11, weight: .bold))
@@ -674,34 +834,38 @@ struct InsightsView: View {
             }
             .padding(.bottom, 6)
             .opacity((1 - Double(collapse) * 3.2))
+            }
         }
         // Text/action block dissolves a beat after the ring while sliding up.
         .offset(y: -scrollOffset * 0.10)
         .opacity(1 - Double(min(max((collapse - 0.12) / 0.55, 0), 1)))
         .frame(maxWidth: .infinity)
-        .frame(minHeight: max(440, UIScreen.main.bounds.height - 320))
+        .frame(minHeight: wide ? 0 : max(440, UIScreen.main.bounds.height - 320))
         .scaleEffect(1 - 0.05 * collapse, anchor: .top)
-        .onAppear {
-            heroEntered = true
-            avatarStore.load(for: currentUserIDString)
+        .onAppear { identityDidAppear() }
+    }
 
-            // Real counts even when the crew tab was never opened this
-            // session — both loads are internally cached/cheap.
-            Task {
-                await crewStore.loadCrews()
-                if friendStore.friendships.isEmpty, let uid = session.currentUser?.id {
-                    await friendStore.loadAllFriendships(currentUserID: uid)
-                }
-            }
+    /// First appearance of the identity hero (phone) or band (iPad).
+    private func identityDidAppear() {
+        heroEntered = true
+        avatarStore.load(for: currentUserIDString)
 
-            if !heroRingFilled {
-                withAnimation(.spring(response: 1.1, dampingFraction: 0.76).delay(0.20)) {
-                    heroRingFilled = true
-                }
+        // Real counts even when the crew tab was never opened this
+        // session — both loads are internally cached/cheap.
+        Task {
+            await crewStore.loadCrews()
+            if friendStore.friendships.isEmpty, let uid = session.currentUser?.id {
+                await friendStore.loadAllFriendships(currentUserID: uid)
             }
-            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
-                heroCueBounce = true
+        }
+
+        if !heroRingFilled {
+            withAnimation(.spring(response: 1.1, dampingFraction: 0.76).delay(0.20)) {
+                heroRingFilled = true
             }
+        }
+        withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+            heroCueBounce = true
         }
     }
 
@@ -1062,6 +1226,10 @@ struct InsightsView: View {
                 lockedAnalytics
             }
 
+            // Notebook pages (read + send to Updo AI on iPhone).
+            NotebookProfileCard { showNotebook = true }
+                .insightsCardReveal()
+
             // Formulas & rules Updo AI used, sorted course → topic (free for all).
             FormulaNotebookCard { showFormulaNotebook = true }
                 .insightsCardReveal()
@@ -1072,7 +1240,9 @@ struct InsightsView: View {
         }
     }
 
-    private var analyticsCards: some View {
+    private var analyticsCards: some View { analyticsCards(includesCalendar: true) }
+
+    private func analyticsCards(includesCalendar: Bool) -> some View {
         let focus = filteredFocusSessions
         let tasks = filteredTasks
         let friends = myLocalFriends
@@ -1093,7 +1263,8 @@ struct InsightsView: View {
             myName: resolvedUserName,
             myStreak: progression.currentStreak,
             myLevel: storedIdentityLevel,
-            accent: insightsAccent
+            accent: insightsAccent,
+            includesCalendar: includesCalendar
         )
         .equatable()
     }

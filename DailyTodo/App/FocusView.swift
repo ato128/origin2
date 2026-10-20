@@ -44,6 +44,13 @@ struct FocusView: View {
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var localFriends: [Friend]
+
+    /// iPad: room for the floating tab rail on the left.
+    @Environment(\.padRailInset) var padRailInset
+
+    /// iPad stage: the "recent sessions" list next to the timer.
+    @Query(sort: \FocusSessionRecord.endedAt, order: .reverse)
+    private var focusRecords: [FocusSessionRecord]
     
     var body: some View {
         ZStack {
@@ -55,6 +62,10 @@ struct FocusView: View {
             )
             
             GeometryReader { geo in
+              if UIDevice.current.userInterfaceIdiom == .pad && geo.size.width >= Self.wideMinWidth {
+                // iPad, wide window: stage + setup panel side by side.
+                padWideLayout
+              } else {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         pageHeader
@@ -91,6 +102,12 @@ struct FocusView: View {
                     .animation(.easeInOut(duration: 0.28), value: isLaunchingFocus)
                 }
                 .disabled(isLaunchingFocus)
+                // iPad narrow window: the phone composition, centered.
+                // (iPhone, even in landscape, keeps its full width.)
+                .frame(maxWidth: UIDevice.current.userInterfaceIdiom == .pad ? updoReadableColumnWidth : .infinity)
+                .frame(maxWidth: .infinity)
+                .padding(.leading, padRailInset)
+              }
             }
             
             if isLaunchingFocus {
@@ -117,6 +134,7 @@ struct FocusView: View {
             friendPickerSheet
         }
         .fullScreenCover(isPresented: $focusSession.isExpanded) {
+            // Full-bleed on iPad too: the ring scales itself to the screen.
             ActiveFocusView()
                 .environmentObject(focusSession)
         }
@@ -239,7 +257,10 @@ private extension FocusView {
     /// Editorial minimal hero — left-aligned giant number, a thin accent rule,
     /// the unit label and the estimated finish time. Calm, luxurious, restrained
     /// (no card, no glow chrome). The number is the page.
-    var focusHeroNumber: some View {
+    var focusHeroNumber: some View { focusHero(scale: 1) }
+
+    /// `scale` grows the hero for the iPad stage (digits + their glow).
+    func focusHero(scale: CGFloat) -> some View {
         let isActive = focusSession.isSessionActive
 
         return VStack(alignment: .leading, spacing: 8) {
@@ -262,14 +283,14 @@ private extension FocusView {
             FocusHeroDigits(
                 text: isActive ? focusSession.timeString : "\(resolvedMinutes)",
                 accent: selectedModeAccent,
-                size: isActive ? 86 : 104
+                size: (isActive ? 86 : 104) * scale
             )
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(alignment: .leading) {
                 Ellipse()
                     .fill(selectedModeAccent.opacity(0.12))
-                    .frame(width: 300, height: 190)
-                    .blur(radius: 95)
+                    .frame(width: 300 * scale, height: 190 * scale)
+                    .blur(radius: 95 * scale)
                     .offset(x: -40, y: 8)
                     .allowsHitTesting(false)
             }
@@ -450,6 +471,15 @@ private extension FocusView {
         VStack(alignment: .leading, spacing: 18) {
             durationRow
 
+            settingRows
+        }
+        .opacity(isLaunchingFocus ? 0.0 : 1)
+        .offset(y: isLaunchingFocus ? 10 : 0)
+        .animation(.easeInOut(duration: 0.22), value: isLaunchingFocus)
+    }
+
+    /// Goal · course · sound, between hairlines.
+    var settingRows: some View {
             VStack(spacing: 0) {
                 editorialDivider
 
@@ -485,10 +515,6 @@ private extension FocusView {
 
                 editorialDivider
             }
-        }
-        .opacity(isLaunchingFocus ? 0.0 : 1)
-        .offset(y: isLaunchingFocus ? 10 : 0)
-        .animation(.easeInOut(duration: 0.22), value: isLaunchingFocus)
     }
 
     func editorialSettingRow(
@@ -531,8 +557,10 @@ private extension FocusView {
                     .foregroundStyle(UpdoTheme.filmy(0.24))
             }
             .padding(.vertical, 12)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .hoverEffect(.highlight)
     }
 
     var crewSummaryHint: some View {
@@ -2235,6 +2263,169 @@ private extension FocusView {
 /// Focus hero number rendered in the same serif-italic identity as the home
 /// active-focus card (PremiumCountdownView): bold serif italic digits, a lighter
 /// serif italic colon. Scales as a unit so MM:SS never overflows.
+// MARK: - iPad stage
+
+extension FocusView {
+    /// iPad (wide window): the timer gets the stage — mode switcher, a giant
+    /// serif number and the start button on the left; everything you set up
+    /// before a session (duration, goal/course/sound) plus your recent
+    /// sessions in a panel on the right. No scrolling to reach "Start".
+    static let wideMinWidth: CGFloat = 900
+
+    var padWideLayout: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            pageHeader
+
+            HStack(alignment: .top, spacing: 56) {
+                VStack(alignment: .leading, spacing: 0) {
+                    FocusModeSwitcherV3(selectedMode: $selectedMode)
+                        .frame(maxWidth: 560)
+
+                    Spacer(minLength: 28)
+
+                    // Number + start read as one unit, centered on the stage.
+                    VStack(alignment: .leading, spacing: 40) {
+                        focusHero(scale: 2.1)
+
+                        VStack(alignment: .leading, spacing: 16) {
+                            if selectedMode == .crew {
+                                crewSummaryHint
+                            }
+
+                            bigStartButton
+                                .tourAnchor("focus.start")
+                        }
+                        .frame(maxWidth: 560)
+                    }
+
+                    Spacer(minLength: 28)
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 30) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            padEyebrow(tr("ipad_focus_duration"))
+                            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+                                      spacing: 10) {
+                                durationChip(.short, text: appLanguageIsEnglish() ? "15 min" : "15 dk")
+                                durationChip(.medium, text: appLanguageIsEnglish() ? "25 min" : "25 dk")
+                                durationChip(.long, text: appLanguageIsEnglish() ? "45 min" : "45 dk")
+                                customDurationChip
+                            }
+                        }
+                        .tourAnchor("focus.duration")
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            padEyebrow(tr("ipad_focus_setup"))
+                            settingRows
+                        }
+
+                        recentSessionsSection
+                    }
+                    .padding(.top, 6)
+                    .padding(.bottom, 24)
+                }
+                .frame(width: 360)
+                .opacity(isLaunchingFocus ? 0 : 1)
+                .animation(.easeInOut(duration: 0.22), value: isLaunchingFocus)
+            }
+            .padding(.top, 34)
+        }
+        .padding(.horizontal, 44)
+        .padding(.bottom, 32)
+        .frame(maxWidth: 1240)
+        .frame(maxWidth: .infinity)
+        .padding(.leading, padRailInset)
+        .blur(radius: isLaunchingFocus ? 1.5 : 0)
+        .disabled(isLaunchingFocus)
+    }
+
+    private func padEyebrow(_ text: String) -> some View {
+        Text(text)
+            .textCase(.uppercase)
+            .font(.system(size: 11, weight: .black, design: .monospaced))
+            .tracking(1.6)
+            .foregroundStyle(UpdoTheme.filmy(0.38))
+    }
+
+    private var recentSessionsSection: some View {
+        let uid = session.currentUser?.id.uuidString
+        let owned = FocusStats.owned(focusRecords, for: uid)
+        let recent = Array(owned.sorted { $0.endedAt > $1.endedAt }.prefix(5))
+        let todayMin = FocusStats.todayMinutes(focusRecords, for: uid)
+        let weekMin = FocusStats.weekMinutes(focusRecords, for: uid)
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                padEyebrow(tr("ipad_focus_recent"))
+                Spacer()
+                Text("\(tr("ipad_today_m", todayMin)) · \(tr("ipad_today_week_total", padHoursMinutes(weekMin)))")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+
+            VStack(spacing: 0) {
+                if recent.isEmpty {
+                    Text(tr("ipad_focus_no_sessions"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                } else {
+                    ForEach(Array(recent.enumerated()), id: \.element.id) { index, record in
+                        if index > 0 {
+                            Rectangle().fill(UpdoTheme.border).frame(height: 1).padding(.leading, 52)
+                        }
+                        recentRow(record)
+                    }
+                }
+            }
+            .background(shape.fill(UpdoTheme.filmy(0.04)))
+            .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+        }
+    }
+
+    private func recentRow(_ record: FocusSessionRecord) -> some View {
+        let course = record.courseName?.trimmingCharacters(in: .whitespaces) ?? ""
+        let title = course.isEmpty ? record.title : course
+        return HStack(spacing: 12) {
+            Image(systemName: record.reachedGoal ? "checkmark.circle.fill" : "circle.dotted")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(record.reachedGoal ? Color(arenaHex: AppArenaPalette.green) : UpdoTheme.filmy(0.35))
+                .frame(width: 26)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title.isEmpty ? tr("tab_focus") : title)
+                    .font(.system(size: 14.5, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .lineLimit(1)
+                Text(record.endedAt.formatted(.relative(presentation: .named)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(tr("ipad_today_m", record.focusMinutes))
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundStyle(UpdoTheme.filmy(0.7))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func padHoursMinutes(_ minutes: Int) -> String {
+        minutes >= 60 ? tr("ipad_today_hm", minutes / 60, minutes % 60) : tr("ipad_today_m", minutes)
+    }
+}
+
 struct FocusHeroDigits: View {
     let text: String
     let accent: Color

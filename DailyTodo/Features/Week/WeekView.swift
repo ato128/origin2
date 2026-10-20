@@ -57,6 +57,22 @@ struct WeekView: View {
     /// Live timer (her dakika)
     private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var liveTick: Int = 0
+    /// iPad: room for the floating tab rail on the left.
+    @Environment(\.padRailInset) private var padRailInset
+
+    // iPad week grid
+    /// The empty slot tapped last ("+ 14:30" pill) and the day a dragged task hovers.
+    @State private var gridSlotDate: Date? = nil
+    @State private var gridSlotMinute: Int = 0
+    @State private var gridDropDay: Date? = nil
+    /// Start time handed to the add sheet when it came from a grid slot.
+    @State private var gridAddStartMinute: Int? = nil
+    /// The block whose detail popover is open.
+    @State private var gridPopoverEventID: UUID? = nil
+    /// iPad: the event being edited from its popover (EditEventView).
+    @State private var gridEditingEvent: EventItem? = nil
+    /// The day column a dragged block hovers.
+    @State private var gridDropColumnDay: Date? = nil
 
     // MARK: Body
 
@@ -70,13 +86,28 @@ struct WeekView: View {
             )
             .animation(.easeInOut(duration: 0.45), value: heroAccent)
 
-            VStack(spacing: 0) {
-                topBar
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 6)
+            GeometryReader { geo in
+                // iPad only — an iPhone in landscape keeps its own layout.
+                let wide = UIDevice.current.userInterfaceIdiom == .pad
+                    && geo.size.width >= Self.wideLayoutMinWidth
+                VStack(spacing: 0) {
+                    if wide {
+                        // iPad: the week IS the screen — a full-width,
+                        // Calendar-style week (header, task lane, time grid).
+                        weekGrid
+                            .padding(.leading, padRailInset)
+                            .padding(.horizontal, 22)
+                            .padding(.top, 10)
+                            .padding(.bottom, 8)
+                    } else {
+                        topBar(showStrip: true)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            .padding(.bottom, 6)
 
-                dayPagedContent
+                        dayPagedContent
+                    }
+                }
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -102,11 +133,12 @@ struct WeekView: View {
                 .environmentObject(studentStore)
                 .environmentObject(friendStore)
         }
-        .sheet(isPresented: $showingAdd) {
+        .sheet(isPresented: $showingAdd, onDismiss: { gridAddStartMinute = nil }) {
             NavigationStack {
                 AddEventView(
                     defaultWeekday: weekdayIndex(from: currentDate),
-                    defaultDate: currentDate
+                    defaultDate: currentDate,
+                    defaultStartMinute: gridAddStartMinute
                 )
                 .environmentObject(session)
                 .environmentObject(friendStore)
@@ -124,6 +156,14 @@ struct WeekView: View {
             )
             .environmentObject(store)
             .environmentObject(session)
+        }
+        .sheet(item: $gridEditingEvent) { event in
+            NavigationStack {
+                EditEventView(event: event)
+                    .environmentObject(session)
+                    .environmentObject(friendStore)
+                    .environmentObject(studentStore)
+            }
         }
         .sheet(item: $editingEvent) { event in
             NavigationStack {
@@ -149,7 +189,7 @@ struct WeekView: View {
 
     // MARK: Top Bar
 
-    private var topBar: some View {
+    private func topBar(showStrip: Bool) -> some View {
         VStack(spacing: 10) {
             // ÜST SATIR: Takvim icon · "Week" başlık · Add button
             HStack(spacing: 10) {
@@ -214,9 +254,11 @@ struct WeekView: View {
                 .tourAnchor("week.add")
             }
 
-            // ALT SATIR: 7-day strip
-            weekDayStrip
-                .tourAnchor("week.days")
+            // ALT SATIR: 7-day strip (the iPad week grid has its own day headers)
+            if showStrip {
+                weekDayStrip
+                    .tourAnchor("week.days")
+            }
         }
     }
 
@@ -1537,6 +1579,815 @@ private extension WeekView {
 }
 
 // MARK: - CalendarSheet
+
+// MARK: - iPad week grid
+
+extension WeekView {
+    /// Below this width Week keeps the phone layout (iPhone, narrow iPad windows).
+    static let wideLayoutMinWidth: CGFloat = 900
+
+    private static let gridHourHeight: CGFloat = 60
+    private static let gridGutter: CGFloat = 54
+
+    /// iPad: the whole week at a glance, like Calendar — seven day columns on
+    /// a full-day time grid (opens scrolled to the week's first class), the
+    /// red "now" line, a task lane under the day headers (drag a task to
+    /// another day to move it), tap an empty slot to add there, and a context
+    /// menu on every block.
+    var weekGrid: some View {
+        let days = currentWeekDays()
+        let dayEvents = days.map { eventsForDate($0) }
+        let dayTasks = days.map { tasksForDate($0) }
+        let all = dayEvents.flatMap { $0 }
+        let anchorHour = max(0, min(16, (all.map(\.startMinute).min() ?? 8 * 60) / 60 - 1))
+        let weekKey = days.first.map(dateKey) ?? ""
+
+        return VStack(spacing: 0) {
+            gridHeader(days: days, events: all, tasks: dayTasks.flatMap { $0 })
+                .padding(.bottom, 18)
+
+            HStack(spacing: 0) {
+                Color.clear.frame(width: Self.gridGutter, height: 1)
+                ForEach(days, id: \.self) { date in
+                    gridDayHeader(date)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.bottom, 8)
+            .tourAnchor("week.days")
+
+            if dayTasks.contains(where: { !$0.isEmpty }) || gridDropDay != nil {
+                gridTaskLane(days: days, dayTasks: dayTasks)
+                    .padding(.bottom, 8)
+                    .transition(.opacity)
+            }
+
+            Rectangle().fill(UpdoTheme.filmy(0.07)).frame(height: 1)
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    HStack(alignment: .top, spacing: 0) {
+                        gridGutterColumn(showsNow: days.contains(where: { Calendar.current.isDateInToday($0) }))
+
+                        let weekHasToday = days.contains(where: { Calendar.current.isDateInToday($0) })
+                        ForEach(Array(days.enumerated()), id: \.offset) { index, date in
+                            gridDayColumn(date, events: dayEvents[index], weekHasToday: weekHasToday)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.bottom, 20)
+                }
+                .scrollIndicators(.hidden)
+                // Room above the anchored hour, so its label isn't clipped.
+                .safeAreaPadding(.top, 12)
+                .onAppear {
+                    DispatchQueue.main.async { proxy.scrollTo("grid-hour-\(anchorHour)", anchor: .top) }
+                    #if DEBUG
+                    // QA/screenshot hook: `-debugWeekPopover YES` opens the first block's detail.
+                    if UserDefaults.standard.bool(forKey: "debugWeekPopover") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { gridPopoverEventID = all.first?.id }
+                    }
+                    #endif
+                }
+                .onChange(of: weekKey) { _, _ in
+                    gridSlotDate = nil
+                    withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo("grid-hour-\(anchorHour)", anchor: .top) }
+                }
+            }
+        }
+        .background { gridKeyboardShortcuts }
+        .animation(.easeInOut(duration: 0.2), value: dayTasks.map(\.count))
+    }
+
+    // MARK: Title + keyboard
+
+    /// Calendar-style header: big month (Updo serif year), the week's range
+    /// and load, then today / week arrows and the screen's actions.
+    private func gridHeader(days: [Date], events: [EventItem], tasks: [DTTaskItem]) -> some View {
+        let cyan = Color(arenaHex: AppArenaPalette.cyan)
+        let minutes = events.reduce(0) { $0 + $1.durationMinute }
+        let doneTasks = tasks.filter(\.isDone).count
+        var summary = [weekRangeText(days), tr("ipad_week_classes", events.count)]
+        if minutes > 0 { summary.append(gridHoursText(minutes)) }
+        if !tasks.isEmpty { summary.append(tr("ipad_week_tasks_n", doneTasks, tasks.count)) }
+
+        return HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(gridMonthText(days))
+                        .font(.system(size: 34, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text(gridYearText(days))
+                        .font(.system(size: 31, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(LinearGradient(colors: [cyan, Color(arenaHex: AppArenaPalette.purple)],
+                                                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+                Text(summary.joined(separator: "  ·  "))
+                    .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .contentTransition(.numericText())
+            }
+
+            Spacer(minLength: 12)
+
+            HStack(spacing: 8) {
+                Button {
+                    selectGridDay(Date())
+                } label: {
+                    Text(appLanguageIsEnglish() ? "Today" : "Bugün")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(cyan)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                        .background(Capsule().fill(cyan.opacity(0.12)))
+                        .contentShape(.hoverEffect, Capsule())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+                .disabled(days.contains(where: { Calendar.current.isDateInToday($0) }))
+                .opacity(days.contains(where: { Calendar.current.isDateInToday($0) }) ? 0.45 : 1)
+
+                HStack(spacing: 0) {
+                    gridWeekButton("chevron.left", label: tr("ipad_week_prev")) { shiftGridWeek(by: -7) }
+                    Rectangle().fill(UpdoTheme.filmy(0.1)).frame(width: 1, height: 18)
+                    gridWeekButton("chevron.right", label: tr("ipad_week_next")) { shiftGridWeek(by: 7) }
+                }
+                .background(Capsule().fill(UpdoTheme.filmy(0.06)))
+            }
+
+            Rectangle().fill(UpdoTheme.filmy(0.1)).frame(width: 1, height: 26).padding(.horizontal, 4)
+
+            HStack(spacing: 8) {
+                Button {
+                    Haptics.impact(.light)
+                    showCalendarSheet = true
+                } label: {
+                    gridHeaderIcon("calendar")
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+                .accessibilityLabel(appLanguageIsEnglish() ? "Calendar" : "Takvim")
+
+                Button {
+                    Haptics.impact(.light)
+                    showScheduleEditor = true
+                } label: {
+                    gridHeaderIcon("calendar.day.timeline.left")
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+                .accessibilityLabel(tr("wk_sched_title"))
+                .tourAnchor("week.schedule")
+
+                Button {
+                    Haptics.impact(.light)
+                    requestAddTask()
+                } label: {
+                    taskAddIconButton
+                        .contentShape(.hoverEffect, Circle())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+                .accessibilityLabel(tr("ipad_week_tasks"))
+
+                Button {
+                    Haptics.impact(.medium)
+                    requestAddEvent()
+                } label: {
+                    addIconButton
+                        .contentShape(.hoverEffect, Circle())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.lift)
+                .tourAnchor("week.add")
+            }
+        }
+    }
+
+    private func gridHeaderIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 15, weight: .black))
+            .foregroundStyle(UpdoTheme.filmy(0.85))
+            .frame(width: 40, height: 40)
+            .liquidGlass(in: Circle())
+            .overlay(Circle().stroke(UpdoTheme.filmy(0.1), lineWidth: 1))
+            .contentShape(.hoverEffect, Circle())
+    }
+
+    /// "Ekim" — or "Ekim – Kasım" when the week crosses a month.
+    private func gridMonthText(_ days: [Date]) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = appLanguageIsEnglish() ? Locale(identifier: "en_US") : Locale(identifier: "tr_TR")
+        formatter.dateFormat = "LLLL"
+        guard let first = days.first, let last = days.last else { return "" }
+        let a = formatter.string(from: first).capitalized
+        let b = formatter.string(from: last).capitalized
+        return a == b ? a : "\(a) – \(b)"
+    }
+
+    private func gridYearText(_ days: [Date]) -> String {
+        "\(Calendar.current.component(.year, from: days.last ?? currentDate))"
+    }
+
+    private func gridHoursText(_ minutes: Int) -> String {
+        minutes >= 60
+            ? (minutes % 60 == 0 ? tr("ipad_week_h", minutes / 60) : tr("ipad_today_hm", minutes / 60, minutes % 60))
+            : tr("ipad_today_m", minutes)
+    }
+
+    private func gridWeekButton(_ systemName: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(UpdoTheme.filmy(0.8))
+                .frame(width: 40, height: 36)
+                .contentShape(.hoverEffect, Capsule())
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .accessibilityLabel(label)
+    }
+
+    /// ⌘← / ⌘→ week, ⌘T today, ⌘N new event — listed in the hold-⌘ overlay.
+    private var gridKeyboardShortcuts: some View {
+        ZStack {
+            Button(tr("ipad_week_prev")) { shiftGridWeek(by: -7) }
+                .keyboardShortcut(.leftArrow, modifiers: .command)
+            Button(tr("ipad_week_next")) { shiftGridWeek(by: 7) }
+                .keyboardShortcut(.rightArrow, modifiers: .command)
+            Button(tr("ipad_week_today")) { selectGridDay(Date()) }
+                .keyboardShortcut("t", modifiers: .command)
+            Button(tr("ipad_week_new_event")) { requestAddEvent() }
+                .keyboardShortcut("n", modifiers: .command)
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+    }
+
+    private func gridDayHeader(_ date: Date) -> some View {
+        let isToday = Calendar.current.isDateInToday(date)
+        let isSelected = Calendar.current.isDate(date, inSameDayAs: currentDate)
+        let cyan = Color(arenaHex: AppArenaPalette.cyan)
+
+        return Button {
+            selectGridDay(date)
+        } label: {
+            VStack(spacing: 5) {
+                Text(localizedWeekdayShort(weekdayIndex(from: date)))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1)
+                    .foregroundStyle(isToday ? cyan : UpdoTheme.filmy(0.42))
+
+                Text("\(Calendar.current.component(.day, from: date))")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(isToday ? Color.black : UpdoTheme.filmy(isSelected ? 0.98 : 0.8))
+                    .frame(width: 36, height: 36)
+                    .background {
+                        if isToday {
+                            Circle().fill(LinearGradient(colors: [cyan, Color(arenaHex: AppArenaPalette.blue)],
+                                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                        } else if isSelected {
+                            Circle().fill(UpdoTheme.filmy(0.1))
+                        }
+                    }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 2)
+            .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+    }
+
+    // MARK: Task lane
+
+    /// Tasks scheduled to each day, as small chips under the day headers.
+    /// Drag a chip onto another day to move it there.
+    private func gridTaskLane(days: [Date], dayTasks: [[DTTaskItem]]) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            Image(systemName: "checklist")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(UpdoTheme.filmy(0.34))
+                .frame(width: Self.gridGutter, height: 26, alignment: .leading)
+                .accessibilityLabel(tr("ipad_week_tasks"))
+
+            ForEach(Array(days.enumerated()), id: \.offset) { index, date in
+                gridTaskCell(date, tasks: dayTasks[index])
+                    .frame(maxWidth: .infinity, alignment: .top)
+            }
+        }
+    }
+
+    private func gridTaskCell(_ date: Date, tasks: [DTTaskItem]) -> some View {
+        let isDropTarget = gridDropDay.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false
+        let shown = Array(tasks.prefix(3))
+
+        return VStack(spacing: 3) {
+            ForEach(shown, id: \.taskUUID) { task in
+                gridTaskChip(task)
+            }
+            if tasks.count > shown.count {
+                Button { selectGridDay(date) } label: {
+                    Text(tr("ipad_week_more", tasks.count - shown.count))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 6)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 26, alignment: .top)
+        .padding(.horizontal, 2)
+        .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(Color(arenaHex: AppArenaPalette.cyan).opacity(isDropTarget ? 0.14 : 0))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(Color(arenaHex: AppArenaPalette.cyan).opacity(isDropTarget ? 0.6 : 0),
+                                      style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
+                )
+        )
+        .dropDestination(for: String.self) { ids, _ in
+            guard let id = ids.first, id.hasPrefix("task:") else { return false }
+            return moveTask(String(id.dropFirst(5)), to: date)
+        } isTargeted: { targeted in
+            if targeted {
+                gridDropDay = date
+            } else if let current = gridDropDay, Calendar.current.isDate(current, inSameDayAs: date) {
+                gridDropDay = nil
+            }
+        }
+    }
+
+    private func gridTaskChip(_ task: DTTaskItem) -> some View {
+        let tint = colorFromHex(colorHexForTask(task))
+        return HStack(spacing: 4) {
+            Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(task.isDone ? Color(arenaHex: AppArenaPalette.green) : tint)
+            Text(task.title)
+                .font(.system(size: 10.5, weight: .bold))
+                .foregroundStyle(UpdoTheme.filmy(task.isDone ? 0.45 : 0.9))
+                .strikethrough(task.isDone, color: UpdoTheme.filmy(0.4))
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6)
+        .frame(height: 22)
+        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(tint.opacity(0.16)))
+        .contentShape(.dragPreview, RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .hoverEffect(.highlight)
+        .onTapGesture {
+            Haptics.impact(.light)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { store.toggleDone(task) }
+        }
+        .draggable("task:\(task.taskUUID)")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// Drop handler: a task's UUID dropped on a day moves it there.
+    private func moveTask(_ taskUUID: String?, to date: Date) -> Bool {
+        gridDropDay = nil
+        guard let taskUUID,
+              let task = store.items.first(where: { $0.taskUUID == taskUUID }) else { return false }
+        if let day = task.scheduledWeekDate ?? task.dueDate, Calendar.current.isDate(day, inSameDayAs: date) {
+            return false
+        }
+        Haptics.impact(.medium)
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
+            store.reschedule(task, to: date)
+        }
+        return true
+    }
+
+    // MARK: Time grid
+
+    private func gridGutterColumn(showsNow: Bool) -> some View {
+        let now = currentMinuteOfDay()
+        return ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                ForEach(0..<24, id: \.self) { hour in
+                    let nearNow = showsNow && abs(now - hour * 60) < 14
+                    Text(String(format: "%02d:00", hour))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UpdoTheme.filmy(nearNow ? 0 : 0.34))
+                        .frame(height: Self.gridHourHeight, alignment: .top)
+                        .offset(y: -6)
+                        .id("grid-hour-\(hour)")
+                }
+            }
+
+            if showsNow {
+                Text(hm(now))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .frame(height: 17)
+                    .background(Capsule().fill(Color(arenaHex: AppArenaPalette.coral)))
+                    .offset(y: CGFloat(now) / 60 * Self.gridHourHeight - 8.5)
+                    .id(liveTick)
+            }
+        }
+        .frame(width: Self.gridGutter, alignment: .leading)
+    }
+
+    private func gridDayColumn(_ date: Date, events: [EventItem], weekHasToday: Bool) -> some View {
+        let cal = Calendar.current
+        let isSelected = cal.isDate(date, inSameDayAs: currentDate)
+        let isWeekend = weekdayIndex(from: date) >= 5
+        let isToday = cal.isDateInToday(date)
+        let height = 24 * Self.gridHourHeight
+        let slotHere = gridSlotDate.map { cal.isDate($0, inSameDayAs: date) } ?? false
+        let isDropColumn = gridDropColumnDay.map { cal.isDate($0, inSameDayAs: date) } ?? false
+
+        return ZStack(alignment: .top) {
+            // Hour + half-hour lines and the open day's tint. Tapping empty
+            // space opens the day and offers "+ add" at that half hour.
+            VStack(spacing: 0) {
+                ForEach(0..<24, id: \.self) { _ in
+                    VStack(spacing: 0) {
+                        Rectangle().fill(UpdoTheme.filmy(0.05)).frame(height: 1)
+                        Spacer(minLength: 0)
+                        Rectangle().fill(UpdoTheme.filmy(0.022)).frame(height: 1)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(height: Self.gridHourHeight)
+                }
+            }
+            .background(UpdoTheme.filmy(isWeekend ? 0.018 : 0))
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(arenaHex: AppArenaPalette.cyan).opacity(isDropColumn ? 0.12 : (isSelected ? 0.05 : 0)))
+            )
+            .contentShape(Rectangle())
+            .onTapGesture { location in
+                let minute = max(0, min(23 * 60 + 30, Int(location.y / Self.gridHourHeight * 60) / 30 * 30))
+                selectGridDay(date)
+                Haptics.impact(.light)
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                    gridSlotDate = date
+                    gridSlotMinute = minute
+                }
+            }
+
+            // Overlapping events share the column side by side, like Calendar.
+            GeometryReader { geo in
+                let lanes = Self.gridLanes(events)
+                ForEach(events, id: \.id) { event in
+                    let slot = lanes[event.id] ?? (lane: 0, lanes: 1)
+                    let laneWidth = geo.size.width / CGFloat(slot.lanes)
+                    gridEventBlock(event, narrow: laneWidth < 70)
+                        .frame(width: max(0, laneWidth - 4),
+                               height: max(24, CGFloat(event.durationMinute) / 60 * Self.gridHourHeight - 3))
+                        .offset(x: CGFloat(slot.lane) * laneWidth + 2,
+                                y: CGFloat(event.startMinute) / 60 * Self.gridHourHeight + 1)
+                }
+            }
+
+            if slotHere {
+                gridAddSlot(date: date, minute: gridSlotMinute)
+                    .offset(y: CGFloat(gridSlotMinute) / 60 * Self.gridHourHeight + 1)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
+
+            if isToday {
+                let now = currentMinuteOfDay()
+                HStack(spacing: 0) {
+                    Circle().frame(width: 8, height: 8)
+                    Rectangle().frame(height: 1.5)
+                }
+                .foregroundStyle(Color(arenaHex: AppArenaPalette.coral))
+                .offset(x: -4, y: CGFloat(now) / 60 * Self.gridHourHeight - 4)
+                .allowsHitTesting(false)
+                .id(liveTick)
+            } else if weekHasToday {
+                // The rest of the week gets a faint "now" line, like Calendar.
+                Rectangle()
+                    .fill(Color(arenaHex: AppArenaPalette.coral).opacity(0.28))
+                    .frame(height: 1)
+                    .offset(y: CGFloat(currentMinuteOfDay()) / 60 * Self.gridHourHeight - 0.5)
+                    .allowsHitTesting(false)
+                    .id(liveTick)
+            }
+        }
+        .frame(height: height, alignment: .top)
+        .overlay(alignment: .leading) {
+            Rectangle().fill(UpdoTheme.filmy(0.05)).frame(width: 1)
+        }
+        .dropDestination(for: String.self) { ids, location in
+            handleGridDrop(ids.first, on: date, at: location)
+        } isTargeted: { targeted in
+            if targeted {
+                gridDropColumnDay = date
+            } else if let current = gridDropColumnDay, cal.isDate(current, inSameDayAs: date) {
+                gridDropColumnDay = nil
+            }
+        }
+    }
+
+    /// A block dropped on a day column moves there; its middle lands where it
+    /// was let go, snapped to 15 minutes. A task dropped on the grid moves to
+    /// that day.
+    private func handleGridDrop(_ payload: String?, on date: Date, at location: CGPoint) -> Bool {
+        gridDropColumnDay = nil
+        guard let payload else { return false }
+        if payload.hasPrefix("task:") {
+            return moveTask(String(payload.dropFirst(5)), to: date)
+        }
+        guard payload.hasPrefix("event:"),
+              let id = UUID(uuidString: String(payload.dropFirst(6))),
+              let event = userScopedEvents.first(where: { $0.id == id }) else { return false }
+
+        let duration = max(15, event.durationMinute)
+        let raw = Double(location.y / Self.gridHourHeight * 60) - Double(duration) / 2
+        let snapped = Int((raw / 15).rounded()) * 15
+        let start = max(0, min(snapped, 24 * 60 - duration, 1439))
+        return moveEvent(event, to: date, startMinute: start)
+    }
+
+    private func moveEvent(_ event: EventItem, to date: Date, startMinute: Int) -> Bool {
+        let cal = Calendar.current
+        let sameDay: Bool = {
+            if let scheduled = event.scheduledDate { return cal.isDate(scheduled, inSameDayAs: date) }
+            return event.weekday == weekdayIndex(from: date)
+        }()
+        guard !(sameDay && event.startMinute == startMinute) else { return false }
+
+        Haptics.impact(.medium)
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
+            if event.scheduledDate != nil {
+                event.scheduledDate = cal.startOfDay(for: date)
+            } else {
+                // A weekly class moves to that weekday, every week.
+                event.weekday = weekdayIndex(from: date)
+            }
+            event.startMinute = startMinute
+        }
+
+        do {
+            try context.save()
+            WidgetAppSync.refreshFromSwiftData(context: context)
+            Task { await NotificationManager.shared.rescheduleAll(events: userScopedEvents) }
+            Task {
+                guard let userID = session.currentUser?.id else { return }
+                await friendStore.resyncSharedWeekIfNeeded(for: userID, events: userScopedEvents)
+            }
+        } catch {
+            Log.debug("WeekView.moveEvent error:", error)
+        }
+        return true
+    }
+
+    /// The "+ 14:30" slot that appears where empty space was tapped.
+    private func gridAddSlot(date: Date, minute: Int) -> some View {
+        let cyan = Color(arenaHex: AppArenaPalette.cyan)
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        return Button {
+            gridAddStartMinute = minute
+            gridSlotDate = nil
+            requestAddEvent()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "plus").font(.system(size: 10, weight: .black))
+                Text(hm(minute)).font(.system(size: 11, weight: .black, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(cyan)
+            .padding(.horizontal, 7)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: Self.gridHourHeight - 3, alignment: .top)
+            .padding(.top, 6)
+            .background(shape.fill(cyan.opacity(0.1)))
+            .overlay(shape.strokeBorder(cyan.opacity(0.7), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3])))
+            .contentShape(.hoverEffect, shape)
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .padding(.horizontal, 2)
+        .accessibilityLabel(tr("ipad_week_add_at", hm(minute)))
+    }
+
+    /// Lane per event: a run of overlapping events splits the column into as
+    /// many lanes as it needs at once; each event takes the first free lane.
+    private static func gridLanes(_ events: [EventItem]) -> [UUID: (lane: Int, lanes: Int)] {
+        var result: [UUID: (lane: Int, lanes: Int)] = [:]
+        var cluster: [UUID] = []
+        var laneEnds: [Int] = []
+        var clusterEnd = Int.min
+
+        func closeCluster() {
+            for id in cluster { result[id]?.lanes = laneEnds.count }
+            cluster = []
+            laneEnds = []
+        }
+
+        for event in events.sorted(by: { ($0.startMinute, -$0.durationMinute) < ($1.startMinute, -$1.durationMinute) }) {
+            let end = event.startMinute + max(event.durationMinute, 15)
+            if event.startMinute >= clusterEnd { closeCluster(); clusterEnd = Int.min }
+            let lane = laneEnds.firstIndex { $0 <= event.startMinute } ?? laneEnds.count
+            if lane == laneEnds.count { laneEnds.append(end) } else { laneEnds[lane] = end }
+            result[event.id] = (lane, 1)
+            cluster.append(event.id)
+            clusterEnd = max(clusterEnd, end)
+        }
+        closeCluster()
+        return result
+    }
+
+    /// `narrow`: a lane of a crowded hour — title only, one line, never
+    /// broken letter by letter.
+    private func gridEventBlock(_ event: EventItem, narrow: Bool) -> some View {
+        let tint = colorFromHex(event.colorHex)
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+
+        return Button {
+            Haptics.impact(.light)
+            gridPopoverEventID = event.id
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(event.title)
+                    .font(.system(size: narrow ? 10.5 : 12, weight: .black))
+                    .foregroundStyle(UpdoTheme.filmy(0.95))
+                    .lineLimit(narrow ? 1 : (event.durationMinute >= 60 ? 3 : 1))
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.75)
+
+                if event.durationMinute >= 40 && !narrow {
+                    Text(hm(event.startMinute))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UpdoTheme.filmy(0.55))
+
+                    if event.durationMinute >= 75,
+                       let location = event.location?.trimmingCharacters(in: .whitespaces), !location.isEmpty {
+                        Text(location)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .padding(.leading, narrow ? 6 : 9)
+            .padding(.trailing, narrow ? 2 : 5)
+            .padding(.vertical, 5)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(tint.opacity(0.2))
+            .overlay(alignment: .leading) {
+                Rectangle().fill(tint).frame(width: 3)
+            }
+            .clipShape(shape)
+            .opacity(event.isCompleted ? 0.5 : 1)
+            .contentShape(.hoverEffect, shape)
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .popover(isPresented: Binding(
+            get: { gridPopoverEventID == event.id },
+            set: { if !$0 && gridPopoverEventID == event.id { gridPopoverEventID = nil } }
+        ), arrowEdge: .leading) {
+            gridEventPopover(event)
+        }
+        // Long-press lifts the block; drop it on another day / time to move
+        // it (like Calendar). Tap = the detail popover.
+        .draggable("event:\(event.id.uuidString)") {
+            Text(event.title)
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(UpdoTheme.filmy(0.95))
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(tint.opacity(0.55)))
+        }
+        .accessibilityLabel("\(event.title), \(timeRange(event))")
+    }
+
+    /// Calendar-style event detail, anchored to the tapped block.
+    private func gridEventPopover(_ event: EventItem) -> some View {
+        let tint = colorFromHex(event.colorHex)
+        let notes = event.notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let dayName = localizedWeekdayFull(event.scheduledDate.map { weekdayIndex(from: $0) } ?? event.weekday)
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(tint)
+                    .frame(width: 4, height: 44)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(event.title)
+                        .font(.system(size: 21, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(dayName) · \(timeRange(event)) · \(gridHoursText(event.durationMinute))")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                if event.isCompleted {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+                        .accessibilityLabel(tr("ipad_week_done"))
+                }
+            }
+
+            if !location.isEmpty || !notes.isEmpty || event.scheduledDate == nil {
+                VStack(alignment: .leading, spacing: 10) {
+                    if !location.isEmpty {
+                        Label(location, systemImage: "mappin.and.ellipse")
+                    }
+                    if event.scheduledDate == nil {
+                        Label(tr("ipad_week_repeats", dayName), systemImage: "repeat")
+                    }
+                    if !notes.isEmpty {
+                        Label(notes, systemImage: "note.text")
+                            .lineLimit(4)
+                    }
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(UpdoTheme.filmy(0.78))
+                .labelStyle(.titleAndIcon)
+            }
+
+            VStack(spacing: 8) {
+                if !event.isCompleted {
+                    Button {
+                        gridPopoverEventID = nil
+                        markCompleted(event)
+                    } label: {
+                        Label(tr("ipad_week_done"), systemImage: "checkmark")
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color(arenaHex: AppArenaPalette.green))
+                }
+
+                HStack(spacing: 8) {
+                    Button {
+                        gridPopoverEventID = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { gridEditingEvent = event }
+                    } label: {
+                        Label(tr("ipad_week_edit"), systemImage: "pencil")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(role: .destructive) {
+                        gridPopoverEventID = nil
+                        withAnimation(.easeOut(duration: 0.2)) { delete(event) }
+                    } label: {
+                        Label(tr("ipad_week_delete"), systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .font(.system(size: 15, weight: .bold))
+            .lineLimit(1)
+            .controlSize(.large)
+        }
+        .padding(20)
+        .frame(width: 340)
+        .presentationCompactAdaptation(.popover)
+    }
+
+    private func selectGridDay(_ date: Date) {
+        guard !Calendar.current.isDate(date, inSameDayAs: currentDate) else { return }
+        Haptics.impact(.light)
+        pageDirection = date > currentDate ? 1 : -1
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+            currentDate = date
+        }
+    }
+
+    private func shiftGridWeek(by days: Int) {
+        guard let date = Calendar.current.date(byAdding: .day, value: days, to: currentDate) else { return }
+        selectGridDay(date)
+    }
+
+    private func weekRangeText(_ days: [Date]) -> String {
+        guard let first = days.first, let last = days.last else { return "" }
+        let formatter = DateFormatter()
+        formatter.locale = appLanguageIsEnglish() ? Locale(identifier: "en_US") : Locale(identifier: "tr_TR")
+        formatter.dateFormat = "d MMM"
+        return "\(formatter.string(from: first)) – \(formatter.string(from: last))"
+    }
+}
 
 private struct CalendarSheet: View {
 

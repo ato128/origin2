@@ -18,6 +18,8 @@ struct AddEventView: View {
 
     let defaultWeekday: Int
     let defaultDate: Date?
+    /// iPad week grid: an empty slot was tapped → a custom event at that time.
+    var defaultStartMinute: Int? = nil
 
     @State private var title = ""
     @State private var courseCode = ""
@@ -960,6 +962,14 @@ struct AddEventView: View {
 
     private func applyDefaultDateIfNeeded() {
         weekday = max(0, min(6, defaultWeekday))
+
+        if let minute = defaultStartMinute {
+            let cal = Calendar.current
+            let start = max(0, min(minute, 22 * 60))
+            startTime = cal.date(bySettingHour: start / 60, minute: start % 60, second: 0, of: Date()) ?? startTime
+            endTime = cal.date(byAdding: .minute, value: 60, to: startTime) ?? endTime
+            showCustomEvent = true
+        }
     }
 
     private func currentUserEventsFromContext() -> [EventItem] {

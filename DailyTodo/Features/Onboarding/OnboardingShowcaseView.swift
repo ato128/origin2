@@ -86,10 +86,12 @@ struct OnboardingShowcaseView: View {
                 pendingWidget = true
                 showInvite = false
             })
+            .updoReadableColumn()
         }
         // Son adım: widget tanıtımı → bittiğinde uygulamaya girilir.
         .fullScreenCover(isPresented: $showWidgetPromo) {
             OnboardingWidgetPromoView(onFinish: onFinish)
+                .updoReadableColumn()
         }
     }
 
@@ -399,6 +401,7 @@ struct OnboardingInviteView: View {
         .task { status = try? await ReferralBackendClient.shared.status() }
         .fullScreenCover(isPresented: $showPremiumAI, onDismiss: { onFinish() }) {
             PaywallView(context: "referral_premium_ai")
+                .updoReadableColumn()
         }
     }
 

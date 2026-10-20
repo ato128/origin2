@@ -3269,6 +3269,8 @@ private struct StreakBubbleTriangle: Shape {
 struct HomeAIChatScreen: View {
     let onOpenWeek: () -> Void
     let onAddTask: () -> Void
+    /// iPad: how the Today panel sits next to the chat (none on iPhone).
+    var todayPanel: HomeTodayPanelMode = .none
 
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var store: TodoStore
@@ -3282,6 +3284,10 @@ struct HomeAIChatScreen: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var showMessages = false
+    @State private var showTodayPopover = false
+    @Environment(\.homeTopLeadingTaken) private var homeTopLeadingTaken
+    @Environment(\.padRailInset) private var padRailInset
+    @AppStorage(HomeTodayPanel.visibleKey) private var todayPanelVisible = true
     @State private var showStreakBubble = false
     @State private var streakBubbleMode: StreakBubbleMode = .info
     @State private var bubbleStreakValue = 0
@@ -3318,7 +3324,7 @@ struct HomeAIChatScreen: View {
         UpdoAIView(
             embeddedInHome: true,
             homeLeading: AnyView(flameBadge),
-            homeTrailing: AnyView(messagesButton),
+            homeTrailing: AnyView(trailingButtons),
             onDismissAndOpenWeek: onOpenWeek,
             onDismissAndAddTask: onAddTask
         )
@@ -3331,8 +3337,11 @@ struct HomeAIChatScreen: View {
                     todayFocusDone: focusedToday,
                     onClose: { showStreakBubble = false }
                 )
-                .padding(.leading, 40)
-                .padding(.top, 2)
+                // iPad: under the chat's own top bar, below the flame
+                // (which sits right of the rail, outside the column).
+                .padding(.leading, homeTopLeadingTaken ? padRailInset + 40 : 40)
+                .padding(.top, homeTopLeadingTaken ? 54 : 2)
+                .ignoresSafeArea(.container, edges: homeTopLeadingTaken ? .horizontal : [])
                 .transition(.opacity)
                 .zIndex(10)
             }
@@ -3351,6 +3360,52 @@ struct HomeAIChatScreen: View {
             toggleStreakInfo()
         }
         .tourAnchor("home.streak")
+    }
+
+    @ViewBuilder
+    private var trailingButtons: some View {
+        if todayPanel == .none {
+            messagesButton
+        } else {
+            HStack(spacing: 8) {
+                todayPanelButton
+                messagesButton
+            }
+            .fixedSize()
+        }
+    }
+
+    /// iPad: shows/hides the docked Today panel; in a window too narrow to
+    /// dock it, the panel opens as a popover from this button instead.
+    private var todayPanelButton: some View {
+        let isOn = todayPanel == .docked ? todayPanelVisible : showTodayPopover
+        return Button {
+            Haptics.impact(.light)
+            if todayPanel == .docked {
+                todayPanelVisible.toggle()
+            } else {
+                showTodayPopover.toggle()
+            }
+        } label: {
+            Image(systemName: "sidebar.trailing")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(isOn ? UpdoTheme.cyan : UpdoTheme.filmy(0.75))
+                .frame(width: 34, height: 34)
+                .liquidGlass(in: Circle())
+                .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                .contentShape(.hoverEffect, Circle())
+                .hoverEffect(.highlight)
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("i", modifiers: [.command, .option])
+        .accessibilityLabel(tr("ipad_today_toggle"))
+        .popover(isPresented: $showTodayPopover, arrowEdge: .top) {
+            HomeTodayPanel(onOpenWeek: {
+                showTodayPopover = false
+                onOpenWeek()
+            }, inPopover: true)
+            .frame(width: HomeTodayPanel.width + 20, height: 640)
+        }
     }
 
     private var messagesButton: some View {
@@ -3374,6 +3429,8 @@ struct HomeAIChatScreen: View {
                         .offset(x: 3, y: -3)
                 }
             }
+            .contentShape(.hoverEffect, Circle())
+            .hoverEffect(.highlight)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tr("spot_t_home_msg"))
@@ -3414,5 +3471,594 @@ struct HomeAIChatScreen: View {
         withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
             showStreakBubble = true
         }
+    }
+}
+
+// MARK: - iPad Home: chat + Today panel
+//
+// iPad (sidebar layout): the Updo AI chat keeps the middle; on the right a
+// docked "Today" panel — what's on now/next, today's schedule, today's tasks
+// and today's focus — so the day is in view while you talk to the coach. The
+// panel lives OUTSIDE the chat's NavigationStack, so the chat's toolbar (and
+// its centered title pill) spans only the chat column. When the window is too
+// narrow to dock it (11" portrait, Split View), the toolbar button opens the
+// same panel as a popover.
+
+enum HomeTodayPanelMode {
+    case none, docked, floating
+}
+
+struct PadHomeScreen: View {
+    let onOpenWeek: () -> Void
+    let onAddTask: () -> Void
+
+    /// The chat column's widest (messages + composer); narrower windows use
+    /// all of the space they have.
+    static let chatColumnMax: CGFloat = 900
+
+    @AppStorage(HomeTodayPanel.visibleKey) private var todayPanelVisible = true
+    @Environment(\.padRailInset) private var padRailInset
+
+    var body: some View {
+        GeometryReader { geo in
+            let canDock = geo.size.width >= HomeTodayPanel.dockMinWidth
+            HStack(spacing: 0) {
+                NavigationStack {
+                    HomeAIChatScreen(
+                        onOpenWeek: onOpenWeek,
+                        onAddTask: onAddTask,
+                        todayPanel: canDock ? .docked : .floating
+                    )
+                    // Wider than other screens' reading column: the chat is
+                    // the page — no needless narrowing on a big window.
+                    .updoReadableColumn(maxWidth: Self.chatColumnMax)
+                    // The chat draws its own top bar (the UIKit bar can't
+                    // move clear of the rail); it spans rail-edge → panel.
+                    .environment(\.homeTopLeadingTaken, padRailInset > 0)
+                }
+
+                if canDock && todayPanelVisible {
+                    HomeTodayPanel(onOpenWeek: onOpenWeek)
+                        .frame(width: HomeTodayPanel.width)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.42, dampingFraction: 0.88), value: canDock && todayPanelVisible)
+        }
+    }
+}
+
+struct HomeTodayPanel: View {
+    static let width: CGFloat = 340
+    /// Below this the chat would get narrower than ~560pt → popover instead.
+    static let dockMinWidth: CGFloat = 900
+    static let visibleKey = "ipad.home.todayPanel"
+
+    let onOpenWeek: () -> Void
+    var inPopover: Bool = false
+
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var store: TodoStore
+
+    @Query(sort: \EventItem.startMinute, order: .forward) private var allEvents: [EventItem]
+    @Query private var allFocusRecords: [FocusSessionRecord]
+
+    private var cyan: Color { UpdoTheme.cyan }
+    private var violet: Color { Color(arenaHex: "#7C3AED") }
+    private var currentUserID: String? { session.currentUser?.id.uuidString }
+
+    var body: some View {
+        // Ticks once a minute: enough for "now / up next" and the countdowns,
+        // nothing animates while idle.
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            panel(now: context.date)
+        }
+    }
+
+    private func panel(now: Date) -> some View {
+        let events = todayEvents(now)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 26) {
+                header(now)
+                nowCard(events: events, now: now)
+                if !events.isEmpty {
+                    scheduleSection(events: events, now: now)
+                }
+                tasksSection(now)
+                focusSection(now)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, inPopover ? 22 : 10)
+            .padding(.bottom, 32)
+        }
+        .scrollIndicators(.hidden)
+        .background {
+            if !inPopover {
+                UpdoFloatingRail.panelBackground.ignoresSafeArea()
+            }
+        }
+        .overlay(alignment: .leading) {
+            if !inPopover {
+                Rectangle()
+                    .fill(UpdoTheme.border)
+                    .frame(width: 1)
+                    .ignoresSafeArea()
+            }
+        }
+    }
+
+    // MARK: Header
+
+    private func header(_ now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            eyebrow(tr("ipad_today_eyebrow"))
+
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                Text(localizedWeekdayFull(weekdayIndex(now)))
+                    .font(.system(size: 30, weight: .black))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+
+                Text(dayMonth(now))
+                    .font(.system(size: 26, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(LinearGradient(colors: [cyan, violet], startPoint: .topLeading, endPoint: .bottomTrailing))
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+        }
+    }
+
+    // MARK: Now / next
+
+    @ViewBuilder
+    private func nowCard(events: [EventItem], now: Date) -> some View {
+        let nowMin = minuteOfDay(now)
+        if let active = events.first(where: { $0.startMinute <= nowMin && nowMin < $0.startMinute + $0.durationMinute }) {
+            let left = active.startMinute + active.durationMinute - nowMin
+            let progress = Double(nowMin - active.startMinute) / Double(max(1, active.durationMinute))
+            eventCard(active, label: tr("ipad_today_now"), isLive: true,
+                      value: "\(left)", unit: tr("ipad_today_min_left"), progress: progress)
+        } else if let next = events.first(where: { $0.startMinute > nowMin }) {
+            let until = next.startMinute - nowMin
+            let hours = until >= 90
+            eventCard(next, label: tr("ipad_today_next"), isLive: false,
+                      value: hours ? "\(until / 60)" : "\(until)",
+                      unit: hours ? tr("ipad_today_h_until") : tr("ipad_today_min_until"),
+                      progress: nil)
+        } else if events.isEmpty {
+            calmCard(icon: "sun.max.fill", title: tr("ipad_today_free_title"), subtitle: tr("ipad_today_free_sub"))
+        } else {
+            calmCard(icon: "checkmark.seal.fill", title: tr("ipad_today_done_title"), subtitle: tr("ipad_today_done_sub"))
+        }
+    }
+
+    private func eventCard(_ event: EventItem, label: String, isLive: Bool,
+                           value: String, unit: String, progress: Double?) -> some View {
+        let tint = Color(arenaHex: event.colorHex)
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(isLive ? Color(arenaHex: "#34D44A") : tint)
+                            .frame(width: 7, height: 7)
+                        eyebrow(label, color: UpdoTheme.filmy(0.6))
+                    }
+
+                    Text(event.title)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(2)
+
+                    Text(eventMeta(event))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(value)
+                        .font(.system(size: 38, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .contentTransition(.numericText(countsDown: true))
+                    Text(unit)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .fixedSize()
+            }
+
+            if let progress {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(UpdoTheme.filmy(0.1))
+                        Capsule()
+                            .fill(LinearGradient(colors: [tint.opacity(0.7), tint], startPoint: .leading, endPoint: .trailing))
+                            .frame(width: max(6, geo.size.width * min(1, max(0, progress))))
+                    }
+                }
+                .frame(height: 5)
+            }
+        }
+        .padding(18)
+        .background(
+            shape.fill(LinearGradient(colors: [tint.opacity(0.24), tint.opacity(0.06)],
+                                      startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
+        .overlay(shape.strokeBorder(tint.opacity(0.35), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func calmCard(icon: String, title: String, subtitle: String) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        return HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(cyan)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(cyan.opacity(0.12)))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(18)
+        .background(shape.fill(UpdoTheme.filmy(0.045)))
+        .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Schedule
+
+    private func scheduleSection(events: [EventItem], now: Date) -> some View {
+        let nowMin = minuteOfDay(now)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                eyebrow(tr("ipad_today_schedule"))
+                Spacer()
+                Button(action: onOpenWeek) {
+                    HStack(spacing: 3) {
+                        Text(tr("ipad_today_open_week"))
+                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold))
+                    }
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(cyan)
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
+                    let end = event.startMinute + event.durationMinute
+                    let isPast = end <= nowMin
+                    let isNow = event.startMinute <= nowMin && nowMin < end
+
+                    if index > 0 {
+                        Rectangle().fill(UpdoTheme.border).frame(height: 1).padding(.leading, 70)
+                    }
+
+                    HStack(spacing: 12) {
+                        Text(hhmm(event.startMinute))
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(isNow ? cyan : UpdoTheme.filmy(0.6))
+                            .frame(width: 46, alignment: .leading)
+
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(Color(arenaHex: event.colorHex))
+                            .frame(width: 3, height: 34)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(event.title)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(UpdoTheme.textPrimary)
+                                .lineLimit(1)
+                            Text(eventMeta(event))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        if isNow {
+                            Text(tr("ipad_today_now"))
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .tracking(1)
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 7)
+                                .frame(height: 20)
+                                .background(Capsule().fill(cyan))
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .opacity(isPast ? 0.42 : 1)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(.vertical, 4)
+            .background(cardShape.fill(UpdoTheme.filmy(0.045)))
+            .overlay(cardShape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+        }
+    }
+
+    // MARK: Tasks
+
+    private func tasksSection(_ now: Date) -> some View {
+        let tasks = todayTasks(now)
+        let shown = Array(tasks.prefix(6))
+        let doneCount = tasks.filter(\.isDone).count
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                eyebrow(tr("ipad_today_tasks"))
+                Spacer()
+                if !tasks.isEmpty {
+                    Text("\(doneCount)/\(tasks.count)")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
+                        .contentTransition(.numericText())
+                }
+            }
+
+            VStack(spacing: 0) {
+                if tasks.isEmpty {
+                    Text(tr("ipad_today_no_tasks"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                } else {
+                    ForEach(Array(shown.enumerated()), id: \.element.taskUUID) { index, task in
+                        if index > 0 {
+                            Rectangle().fill(UpdoTheme.border).frame(height: 1).padding(.leading, 50)
+                        }
+                        taskRow(task)
+                    }
+
+                    if tasks.count > shown.count {
+                        Rectangle().fill(UpdoTheme.border).frame(height: 1)
+                        Button(action: onOpenWeek) {
+                            Text(tr("ipad_today_more", tasks.count - shown.count))
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(cyan)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .hoverEffect(.highlight)
+                    }
+                }
+            }
+            .background(cardShape.fill(UpdoTheme.filmy(0.045)))
+            .overlay(cardShape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+        }
+    }
+
+    private func taskRow(_ task: DTTaskItem) -> some View {
+        Button {
+            Haptics.impact(.light)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                store.toggleDone(task)
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(task.isDone ? Color(arenaHex: AppArenaPalette.green) : UpdoTheme.filmy(0.4))
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(task.title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.filmy(task.isDone ? 0.4 : 0.95))
+                        .strikethrough(task.isDone, color: UpdoTheme.filmy(0.4))
+                        .lineLimit(1)
+
+                    let course = task.courseName.trimmingCharacters(in: .whitespaces)
+                    if !course.isEmpty {
+                        Text(course)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .accessibilityAddTraits(task.isDone ? .isSelected : [])
+    }
+
+    // MARK: Focus
+
+    private func focusSection(_ now: Date) -> some View {
+        let owned = FocusStats.owned(allFocusRecords, for: currentUserID)
+        let todayMin = FocusStats.todayMinutes(allFocusRecords, for: currentUserID, now: now)
+        let weekMin = FocusStats.weekMinutes(allFocusRecords, for: currentUserID, now: now)
+        let days = last7Days(now: now, records: owned)
+        // Scaled to at least an hour, so a 2-minute day doesn't read as a full bar.
+        let peak = max(days.map(\.minutes).max() ?? 0, 60)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            eyebrow(tr("ipad_today_focus"))
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .bottom, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text("\(todayMin)")
+                                .font(.system(size: 40, weight: .regular, design: .serif))
+                                .italic()
+                                .foregroundStyle(UpdoTheme.textPrimary)
+                                .contentTransition(.numericText())
+                            Text(tr("ipad_today_focus_today"))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(tr("ipad_today_week_total", hoursMinutes(weekMin)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    HStack(alignment: .bottom, spacing: 5) {
+                        ForEach(days) { day in
+                            VStack(spacing: 5) {
+                                Capsule()
+                                    .fill(day.isToday
+                                          ? AnyShapeStyle(LinearGradient(colors: [cyan, violet], startPoint: .top, endPoint: .bottom))
+                                          : AnyShapeStyle(UpdoTheme.filmy(day.minutes > 0 ? 0.28 : 0.1)))
+                                    .frame(width: 9, height: max(4, 44 * CGFloat(day.minutes) / CGFloat(peak)))
+                                Text(localizedWeekdayLetter(day.weekday))
+                                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(day.isToday ? cyan : UpdoTheme.filmy(0.4))
+                            }
+                        }
+                    }
+                    .frame(height: 62, alignment: .bottom)
+                    .accessibilityHidden(true)
+                }
+
+                Button {
+                    Haptics.impact(.medium)
+                    NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill").font(.system(size: 12, weight: .bold))
+                        Text(tr("ipad_today_start_focus")).font(.system(size: 15, weight: .bold))
+                    }
+                    .foregroundStyle(UpdoTheme.onAccent)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(
+                        Capsule().fill(LinearGradient(colors: [Color(arenaHex: "#1593FF"), violet],
+                                                      startPoint: .leading, endPoint: .trailing))
+                    )
+                    .contentShape(.hoverEffect, Capsule())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.lift)
+            }
+            .padding(18)
+            .background(cardShape.fill(UpdoTheme.filmy(0.045)))
+            .overlay(cardShape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+        }
+    }
+
+    private struct DayFocus: Identifiable {
+        let id: Int
+        let weekday: Int
+        let minutes: Int
+        let isToday: Bool
+    }
+
+    private func last7Days(now: Date, records: [FocusSessionRecord]) -> [DayFocus] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: now)
+        return (0..<7).reversed().map { back in
+            let day = cal.date(byAdding: .day, value: -back, to: today) ?? today
+            let minutes = records
+                .filter { cal.isDate($0.endedAt, inSameDayAs: day) }
+                .reduce(0) { $0 + $1.completedSeconds } / 60
+            return DayFocus(id: back, weekday: weekdayIndex(day), minutes: minutes, isToday: back == 0)
+        }
+    }
+
+    // MARK: Data
+
+    private func todayEvents(_ now: Date) -> [EventItem] {
+        let cal = Calendar.current
+        let weekday = weekdayIndex(now)
+        let uid = currentUserID
+        return allEvents
+            .filter { $0.ownerUserID == uid || $0.ownerUserID == nil }
+            .filter { event in
+                if let date = event.scheduledDate { return cal.isDate(date, inSameDayAs: now) }
+                return event.weekday == weekday
+            }
+            .sorted { $0.startMinute < $1.startMinute }
+    }
+
+    private func todayTasks(_ now: Date) -> [DTTaskItem] {
+        let cal = Calendar.current
+        return store.items
+            .filter { task in
+                guard let day = task.scheduledWeekDate ?? task.dueDate else { return false }
+                return cal.isDate(day, inSameDayAs: now)
+            }
+            .sorted { lhs, rhs in
+                if lhs.isDone != rhs.isDone { return !lhs.isDone }
+                return lhs.createdAt < rhs.createdAt
+            }
+    }
+
+    // MARK: Pieces
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+    }
+
+    private func eyebrow(_ text: String, color: Color = UpdoTheme.filmy(0.38)) -> some View {
+        Text(text)
+            .textCase(.uppercase)
+            .font(.system(size: 11, weight: .black, design: .monospaced))
+            .tracking(1.6)
+            .foregroundStyle(color)
+    }
+
+    private func eventMeta(_ event: EventItem) -> String {
+        let range = "\(hhmm(event.startMinute))–\(hhmm(event.startMinute + event.durationMinute))"
+        if let location = event.location?.trimmingCharacters(in: .whitespaces), !location.isEmpty {
+            return "\(range) · \(location)"
+        }
+        return range
+    }
+
+    private func hoursMinutes(_ minutes: Int) -> String {
+        minutes >= 60 ? tr("ipad_today_hm", minutes / 60, minutes % 60) : tr("ipad_today_m", minutes)
+    }
+
+    private func hhmm(_ minute: Int) -> String {
+        let m = max(0, min(minute, 24 * 60 - 1))
+        return String(format: "%02d:%02d", m / 60, m % 60)
+    }
+
+    private func minuteOfDay(_ date: Date) -> Int {
+        let cal = Calendar.current
+        return cal.component(.hour, from: date) * 60 + cal.component(.minute, from: date)
+    }
+
+    /// 0 = Monday … 6 = Sunday (the app's weekday convention).
+    private func weekdayIndex(_ date: Date) -> Int {
+        (Calendar.current.component(.weekday, from: date) + 5) % 7
+    }
+
+    private func dayMonth(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: appLanguageIsEnglish() ? "en_US" : "tr_TR")
+        formatter.setLocalizedDateFormatFromTemplate("dMMMM")
+        return formatter.string(from: date)
     }
 }

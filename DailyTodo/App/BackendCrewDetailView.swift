@@ -53,6 +53,13 @@ struct BackendCrewDetailView: View {
     let crew: CrewDTO
 
     @Environment(\.dismiss) private var dismiss
+    /// iPad Social split: this screen is the detail column — no back
+    /// button, and "leaving" clears the selection instead of popping.
+    @Environment(\.socialSplitClose) private var socialSplitClose
+
+    private func leave() {
+        if let socialSplitClose { socialSplitClose() } else { dismiss() }
+    }
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
     @ObservedObject private var socialStats = SocialStatsStore.shared
@@ -253,7 +260,7 @@ struct BackendCrewDetailView: View {
                             crewID: crew.id,
                             currentUserID: currentUserID
                         )
-                        dismiss()
+                        leave()
                     } catch {
                         errorMessage = error.localizedDescription
                     }
@@ -1249,23 +1256,25 @@ extension BackendCrewDetailView {
 
     var customHeader: some View {
         HStack {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
-                    .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-                    .frame(width: 46, height: 46)
-                    .background(
-                        RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(UpdoTheme.filmy(0.075))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
-                            )
-                    )
+            if socialSplitClose == nil {
+                Button {
+                    leave()
+                } label: {
+                    Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
+                        .font(.system(size: 19, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .frame(width: 46, height: 46)
+                        .background(
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .fill(UpdoTheme.filmy(0.075))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             Spacer()
 

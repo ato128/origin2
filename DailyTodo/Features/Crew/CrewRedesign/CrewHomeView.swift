@@ -102,6 +102,63 @@ private enum CrewArenaPalette {
     }
 }
 
+// MARK: - iPad split selection
+
+private struct CrewHomeSelectedIDKey: EnvironmentKey {
+    static let defaultValue: UUID? = nil
+}
+
+private struct SocialSplitCloseKey: EnvironmentKey {
+    static let defaultValue: (() -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    /// iPad Social split: the crew/friend shown in the detail column, so the
+    /// list can mark its row. nil on iPhone.
+    var crewHomeSelectedID: UUID? {
+        get { self[CrewHomeSelectedIDKey.self] }
+        set { self[CrewHomeSelectedIDKey.self] = newValue }
+    }
+
+    /// Set on the iPad Social detail column: closes it (clears the selection).
+    var socialSplitClose: (() -> Void)? {
+        get { self[SocialSplitCloseKey.self] }
+        set { self[SocialSplitCloseKey.self] = newValue }
+    }
+}
+
+/// The selected row in the iPad Social list: an accent ring over the card.
+private struct CrewSelectionRing: ViewModifier {
+    let isSelected: Bool
+    let radius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color(arenaHex: CrewArenaPalette.appBlue), Color(arenaHex: CrewArenaPalette.appPurple)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                        .background(
+                            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                .fill(Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.06))
+                        )
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .hoverEffect(.highlight)
+            .animation(.easeOut(duration: 0.18), value: isSelected)
+    }
+}
+
 // MARK: - Crew Home
 
 struct CrewHomeView: View {
@@ -269,6 +326,7 @@ struct CrewHomeView: View {
         }
         .fullScreenCover(isPresented: $showReferralInvite) {
             OnboardingInviteView(onFinish: { showReferralInvite = false })
+                .updoReadableColumn()
         }
     }
 
@@ -1186,6 +1244,8 @@ private struct CrewSocialCrewSection: View {
     let onCreateCrew: () -> Void
     let onJoinCrew: () -> Void
 
+    @Environment(\.crewHomeSelectedID) private var selectedID
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if crews.isEmpty {
@@ -1204,6 +1264,7 @@ private struct CrewSocialCrewSection: View {
                         onOpenCrew(crew.id)
                     } label: {
                         CrewSocialCrewCard(crew: crew)
+                            .modifier(CrewSelectionRing(isSelected: selectedID == crew.id, radius: 22))
                     }
                     .buttonStyle(.plain)
                 }
@@ -1418,6 +1479,8 @@ private struct CrewSocialFriendsSection: View {
     let onOpenFriend: (UUID) -> Void
     let onAddFriend: () -> Void
 
+    @Environment(\.crewHomeSelectedID) private var selectedID
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CrewSectionTitle(
@@ -1440,6 +1503,7 @@ private struct CrewSocialFriendsSection: View {
             } else {
                 ForEach(friends) { friend in
                     CrewFriendRow(friend: friend) { onOpenFriend(friend.id) }
+                        .modifier(CrewSelectionRing(isSelected: selectedID == friend.id, radius: 22))
                 }
             }
         }

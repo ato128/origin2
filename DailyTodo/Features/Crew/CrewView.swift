@@ -39,6 +39,8 @@ struct CrewView: View {
 
     @State private var selectedCrewIDForDetail: UUID?
     @State private var selectedFriendIDForDetail: UUID?
+    /// iPad: room for the floating tab rail on the left.
+    @Environment(\.padRailInset) private var padRailInset
     @ObservedObject private var arenaStore = ArenaStore.shared
     @ObservedObject private var socialStats = SocialStatsStore.shared
 
@@ -47,206 +49,385 @@ struct CrewView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            CrewHomeView(
-                initialTab: initialTab,
-                summary: crewHomeSummary,
-                studentContext: crewArenaStudentContext,
-                arenaStore: arenaStore,
-                crews: crewHomeCrewCards,
-                friends: crewHomeFriendCards,
-                incomingRequests: crewHomeIncomingRequestCards,
-                sentRequests: crewHomeSentRequestCards,
-                onCreateCrew: {
-                    showCreateCrewBackend = true
-                },
-                onJoinCrew: {
-                    pendingInviteCode = ""
-                    showJoinCrewSheet = true
-                },
-                onAddFriend: {
-                    showAddFriendSheet = true
-                },
-                onOpenCrew: { crewID in
-                    selectedCrewIDForDetail = crewID
-                },
-                onOpenFriend: { friendID in
-                    selectedFriendIDForDetail = friendID
-                },
-                onAcceptRequest: { friendshipID in
-                    guard let request = incomingRequests.first(where: { $0.id == friendshipID }) else { return }
+        GeometryReader { geo in
+            if UIDevice.current.userInterfaceIdiom == .pad && geo.size.width >= Self.splitMinWidth {
+                padSplit
+            } else {
+                phoneStack
+            }
+        }
+        .sheet(isPresented: $showCreateCrewBackend) {
+            CreateCrewBackendView()
+                .environmentObject(session)
+                .environmentObject(crewStore)
+        }
+        .sheet(isPresented: $showJoinCrewSheet) {
+            JoinCrewSheet(code: pendingInviteCode)
+                .environmentObject(crewStore)
+                .environmentObject(session)
+        }
+        .sheet(isPresented: $showAddFriendSheet) {
+            AddFriendSheetView()
+                .environmentObject(friendStore)
+                .environmentObject(session)
+        }
+        .task {
+            guard !didLoad else { return }
+            guard let userID = session.currentUser?.id else { return }
 
-                    Task {
-                        await acceptRequest(request)
-                    }
-                },
-                onRemoveRequest: { friendshipID in
-                    guard let request = (incomingRequests + sentRequests).first(where: { $0.id == friendshipID }) else { return }
+            didLoad = true
 
-                    Task {
-                        await removePendingRequest(request)
-                    }
-                },
-                onRefresh: {
-                    await reloadBackendFriends(force: true)
-                }
-            )
-            .navigationBarHidden(true)
-            .navigationDestination(
-                isPresented: Binding(
-                    get: { selectedCrewIDForDetail != nil },
-                    set: { isPresented in
-                        if !isPresented {
-                            selectedCrewIDForDetail = nil
-                        }
-                    }
-                )
-            ) {
-                if let crew = selectedCrewForDetail {
-                    BackendCrewDetailView(crew: crew)
-                        .environmentObject(crewStore)
-                        .environmentObject(session)
+            // Cache-first: son bilinen crew listesini + arkadaşlıkları diskten
+            // ANINDA göster; ağ tazelemesi (aşağıda) SWR olarak sessizce üzerine
+            // yazar. Böylece Sosyal sekmesine her girişte liste boşalıp geri
+            // gelmez (kendi kendine yüklenip gitme / flicker fix). Her ikisi de
+            // yalnız boşken hidrate eder → taze veriyi eski cache ile ezmez.
+            crewStore.hydrateCrewListCacheIfNeeded()
+            if friendStore.friendships.isEmpty {
+                friendStore.loadFriendshipsFromCache(currentUserID: userID)
+            }
+
+            // Heavy hydrate at most once per TTL window — realtime covers
+            // the gaps, so tab-hopping doesn't spam the backend.
+            if crewStore.shouldRunCrewTabHydrate() {
+                await initialLoadIfNeeded()
+                await crewStore.loadCrews()
+                await crewStore.loadCrewHomeSnapshot()
+            }
+
+            crewStore.startObservingFocusSocketEvents()
+
+            friendStore.subscribeToFriendshipsRealtime(currentUserID: userID)
+
+            let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
+                if friendship.requester_id == userID {
+                    return friendship.addressee_id
+                } else if friendship.addressee_id == userID {
+                    return friendship.requester_id
                 } else {
-                    CrewRedesignLoadingView(text: tr("cv_crew_preparing"))
+                    return nil
                 }
             }
-            .navigationDestination(
-                isPresented: Binding(
-                    get: { selectedFriendIDForDetail != nil },
-                    set: { isPresented in
-                        if !isPresented {
-                            selectedFriendIDForDetail = nil
-                        }
-                    }
-                )
-            ) {
-                if let friend = selectedFriendForDetail {
-                    FriendDetailView(friend: friend)
-                        .environmentObject(friendStore)
-                        .environmentObject(session)
-                } else {
-                    CrewRedesignLoadingView(text: tr("cv_friend_preparing"))
-                }
+
+            friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
+
+            didLoad = true
+
+            #if DEBUG
+            // QA/screenshot hook: `-debugSocialFriend 1` opens that friend.
+            if let raw = UserDefaults.standard.string(forKey: "debugSocialFriend"),
+               let index = Int(raw), backendFriends.indices.contains(index) {
+                selectedFriendIDForDetail = backendFriends[index].id
             }
-            .sheet(isPresented: $showCreateCrewBackend) {
-                CreateCrewBackendView()
-                    .environmentObject(session)
-                    .environmentObject(crewStore)
-            }
-            .sheet(isPresented: $showJoinCrewSheet) {
-                JoinCrewSheet(code: pendingInviteCode)
-                    .environmentObject(crewStore)
-                    .environmentObject(session)
-            }
-            .sheet(isPresented: $showAddFriendSheet) {
-                AddFriendSheetView()
-                    .environmentObject(friendStore)
-                    .environmentObject(session)
-            }
-            .task {
-                guard !didLoad else { return }
-                guard let userID = session.currentUser?.id else { return }
-
-                didLoad = true
-
-                // Cache-first: son bilinen crew listesini + arkadaşlıkları diskten
-                // ANINDA göster; ağ tazelemesi (aşağıda) SWR olarak sessizce üzerine
-                // yazar. Böylece Sosyal sekmesine her girişte liste boşalıp geri
-                // gelmez (kendi kendine yüklenip gitme / flicker fix). Her ikisi de
-                // yalnız boşken hidrate eder → taze veriyi eski cache ile ezmez.
-                crewStore.hydrateCrewListCacheIfNeeded()
-                if friendStore.friendships.isEmpty {
-                    friendStore.loadFriendshipsFromCache(currentUserID: userID)
-                }
-
-                // Heavy hydrate at most once per TTL window — realtime covers
-                // the gaps, so tab-hopping doesn't spam the backend.
-                if crewStore.shouldRunCrewTabHydrate() {
-                    await initialLoadIfNeeded()
-                    await crewStore.loadCrews()
-                    await crewStore.loadCrewHomeSnapshot()
-                }
-
-                crewStore.startObservingFocusSocketEvents()
-
-                friendStore.subscribeToFriendshipsRealtime(currentUserID: userID)
-
-                let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
-                    if friendship.requester_id == userID {
-                        return friendship.addressee_id
-                    } else if friendship.addressee_id == userID {
-                        return friendship.requester_id
-                    } else {
-                        return nil
-                    }
-                }
-
-                friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
-
-                didLoad = true
-            }
-            .onChange(of: session.currentUser?.id) { _, newID in
-                Task {
-                    if newID == nil {
-                        crewStore.resetForUserChange()
-                        ArenaStore.shared.resetForUserChange()
-                        friendStore.unsubscribeFriendshipsRealtime()
-                        friendStore.unsubscribePresenceRealtime()
-                        didLoad = false
-                        return
-                    }
-
+            #endif
+        }
+        .onChange(of: session.currentUser?.id) { _, newID in
+            Task {
+                if newID == nil {
                     crewStore.resetForUserChange()
                     ArenaStore.shared.resetForUserChange()
                     friendStore.unsubscribeFriendshipsRealtime()
                     friendStore.unsubscribePresenceRealtime()
                     didLoad = false
+                    return
+                }
 
-                    await reloadAllCrewAndFriendData(forceCrews: true)
+                crewStore.resetForUserChange()
+                ArenaStore.shared.resetForUserChange()
+                friendStore.unsubscribeFriendshipsRealtime()
+                friendStore.unsubscribePresenceRealtime()
+                didLoad = false
 
-                    if let newID {
-                        friendStore.subscribeToFriendshipsRealtime(currentUserID: newID)
+                await reloadAllCrewAndFriendData(forceCrews: true)
 
-                        let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
-                            if friendship.requester_id == newID {
-                                return friendship.addressee_id
-                            } else if friendship.addressee_id == newID {
-                                return friendship.requester_id
-                            } else {
-                                return nil
-                            }
+                if let newID {
+                    friendStore.subscribeToFriendshipsRealtime(currentUserID: newID)
+
+                    let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
+                        if friendship.requester_id == newID {
+                            return friendship.addressee_id
+                        } else if friendship.addressee_id == newID {
+                            return friendship.requester_id
+                        } else {
+                            return nil
                         }
-
-                        friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
                     }
-                }
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                guard newPhase == .active else { return }
 
-                Task {
-                    await crewStore.loadHomeCacheForAllCrews()
-                    await reloadBackendFriends(force: false)
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
-                if let code = notification.object as? String {
-                    pendingInviteCode = code
-                    showJoinCrewSheet = true
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("focus_completed"))) { _ in
-                Task {
-                    await crewStore.loadHomeCacheForAllCrews()
-
-                    await arenaStore.load(
-                        scope: .department,
-                        range: .week,
-                        force: true
-                    )
+                    friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
                 }
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+
+            Task {
+                await crewStore.loadHomeCacheForAllCrews()
+                await reloadBackendFriends(force: false)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
+            if let code = notification.object as? String {
+                pendingInviteCode = code
+                showJoinCrewSheet = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("focus_completed"))) { _ in
+            Task {
+                await crewStore.loadHomeCacheForAllCrews()
+
+                await arenaStore.load(
+                    scope: .department,
+                    range: .week,
+                    force: true
+                )
+            }
+        }
+    }
+
+    /// iPad: below this the list + detail split gets too tight → phone stack.
+    static let splitMinWidth: CGFloat = 900
+    static let listWidth: CGFloat = 420
+
+    var crewHome: some View {
+        CrewHomeView(
+            initialTab: initialTab,
+            summary: crewHomeSummary,
+            studentContext: crewArenaStudentContext,
+            arenaStore: arenaStore,
+            crews: crewHomeCrewCards,
+            friends: crewHomeFriendCards,
+            incomingRequests: crewHomeIncomingRequestCards,
+            sentRequests: crewHomeSentRequestCards,
+            onCreateCrew: {
+                showCreateCrewBackend = true
+            },
+            onJoinCrew: {
+                pendingInviteCode = ""
+                showJoinCrewSheet = true
+            },
+            onAddFriend: {
+                showAddFriendSheet = true
+            },
+            onOpenCrew: { crewID in
+                selectedFriendIDForDetail = nil
+                selectedCrewIDForDetail = crewID
+            },
+            onOpenFriend: { friendID in
+                selectedCrewIDForDetail = nil
+                selectedFriendIDForDetail = friendID
+            },
+            onAcceptRequest: { friendshipID in
+                guard let request = incomingRequests.first(where: { $0.id == friendshipID }) else { return }
+
+                Task {
+                    await acceptRequest(request)
+                }
+            },
+            onRemoveRequest: { friendshipID in
+                guard let request = (incomingRequests + sentRequests).first(where: { $0.id == friendshipID }) else { return }
+
+                Task {
+                    await removePendingRequest(request)
+                }
+            },
+            onRefresh: {
+                await reloadBackendFriends(force: true)
+            }
+        )
+    }
+
+    /// iPhone (and narrow iPad windows): the list, pushing crew/friend screens.
+    var phoneStack: some View {
+        NavigationStack {
+            crewHome
+                .updoReadableColumn()
+        .navigationBarHidden(true)
+        .navigationDestination(
+            isPresented: Binding(
+                get: { selectedCrewIDForDetail != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        selectedCrewIDForDetail = nil
+                    }
+                }
+            )
+        ) {
+            if let crew = selectedCrewForDetail {
+                BackendCrewDetailView(crew: crew)
+                    .environmentObject(crewStore)
+                    .environmentObject(session)
+                    .updoReadableColumn()
+            } else {
+                CrewRedesignLoadingView(text: tr("cv_crew_preparing"))
+            }
+        }
+        .navigationDestination(
+            isPresented: Binding(
+                get: { selectedFriendIDForDetail != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        selectedFriendIDForDetail = nil
+                    }
+                }
+            )
+        ) {
+            if let friend = selectedFriendForDetail {
+                FriendDetailView(friend: friend)
+                    .environmentObject(friendStore)
+                    .environmentObject(session)
+                    .updoReadableColumn()
+            } else {
+                CrewRedesignLoadingView(text: tr("cv_friend_preparing"))
+            }
+        }
+        }
+    }
+
+    // MARK: iPad split (Messages-style)
+
+    /// iPad: the list stays on the left; the selected crew or friend opens in
+    /// the detail column on the right (with its own navigation), like Messages.
+    var padSplit: some View {
+        HStack(spacing: 0) {
+            NavigationStack {
+                crewHome
+                    // The list's background runs under the rail; its cards don't.
+                    .safeAreaPadding(.leading, padRailInset)
+                    .navigationBarHidden(true)
+            }
+            .frame(width: Self.listWidth + padRailInset)
+            .environment(\.crewHomeSelectedID, selectedCrewIDForDetail ?? selectedFriendIDForDetail)
+
+            Rectangle()
+                .fill(UpdoTheme.border)
+                .frame(width: 1)
+                .ignoresSafeArea()
+
+            NavigationStack {
+                padDetail
+            }
+            // A new selection is a fresh detail stack (no stale pushes).
+            .id(selectedCrewIDForDetail ?? selectedFriendIDForDetail)
+            .environment(\.socialSplitClose, {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    selectedCrewIDForDetail = nil
+                    selectedFriendIDForDetail = nil
+                }
+            })
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    var padDetail: some View {
+        if selectedCrewIDForDetail != nil {
+            if let crew = selectedCrewForDetail {
+                BackendCrewDetailView(crew: crew)
+                    .environmentObject(crewStore)
+                    .environmentObject(session)
+                    .updoReadableColumn()
+            } else {
+                CrewRedesignLoadingView(text: tr("cv_crew_preparing"))
+            }
+        } else if selectedFriendIDForDetail != nil {
+            if let friend = selectedFriendForDetail {
+                FriendDetailView(friend: friend)
+                    .environmentObject(friendStore)
+                    .environmentObject(session)
+                    .updoReadableColumn()
+            } else {
+                CrewRedesignLoadingView(text: tr("cv_friend_preparing"))
+            }
+        } else {
+            SocialSplitPlaceholder(
+                onAddFriend: { showAddFriendSheet = true },
+                onCreateCrew: { showCreateCrewBackend = true }
+            )
+        }
+    }
+}
+
+/// iPad Social detail column before anything is picked: never a blank pane.
+private struct SocialSplitPlaceholder: View {
+    let onAddFriend: () -> Void
+    let onCreateCrew: () -> Void
+
+    private var blue: Color { Color(arenaHex: "#1593FF") }
+    private var violet: Color { Color(arenaHex: "#7C3AED") }
+
+    var body: some View {
+        ZStack {
+            ArenaBackground(
+                primaryGlow: violet,
+                secondaryGlow: Color(arenaHex: "#2DD4FF"),
+                warmGlow: Color(arenaHex: "#FF5A44"),
+                intensity: 0.7
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 22) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [blue.opacity(0.22), violet.opacity(0.18)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 104, height: 104)
+                        .overlay(Circle().strokeBorder(UpdoTheme.filmy(0.12), lineWidth: 1))
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 38, weight: .semibold))
+                        .foregroundStyle(LinearGradient(colors: [Color(arenaHex: "#2DD4FF"), violet],
+                                                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+
+                VStack(spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Text(tr("ipad_social_empty_title"))
+                            .font(.system(size: 30, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                        Text(tr("ipad_social_empty_accent"))
+                            .font(.system(size: 28, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(LinearGradient(colors: [Color(arenaHex: "#2DD4FF"), violet],
+                                                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                    }
+                    Text(tr("ipad_social_empty_sub"))
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 420)
+                }
+
+                HStack(spacing: 12) {
+                    Button(action: onAddFriend) {
+                        Label(tr("ch_add_friend"), systemImage: "person.badge.plus")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(UpdoTheme.onAccent)
+                            .padding(.horizontal, 20)
+                            .frame(height: 46)
+                            .background(Capsule().fill(LinearGradient(colors: [blue, violet],
+                                                                      startPoint: .leading, endPoint: .trailing)))
+                            .contentShape(.hoverEffect, Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .hoverEffect(.lift)
+
+                    Button(action: onCreateCrew) {
+                        Label(tr("ch_create_crew"), systemImage: "person.3.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .padding(.horizontal, 20)
+                            .frame(height: 46)
+                            .liquidGlass(in: Capsule())
+                            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                            .contentShape(.hoverEffect, Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .hoverEffect(.lift)
+                }
+                .padding(.top, 6)
+            }
+            .padding(40)
+        }
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 

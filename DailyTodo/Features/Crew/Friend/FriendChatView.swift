@@ -2575,8 +2575,18 @@ private extension FriendChatView {
                 guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                       let root = scene.windows.first?.rootViewController else { return }
                 
+                // Present from the top-most screen (the chat is often in a cover).
+                var top = root
+                while let presented = top.presentedViewController { top = presented }
+
                 let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-                root.present(vc, animated: true)
+                // iPad shows it as a popover — without an anchor UIKit crashes.
+                if let popover = vc.popoverPresentationController {
+                    popover.sourceView = top.view
+                    popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+                    popover.permittedArrowDirections = []
+                }
+                top.present(vc, animated: true)
             }
             
             private func downloadFile() {

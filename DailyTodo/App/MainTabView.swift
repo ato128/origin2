@@ -121,7 +121,24 @@ struct MainTabView: View {
     @Query private var allFocusRecords: [FocusSessionRecord]
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var tab: AppTab = .tasks
+    @State private var tab: AppTab = Self.debugInitialTab ?? .tasks
+
+    /// QA/screenshot hook (Debug only): launch with `-debugTab week` to open
+    /// on that tab — simulators can't confirm a dailytodo:// prompt.
+    private static var debugInitialTab: AppTab? {
+        #if DEBUG
+        switch UserDefaults.standard.string(forKey: "debugTab") {
+        case "home": return .tasks
+        case "week": return .week
+        case "crew": return .crew
+        case "focus": return .focus
+        case "insights": return .insights
+        default: return nil
+        }
+        #else
+        return nil
+        #endif
+    }
     @State private var pendingChatRoute: PendingChatRoute?
     @State private var showReferralReward = false
     /// Home shows a mini tab bar under the chat; a tap grows it to full size.
@@ -130,6 +147,16 @@ struct MainTabView: View {
     @StateObject private var keyboard = KeyboardVisibility()
 
     private var activeTab: AppTab { forcedTab ?? tab }
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// iPad: the floating rail is open (names + chats) or folded (icons).
+    @AppStorage(UpdoFloatingRail.expandedKey) private var railExpanded = true
+    /// iPad at regular width (full screen, wide Split View, Stage Manager).
+    /// iPhone — even a Pro Max in landscape — and narrow iPad windows keep
+    /// the floating tab bar.
+    private var usesSidebar: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
+    }
 
     private var isOnHome: Bool { activeTab == .tasks }
     private var tabBarCompact: Bool { isOnHome && !homeBarExpanded }
@@ -143,26 +170,61 @@ struct MainTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Aktif ekran
-            screenForTab(activeTab)
-                .environment(\.homeDockReserve, homeDockReserve)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(.opacity)
+            if usesSidebar {
+                // iPad: a floating glass rail, vertically centered on the left
+                // (the iPhone tab bar, stood up). Screens run full-bleed under
+                // it and keep their content clear via `padRailInset`.
+                GeometryReader { geo in
+                    // Only a wide (landscape) window can open the rail; in
+                    // portrait it stays the icon capsule.
+                    let canExpand = geo.size.width >= UpdoFloatingRail.expandMinWidth
+                    let expanded = railExpanded && canExpand
 
-            // Custom tab bar
-            HomeTabBar(
-                selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab,
-                isCompact: tabBarCompact,
-                onExpand: expandHomeBar,
-                onReselect: { reselected in
-                    if reselected == .tasks { collapseHomeBar() }
+                    ZStack(alignment: .leading) {
+                        screenForTab(activeTab)
+                            .environment(\.homeDockReserve, 0)
+                            .environment(\.padRailInset, UpdoFloatingRail.contentInset(expanded: expanded))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .transition(.opacity)
+
+                        UpdoFloatingRail(
+                            selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab,
+                            isExpanded: expanded
+                        )
+                        .padding(.leading, UpdoFloatingRail.edgeGap)
+                    }
+                    .overlay(alignment: .topLeading) {
+                        if canExpand {
+                            UpdoRailBrand()
+                                .padding(.leading, UpdoFloatingRail.edgeGap)
+                                .padding(.top, 4)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(.spring(response: 0.45, dampingFraction: 0.84), value: expanded)
                 }
-            )
-            .padding(.horizontal, tabBarCompact ? 0 : 22)
-            .padding(.bottom, 6)
-            .offset(y: tabBarHidden ? 120 : 0)
-            .opacity(tabBarHidden ? 0 : 1)
-            .allowsHitTesting(!tabBarHidden)
+            } else {
+                // Aktif ekran
+                screenForTab(activeTab)
+                    .environment(\.homeDockReserve, homeDockReserve)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.opacity)
+
+                // Custom tab bar
+                HomeTabBar(
+                    selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab,
+                    isCompact: tabBarCompact,
+                    onExpand: expandHomeBar,
+                    onReselect: { reselected in
+                        if reselected == .tasks { collapseHomeBar() }
+                    }
+                )
+                .padding(.horizontal, tabBarCompact ? 0 : 22)
+                .padding(.bottom, 6)
+                .offset(y: tabBarHidden ? 120 : 0)
+                .opacity(tabBarHidden ? 0 : 1)
+                .allowsHitTesting(!tabBarHidden)
+            }
         }
         // Home: the chat composer rides the keyboard (bar hides). Other tabs keep
         // their old behavior — the layout ignores the keyboard.
@@ -176,6 +238,7 @@ struct MainTabView: View {
         .fullScreenCover(item: $pendingChatRoute) { route in
             NavigationStack {
                 pendingChatDestination(route)
+                    .updoReadableColumn()
             }
         }
         // Referral reward earned (3 new-install friends) → refresh Premium and
@@ -226,6 +289,10 @@ struct MainTabView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .openInsightsTab)) { _ in
             tab = .insights
+        }
+        // A notebook page was sent to Updo AI → Home (the chat) with it attached.
+        .onReceive(NotificationCenter.default.publisher(for: .openHomeTab)) { _ in
+            tab = .tasks
         }
         .onReceive(NotificationCenter.default.publisher(for: .openCrewTab)) { _ in
             tab = .crew
@@ -290,11 +357,20 @@ private extension MainTabView {
         switch tab {
         case .tasks:
             // Home IS the Updo AI chat now (the old dashboard is HomeView).
-            NavigationStack {
-                HomeAIChatScreen(
+            if usesSidebar {
+                // iPad: chat + the docked Today panel.
+                PadHomeScreen(
                     onOpenWeek: { setTab(.week) },
                     onAddTask: { setTab(.week) }
                 )
+            } else {
+                NavigationStack {
+                    HomeAIChatScreen(
+                        onOpenWeek: { setTab(.week) },
+                        onAddTask: { setTab(.week) }
+                    )
+                    .updoReadableColumn()
+                }
             }
 
         case .week:
@@ -303,12 +379,20 @@ private extension MainTabView {
             }
 
         case .crew:
-            NavigationStack {
+            if usesSidebar {
+                // iPad: CrewView owns its stacks (list + detail split). An
+                // outer stack would swallow the detail column's pushes.
                 CrewView(initialTab: .crews)
+            } else {
+                NavigationStack {
+                    CrewView(initialTab: .crews)
+                }
             }
 
         case .focus:
             NavigationStack {
+                // Sizes itself: a two-column stage on a wide iPad window,
+                // the phone layout in a centered column otherwise.
                 FocusView()
                     .environmentObject(session)
                     .environmentObject(crewStore)
@@ -871,6 +955,325 @@ struct HomeTabBar: View {
     }
 }
 
+// MARK: - iPad floating rail
+
+/// iPad (regular width): a floating Liquid Glass navigation panel on the left,
+/// only as tall as its content. Expanded it reads like the old sidebar —
+/// "Up do", the five sections with names, the Updo AI chats; the button at its
+/// top-left folds it into an icon-only capsule (the iPhone tab bar, stood up)
+/// and back. Same navy scrim and aurora "selected" pill as the iPhone bar.
+struct UpdoFloatingRail: View {
+    @Binding var selectedTab: AppTab
+
+    /// Folded or open (names + chats). Open only in a wide window.
+    let isExpanded: Bool
+
+    static let expandedKey = "ipad.rail.expanded"
+    /// Below this window width (portrait) the rail stays folded.
+    static let expandMinWidth: CGFloat = 1100
+    static let collapsedWidth: CGFloat = 66
+    static let expandedWidth: CGFloat = 248
+    static let edgeGap: CGFloat = 14
+
+    /// How far content keeps clear of the rail (rail + both gaps).
+    static func contentInset(expanded: Bool) -> CGFloat {
+        (expanded ? expandedWidth : collapsedWidth) + edgeGap * 2
+    }
+
+    @Namespace private var namespace
+    @ObservedObject private var avatarStore = ProfileAvatarStore.shared
+    @ObservedObject private var chats = UpdoAIChatStore.shared
+
+    private var cyan: Color { Color(arenaHex: "#2DD4FF") }
+    private var blue: Color { Color(arenaHex: "#1593FF") }
+    private var violet: Color { Color(arenaHex: "#7C3AED") }
+
+    private var panelShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: isExpanded ? 28 : Self.collapsedWidth / 2, style: .continuous)
+    }
+
+    var body: some View {
+        VStack(alignment: isExpanded ? .leading : .center, spacing: 6) {
+            ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in
+                tabButton(tab, index: index)
+            }
+
+            if isExpanded {
+                chatsSection
+                    .padding(.top, 14)
+                    .transition(.opacity)
+            }
+        }
+        .padding(7)
+        .padding(.vertical, isExpanded ? 6 : 0)
+        .frame(width: isExpanded ? Self.expandedWidth : Self.collapsedWidth)
+        .background(
+            ZStack {
+                panelShape
+                    .fill(.clear)
+                    .liquidGlass(in: panelShape)
+
+                panelShape
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.adaptive(light: Color(arenaHex: "#C9D8F0").opacity(0.55), dark: Color(arenaHex: "#0A1A33").opacity(0.80)),
+                                Color.adaptive(light: Color(arenaHex: "#DCE6F5").opacity(0.55), dark: Color(arenaHex: "#081228").opacity(0.84))
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
+        )
+        .overlay(
+            panelShape.stroke(
+                LinearGradient(colors: [UpdoTheme.filmy(0.135), UpdoTheme.filmy(0.050), blue.opacity(0.075)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing),
+                lineWidth: 1
+            )
+        )
+        .clipShape(panelShape)
+        .shadow(color: UpdoTheme.cardShadow(0.30), radius: 22, x: 6, y: 10)
+    }
+
+    // MARK: Sections
+
+    private func tabButton(_ tab: AppTab, index: Int) -> some View {
+        let isSelected = selectedTab == tab
+        let shape = RoundedRectangle(cornerRadius: isExpanded ? 18 : 22, style: .continuous)
+
+        return Button {
+            select(tab)
+        } label: {
+            HStack(spacing: 12) {
+                tabGlyph(tab, isSelected: isSelected)
+                    .frame(width: isExpanded ? 28 : 52)
+
+                if isExpanded {
+                    Text(tab.title)
+                        .font(.system(size: 15.5, weight: isSelected ? .bold : .semibold))
+                        .foregroundStyle(isSelected ? AnyShapeStyle(activeTextGradient) : AnyShapeStyle(UpdoTheme.filmy(0.72)))
+                        .lineLimit(1)
+                        .transition(.opacity)
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.horizontal, isExpanded ? 12 : 0)
+            .frame(maxWidth: isExpanded ? .infinity : 52)
+            .frame(height: isExpanded ? 48 : 52)
+            .background {
+                if isSelected {
+                    shape
+                        .fill(LinearGradient(colors: [cyan.opacity(0.22), blue.opacity(0.14), violet.opacity(0.12)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .overlay(
+                            shape.stroke(
+                                LinearGradient(colors: [UpdoTheme.filmy(0.22), cyan.opacity(0.12), UpdoTheme.filmy(0.06)],
+                                               startPoint: .topLeading, endPoint: .bottomTrailing),
+                                lineWidth: 1
+                            )
+                        )
+                        .matchedGeometryEffect(id: "railPill", in: namespace)
+                }
+            }
+            .contentShape(.hoverEffect, shape)
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        // ⌘1…⌘5 — listed in the hold-⌘ shortcut overlay.
+        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+        .accessibilityLabel(tab.title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .onboardingTabAnchor(tab)
+    }
+
+    private var chatsSection: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(tr("ai_threads_header"))
+                .textCase(.uppercase)
+                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                .tracking(1.6)
+                .foregroundStyle(UpdoTheme.filmy(0.38))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 6)
+
+            chatRow(id: nil, title: tr("ai_threads_general"), icon: "bubble.left.and.text.bubble.right")
+
+            // Floating panel: a handful of chats, the rest live in Home's ☰.
+            ForEach(chats.sortedThreads.prefix(6)) { thread in
+                chatRow(id: thread.id, title: thread.title, icon: thread.icon)
+            }
+        }
+    }
+
+    private func chatRow(id: UUID?, title: String, icon: String) -> some View {
+        let isSelected = selectedTab == .tasks && chats.activeThreadID == id
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        return Button {
+            guard !chats.isSending else { return }
+            select(.tasks)
+            withAnimation(.easeInOut(duration: 0.22)) { chats.selectThread(id) }
+        } label: {
+            HStack(spacing: 11) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(isSelected ? AnyShapeStyle(activeIconGradient) : AnyShapeStyle(UpdoTheme.filmy(0.45)))
+                    .frame(width: 22)
+
+                Text(title)
+                    .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                    .foregroundStyle(UpdoTheme.filmy(isSelected ? 0.95 : 0.68))
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 36)
+            .background {
+                if isSelected { shape.fill(UpdoTheme.filmy(0.07)) }
+            }
+            .contentShape(.hoverEffect, shape)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .disabled(chats.isSending && !isSelected)
+    }
+
+    // MARK: Pieces
+
+    @ViewBuilder
+    private func tabGlyph(_ tab: AppTab, isSelected: Bool) -> some View {
+        if tab == .insights, let avatar = avatarStore.image {
+            Image(uiImage: avatar)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 28, height: 28)
+                .clipShape(Circle())
+                .overlay(
+                    Circle().strokeBorder(
+                        isSelected ? AnyShapeStyle(activeIconGradient) : AnyShapeStyle(UpdoTheme.filmy(0.35)),
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
+                )
+        } else {
+            Image(systemName: tab.iconName)
+                .font(.system(size: 18, weight: .black))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isSelected ? AnyShapeStyle(activeIconGradient) : AnyShapeStyle(UpdoTheme.filmy(0.5)))
+        }
+    }
+
+    private var activeIconGradient: LinearGradient {
+        LinearGradient(colors: [Color.white, cyan.opacity(0.98), blue.opacity(0.94), violet.opacity(0.88)],
+                       startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    private var activeTextGradient: LinearGradient {
+        LinearGradient(colors: [UpdoTheme.filmy(0.98), cyan.opacity(0.94), blue.opacity(0.82)],
+                       startPoint: .leading, endPoint: .trailing)
+    }
+
+    /// The tab bar's navy as a full-height panel (behind Home's Today panel).
+    static var panelBackground: some View {
+        LinearGradient(
+            colors: [
+                Color.adaptive(light: Color(arenaHex: "#E9EEF7"), dark: Color(arenaHex: "#0A1428")),
+                Color.adaptive(light: Color(arenaHex: "#E2E9F4"), dark: Color(arenaHex: "#070D1C"))
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private func select(_ tab: AppTab) {
+        guard tab != selectedTab else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.6)
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) { selectedTab = tab }
+    }
+}
+
+/// iPad: the floating "Up do" capsule at the top-left, apart from the rail.
+/// Its button folds / unfolds the rail; both animate together (the wordmark
+/// slides away into the button, the rail narrows to its icon capsule).
+struct UpdoRailBrand: View {
+    @AppStorage(UpdoFloatingRail.expandedKey) private var isExpanded = true
+
+    private var cyan: Color { Color(arenaHex: "#2DD4FF") }
+    private var blue: Color { Color(arenaHex: "#1593FF") }
+    private var violet: Color { Color(arenaHex: "#7C3AED") }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: toggle) {
+                Image(systemName: "sidebar.left")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(UpdoTheme.filmy(0.75))
+                    .frame(width: 40, height: 40)
+                    .contentShape(.hoverEffect, Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.highlight)
+            // ⌃⌘S — the system's "Show/Hide Sidebar" shortcut.
+            .keyboardShortcut("s", modifiers: [.command, .control])
+            .accessibilityLabel(tr(isExpanded ? "ipad_rail_collapse" : "ipad_rail_expand"))
+
+            if isExpanded {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text("Up")
+                        .font(.system(size: 22, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text("do")
+                        .font(.system(size: 21, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(LinearGradient(colors: [cyan, violet], startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.trailing, 14)
+                .transition(.opacity.combined(with: .scale(scale: 0.6, anchor: .leading)))
+                .accessibilityHidden(true)
+            }
+        }
+        .padding(4)
+        .background(
+            ZStack {
+                Capsule(style: .continuous)
+                    .fill(.clear)
+                    .liquidGlass(in: Capsule(style: .continuous))
+                Capsule(style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.adaptive(light: Color(arenaHex: "#C9D8F0").opacity(0.55), dark: Color(arenaHex: "#0A1A33").opacity(0.80)),
+                                Color.adaptive(light: Color(arenaHex: "#DCE6F5").opacity(0.55), dark: Color(arenaHex: "#081228").opacity(0.84))
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
+        )
+        .overlay(
+            Capsule(style: .continuous).stroke(
+                LinearGradient(colors: [UpdoTheme.filmy(0.135), UpdoTheme.filmy(0.050), blue.opacity(0.075)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing),
+                lineWidth: 1
+            )
+        )
+        .clipShape(Capsule(style: .continuous))
+        .shadow(color: UpdoTheme.cardShadow(0.26), radius: 16, x: 4, y: 8)
+    }
+
+    private func toggle() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.6)
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.84)) { isExpanded.toggle() }
+    }
+}
+
 // MARK: - Social Banner
 //
 // Lightweight in-app banner shown when a social event lands live over the backend
@@ -1018,6 +1421,7 @@ private struct ReferralRewardPresenter: ViewModifier {
         content
             .fullScreenCover(isPresented: $isPresented) {
                 OnboardingInviteView(onFinish: { isPresented = false })
+                    .updoReadableColumn()
                     .environmentObject(session)
             }
             .onReceive(NotificationCenter.default.publisher(for: .referralRewardGranted)) { _ in

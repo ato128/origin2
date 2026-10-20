@@ -125,6 +125,7 @@ struct OnboardingWidgetPromoView: View {
         // doğrudan uygulamaya geçilir — showcase'e/onboarding'e geri dönülmez.
         .fullScreenCover(isPresented: $showPaywall, onDismiss: { onFinish() }) {
             PaywallView(context: "onboarding")
+                .updoReadableColumn()
         }
     }
 }

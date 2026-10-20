@@ -348,3 +348,78 @@ extension View {
     }
 }
 
+
+// MARK: - iPad floating rail inset
+
+private struct PadRailInsetKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    /// iPad: how far content keeps clear of the floating tab rail on the
+    /// left. Backgrounds still run full-bleed under it. 0 on iPhone.
+    var padRailInset: CGFloat {
+        get { self[PadRailInsetKey.self] }
+        set { self[PadRailInsetKey.self] = newValue }
+    }
+}
+
+private struct HomeTopLeadingTakenKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// iPad: the floating "Up do" capsule sits in the top-left corner, so a
+    /// screen's own top-leading buttons should move to the trailing side.
+    var homeTopLeadingTaken: Bool {
+        get { self[HomeTopLeadingTakenKey.self] }
+        set { self[HomeTopLeadingTakenKey.self] = newValue }
+    }
+}
+
+// MARK: - iPad readable column
+
+/// The widest a phone-designed screen gets. Above it (iPad, a wide Split View
+/// or Stage Manager window) content centers in a column of this width.
+let updoReadableColumnWidth: CGFloat = 740
+
+extension View {
+    /// iPad: keeps a phone-designed screen readable on a wide window by
+    /// centering its content in an `updoReadableColumnWidth` column. Done with
+    /// horizontal safe-area padding, so backgrounds that `.ignoresSafeArea()`
+    /// stay full-bleed and scroll views still scroll edge to edge. A no-op on
+    /// iPhone (any orientation). Apply to each screen root — tab roots, pushed screens and
+    /// full-screen covers, INSIDE their NavigationStack (a UIKit-hosted stack
+    /// doesn't pass SwiftUI safe-area padding through). Sheets are already a
+    /// narrow card on iPad. Nesting is harmless: an inner one measures the
+    /// already-narrowed width.
+    func updoReadableColumn(maxWidth: CGFloat = updoReadableColumnWidth) -> some View {
+        modifier(ReadableColumnModifier(maxWidth: maxWidth))
+    }
+}
+
+private struct ReadableColumnModifier: ViewModifier {
+    var maxWidth: CGFloat = updoReadableColumnWidth
+    @Environment(\.padRailInset) private var railInset
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        // iPad only: an iPhone (even a Pro Max in landscape) is left untouched.
+        if UIDevice.current.userInterfaceIdiom != .pad {
+            content
+        } else {
+            column(content)
+        }
+    }
+
+    private func column(_ content: Content) -> some View {
+        GeometryReader { geo in
+            let margin = max(0, (geo.size.width - maxWidth) / 2)
+            content
+                // Centered, but never under the floating rail.
+                .safeAreaPadding(.leading, max(margin, railInset))
+                .safeAreaPadding(.trailing, margin)
+                .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+}

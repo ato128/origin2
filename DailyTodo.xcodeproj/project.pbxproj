@@ -624,6 +624,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		6D7A0B0C2FB0000100ABCDEF /* Notebook */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Notebook;
+			sourceTree = "<group>";
+		};
 		6D10286B2FAAA556008D5AA9 /* Network */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Network;
@@ -1182,6 +1187,7 @@
 				6DC0CACC2F5F7FA000A875ED /* Insights */,
 				6DC0CACB2F5F7F6500A875ED /* Focus */,
 				6DF0C9442F55E3770043B887 /* Onboarding */,
+				6D7A0B0C2FB0000100ABCDEF /* Notebook */,
 				6DF0C93C2F557DBF0043B887 /* RootView.swift */,
 			);
 			path = Features;
@@ -1290,6 +1296,7 @@
 			fileSystemSynchronizedGroups = (
 				6D10286B2FAAA556008D5AA9 /* Network */,
 				6D4F2C1A2FA8F7D10056E067 /* CrewRedesign */,
+				6D7A0B0C2FB0000100ABCDEF /* Notebook */,
 			);
 			name = DailyTodo;
 			packageProductDependencies = (
@@ -1747,7 +1754,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1782,7 +1789,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -1812,7 +1819,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1842,7 +1849,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -2013,7 +2020,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -2059,7 +2066,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

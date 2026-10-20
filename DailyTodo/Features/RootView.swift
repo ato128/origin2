@@ -104,19 +104,23 @@ struct RootView: View {
             } else if session.shouldShowEmailVerificationGate {
                 EmailVerificationView()
                     .environmentObject(session)
+                    .updoReadableColumn()
                     .transition(.opacity)
 
             } else if !session.isSignedIn {
                 AuthView()
+                    .updoReadableColumn()
                     .transition(.opacity)
 
             } else if session.needsProfileSetup {
                 ProfileSetupView()
                     .environmentObject(session)
+                    .updoReadableColumn()
                     .transition(.opacity)
 
             } else if shouldShowOnboarding {
                 AppOnboardingFlowView()
+                    .updoReadableColumn()
                     .transition(.opacity)
 
             } else {
