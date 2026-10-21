@@ -77,113 +77,7 @@ struct CrewChatView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            ambientBackground
-
-            VStack(spacing: 0) {
-                if messages.isEmpty, isSyncingBackendConversation, !didLoadCachedMessages  {
-                    VStack {
-                        Spacer()
-                        ProgressView()
-                            .tint(.white)
-                        Spacer()
-                    }
-                } else if messages.isEmpty {
-                    emptyState
-                } else {
-                    messagesList
-                }
-            }
-
-            // Friend chat ile birebir: header, mesajların ÜSTÜNDE yüzer
-            // (safeAreaInset DEĞİL) → scrim yumuşak bir fade olur, mesajlar
-            // altından akar; koyu "solid bant" hissi gider.
-            // Odak kartı kaldırıldı: canlı odak sağ üstteki focus pill'de.
-            VStack(spacing: 8) {
-                floatingTopControls
-
-                if let typingText {
-                    typingBanner(text: typingText)
-                }
-            }
-            .zIndex(1)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            composerBar
-                .padding(.top, 6)
-                .background(Color.clear)
-        }
-        // NOT: tüm body'de .hideKeyboardOnTap() vardı; geri/crew pill/focus pill
-        // tap'lerini ve scroll'u çalıyordu. Klavye artık messagesList'te
-        // .scrollDismissesKeyboard(.interactively) ile kapanıyor.
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .enableInteractivePopGesture()
-        .onAppear {
-            guard !didInitialLoad else { return }
-            didInitialLoad = true
-
-            Task(priority: .userInitiated) {
-                await loadChatData()
-                await crewStore.loadActiveFocusSession(for: crew.id)
-
-                let loadedSession = crewStore.activeFocusSessionByCrew[crew.id]
-                await MainActor.run {
-                    localActiveFocusSession = loadedSession
-                }
-
-                if let loadedSession {
-                    await crewStore.loadFocusParticipants(sessionID: loadedSession.id)
-                }
-
-                await MainActor.run {
-                    
-                }
-            }
-            
-        }
-        .onChange(of: backendMessages) { _, _ in
-            cachedMessages = computeMessages()
-        }
-        .onChange(of: friendStore.blockedUserIDs) { _, _ in
-            cachedMessages = computeMessages()
-        }
-        .onDisappear {
-            typingStopTask?.cancel()
-
-            // "yazıyor durdu" backend socket üzerinden (Supabase yerine).
-            ChatBackendSocketClient.shared.sendTyping(isTyping: false)
-
-            for (_, task) in socketTypingClearTasks { task.cancel() }
-            socketTypingClearTasks = [:]
-            socketTypingUserIDs = []
-
-            Task { @MainActor in
-                ChatBackendSocketClient.shared.disconnect()
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .chatBackendTyping)) { note in
-            handleIncomingCrewTyping(note)
-        }
-        .onChange(of: selectedPhotoItem) { _, newItem in
-            guard let newItem else { return }
-
-            Task {
-                do {
-                    if let data = try await newItem.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        await MainActor.run {
-                            draftPhotoImage = image
-                        }
-                    }
-                } catch {
-                    await MainActor.run {
-                        attachmentAlertText = "\(tr("fc_photo_load_failed")): \(error.localizedDescription)"
-                        showAttachmentAlert = true
-                    }
-                }
-            }
-        }
+        chatWithLifecycle
         .photosPicker(
             isPresented: $showPhotoPicker,
             selection: $selectedPhotoItem,
@@ -265,5 +159,121 @@ struct CrewChatView: View {
         .onChange(of: crewStore.activeFocusSessionByCrew[crew.id]) { _, newValue in
             localActiveFocusSession = newValue
         }
+    }
+
+    // `body` is split so each piece type-checks quickly (one chain took ~9 s
+    // in a Release build — a risk for Xcode Cloud archives).
+    private var chatWithLifecycle: some View {
+        chatLayout
+        .onAppear {
+            guard !didInitialLoad else { return }
+            didInitialLoad = true
+
+            Task(priority: .userInitiated) {
+                await loadChatData()
+                await crewStore.loadActiveFocusSession(for: crew.id)
+
+                let loadedSession = crewStore.activeFocusSessionByCrew[crew.id]
+                await MainActor.run {
+                    localActiveFocusSession = loadedSession
+                }
+
+                if let loadedSession {
+                    await crewStore.loadFocusParticipants(sessionID: loadedSession.id)
+                }
+
+                await MainActor.run {
+                    
+                }
+            }
+            
+        }
+        .onChange(of: backendMessages) { _, _ in
+            cachedMessages = computeMessages()
+        }
+        .onChange(of: friendStore.blockedUserIDs) { _, _ in
+            cachedMessages = computeMessages()
+        }
+        .onDisappear {
+            typingStopTask?.cancel()
+
+            // "yazıyor durdu" backend socket üzerinden (Supabase yerine).
+            ChatBackendSocketClient.shared.sendTyping(isTyping: false)
+
+            for (_, task) in socketTypingClearTasks { task.cancel() }
+            socketTypingClearTasks = [:]
+            socketTypingUserIDs = []
+
+            Task { @MainActor in
+                ChatBackendSocketClient.shared.disconnect()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .chatBackendTyping)) { note in
+            handleIncomingCrewTyping(note)
+        }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let newItem else { return }
+
+            Task {
+                do {
+                    if let data = try await newItem.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        await MainActor.run {
+                            draftPhotoImage = image
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        attachmentAlertText = "\(tr("fc_photo_load_failed")): \(error.localizedDescription)"
+                        showAttachmentAlert = true
+                    }
+                }
+            }
+        }
+    }
+
+    private var chatLayout: some View {
+        ZStack(alignment: .top) {
+            ambientBackground
+
+            VStack(spacing: 0) {
+                if messages.isEmpty, isSyncingBackendConversation, !didLoadCachedMessages  {
+                    VStack {
+                        Spacer()
+                        ProgressView()
+                            .tint(.white)
+                        Spacer()
+                    }
+                } else if messages.isEmpty {
+                    emptyState
+                } else {
+                    messagesList
+                }
+            }
+
+            // Friend chat ile birebir: header, mesajların ÜSTÜNDE yüzer
+            // (safeAreaInset DEĞİL) → scrim yumuşak bir fade olur, mesajlar
+            // altından akar; koyu "solid bant" hissi gider.
+            // Odak kartı kaldırıldı: canlı odak sağ üstteki focus pill'de.
+            VStack(spacing: 8) {
+                floatingTopControls
+
+                if let typingText {
+                    typingBanner(text: typingText)
+                }
+            }
+            .zIndex(1)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            composerBar
+                .padding(.top, 6)
+                .background(Color.clear)
+        }
+        // NOT: tüm body'de .hideKeyboardOnTap() vardı; geri/crew pill/focus pill
+        // tap'lerini ve scroll'u çalıyordu. Klavye artık messagesList'te
+        // .scrollDismissesKeyboard(.interactively) ile kapanıyor.
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .enableInteractivePopGesture()
     }
 }

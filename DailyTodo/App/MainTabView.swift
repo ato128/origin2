@@ -169,109 +169,7 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            if usesSidebar {
-                // iPad: a floating glass rail, vertically centered on the left
-                // (the iPhone tab bar, stood up). Screens run full-bleed under
-                // it and keep their content clear via `padRailInset`.
-                GeometryReader { geo in
-                    // Only a wide (landscape) window can open the rail; in
-                    // portrait it stays the icon capsule.
-                    let canExpand = geo.size.width >= UpdoFloatingRail.expandMinWidth
-                    let expanded = railExpanded && canExpand
-
-                    ZStack(alignment: .leading) {
-                        screenForTab(activeTab)
-                            .environment(\.homeDockReserve, 0)
-                            .environment(\.padRailInset, UpdoFloatingRail.contentInset(expanded: expanded))
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .transition(.opacity)
-
-                        UpdoFloatingRail(
-                            selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab,
-                            isExpanded: expanded
-                        )
-                        .padding(.leading, UpdoFloatingRail.edgeGap)
-                    }
-                    .overlay(alignment: .topLeading) {
-                        if canExpand {
-                            UpdoRailBrand()
-                                .padding(.leading, UpdoFloatingRail.edgeGap)
-                                .padding(.top, 4)
-                                .transition(.opacity)
-                        }
-                    }
-                    .animation(.spring(response: 0.45, dampingFraction: 0.84), value: expanded)
-                }
-            } else {
-                // Aktif ekran
-                screenForTab(activeTab)
-                    .environment(\.homeDockReserve, homeDockReserve)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .transition(.opacity)
-
-                // Custom tab bar
-                HomeTabBar(
-                    selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab,
-                    isCompact: tabBarCompact,
-                    onExpand: expandHomeBar,
-                    onReselect: { reselected in
-                        if reselected == .tasks { collapseHomeBar() }
-                    }
-                )
-                .padding(.horizontal, tabBarCompact ? 0 : 22)
-                .padding(.bottom, 6)
-                .offset(y: tabBarHidden ? 120 : 0)
-                .opacity(tabBarHidden ? 0 : 1)
-                .allowsHitTesting(!tabBarHidden)
-            }
-        }
-        // Home: the chat composer rides the keyboard (bar hides). Other tabs keep
-        // their old behavior — the layout ignores the keyboard.
-        .ignoresSafeArea(.keyboard, edges: isOnHome ? [] : .bottom)
-        .animation(.spring(response: 0.42, dampingFraction: 0.84), value: tabBarCompact)
-        .animation(.spring(response: 0.38, dampingFraction: 0.88), value: tabBarHidden)
-        .onChange(of: activeTab) { _, newTab in
-            // Back on Home → the bar shrinks again (animated).
-            if newTab == .tasks { collapseHomeBar() }
-        }
-        .fullScreenCover(item: $pendingChatRoute) { route in
-            NavigationStack {
-                pendingChatDestination(route)
-                    .updoReadableColumn()
-            }
-        }
-        // Referral reward earned (3 new-install friends) → refresh Premium and
-        // celebrate + upsell Premium AI. Extracted to a modifier to keep this
-        // (already large) body type-checkable.
-        .modifier(ReferralRewardPresenter(isPresented: $showReferralReward, session: session))
-        .onAppear {
-            Log.debug("MAIN TAB CURRENT USER:", session.currentUser?.id.uuidString ?? "nil")
-
-            store.setCurrentUserID(session.currentUser?.id.uuidString)
-            crewStore.setCurrentUser(session.currentUser?.id)
-
-            // Tab bar profil sekmesi Instagram tarzı avatarı gösterebilsin diye
-            // kullanıcının fotoğrafını erkenden yükle (lokal cache anında, backend sync arka planda).
-            ProfileAvatarStore.shared.load(for: session.currentUser?.id.uuidString)
-
-            runProgressionEvaluate()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { runProgressionEvaluate() }
-        }
-        .onChange(of: allTasks.count) { _, _ in runProgressionEvaluate() }
-        .onChange(of: completedTaskCount) { _, _ in runProgressionEvaluate() }
-        .onChange(of: completedFocusCount) { _, _ in runProgressionEvaluate() }
-        .onChange(of: session.currentUser?.id) { _, newUserID in
-            Log.debug("MAIN TAB USER CHANGED:", newUserID?.uuidString ?? "nil")
-
-            store.setCurrentUserID(newUserID?.uuidString)
-            crewStore.setCurrentUser(newUserID)
-            crewStore.resetForUserChange()
-
-            ProfileAvatarStore.shared.load(for: newUserID?.uuidString)
-        }
+        withLifecycle
         .onChange(of: openFocusFromNotification) { _, newValue in
             guard newValue else { return }
 
@@ -345,6 +243,122 @@ struct MainTabView: View {
             // Önemli:
             // Notification/deep link yüzünden ActiveFocusView otomatik açılmasın.
             // Sadece Focus tabına geçsin. ActiveFocusView yalnızca join butonundan sonra açılmalı.
+        }
+    }
+
+    // `body` is split into pieces so each one type-checks quickly — as one
+    // chain it timed out on Xcode Cloud's archive build.
+    private var withLifecycle: some View {
+        withChrome
+        .onAppear {
+            Log.debug("MAIN TAB CURRENT USER:", session.currentUser?.id.uuidString ?? "nil")
+
+            store.setCurrentUserID(session.currentUser?.id.uuidString)
+            crewStore.setCurrentUser(session.currentUser?.id)
+
+            // Tab bar profil sekmesi Instagram tarzı avatarı gösterebilsin diye
+            // kullanıcının fotoğrafını erkenden yükle (lokal cache anında, backend sync arka planda).
+            ProfileAvatarStore.shared.load(for: session.currentUser?.id.uuidString)
+
+            runProgressionEvaluate()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { runProgressionEvaluate() }
+        }
+        .onChange(of: allTasks.count) { _, _ in runProgressionEvaluate() }
+        .onChange(of: completedTaskCount) { _, _ in runProgressionEvaluate() }
+        .onChange(of: completedFocusCount) { _, _ in runProgressionEvaluate() }
+        .onChange(of: session.currentUser?.id) { _, newUserID in
+            Log.debug("MAIN TAB USER CHANGED:", newUserID?.uuidString ?? "nil")
+
+            store.setCurrentUserID(newUserID?.uuidString)
+            crewStore.setCurrentUser(newUserID)
+            crewStore.resetForUserChange()
+
+            ProfileAvatarStore.shared.load(for: newUserID?.uuidString)
+        }
+    }
+
+    private var withChrome: some View {
+        tabContent
+        // Home: the chat composer rides the keyboard (bar hides). Other tabs keep
+        // their old behavior — the layout ignores the keyboard.
+        .ignoresSafeArea(.keyboard, edges: isOnHome ? [] : .bottom)
+        .animation(.spring(response: 0.42, dampingFraction: 0.84), value: tabBarCompact)
+        .animation(.spring(response: 0.38, dampingFraction: 0.88), value: tabBarHidden)
+        .onChange(of: activeTab) { _, newTab in
+            // Back on Home → the bar shrinks again (animated).
+            if newTab == .tasks { collapseHomeBar() }
+        }
+        .fullScreenCover(item: $pendingChatRoute) { route in
+            NavigationStack {
+                pendingChatDestination(route)
+                    .updoReadableColumn()
+            }
+        }
+        // Referral reward earned (3 new-install friends) → refresh Premium and
+        // celebrate + upsell Premium AI. Extracted to a modifier to keep this
+        // (already large) body type-checkable.
+        .modifier(ReferralRewardPresenter(isPresented: $showReferralReward, session: session))
+    }
+
+    private var tabContent: some View {
+        ZStack(alignment: .bottom) {
+            if usesSidebar {
+                // iPad: a floating glass rail, vertically centered on the left
+                // (the iPhone tab bar, stood up). Screens run full-bleed under
+                // it and keep their content clear via `padRailInset`.
+                GeometryReader { geo in
+                    // Only a wide (landscape) window can open the rail; in
+                    // portrait it stays the icon capsule.
+                    let canExpand = geo.size.width >= UpdoFloatingRail.expandMinWidth
+                    let expanded = railExpanded && canExpand
+
+                    ZStack(alignment: .leading) {
+                        screenForTab(activeTab)
+                            .environment(\.homeDockReserve, 0)
+                            .environment(\.padRailInset, UpdoFloatingRail.contentInset(expanded: expanded))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .transition(.opacity)
+
+                        UpdoFloatingRail(
+                            selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab,
+                            isExpanded: expanded
+                        )
+                        .padding(.leading, UpdoFloatingRail.edgeGap)
+                    }
+                    .overlay(alignment: .topLeading) {
+                        if canExpand {
+                            UpdoRailBrand()
+                                .padding(.leading, UpdoFloatingRail.edgeGap)
+                                .padding(.top, 4)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(.spring(response: 0.45, dampingFraction: 0.84), value: expanded)
+                }
+            } else {
+                // Aktif ekran
+                screenForTab(activeTab)
+                    .environment(\.homeDockReserve, homeDockReserve)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.opacity)
+
+                // Custom tab bar
+                HomeTabBar(
+                    selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab,
+                    isCompact: tabBarCompact,
+                    onExpand: expandHomeBar,
+                    onReselect: { reselected in
+                        if reselected == .tasks { collapseHomeBar() }
+                    }
+                )
+                .padding(.horizontal, tabBarCompact ? 0 : 22)
+                .padding(.bottom, 6)
+                .offset(y: tabBarHidden ? 120 : 0)
+                .opacity(tabBarHidden ? 0 : 1)
+                .allowsHitTesting(!tabBarHidden)
+            }
         }
     }
 }

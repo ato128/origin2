@@ -186,64 +186,10 @@ struct DailyTodoApp: App {
         }
     }
 
+    // Split into pieces so each type-checks quickly — one long chain took
+    // ~15 s and risks Xcode Cloud's "unable to type-check" failure.
     private var rootContent: some View {
-        RootView(
-            openFocusFromNotification: $openFocusFromNotification
-        )
-        .id(languageManager.selectedLanguage)
-        .modelContainer(container)
-        .environmentObject(todoStore)
-        .environmentObject(session)
-        .environmentObject(crewStore)
-        .environmentObject(friendStore)
-        .environmentObject(languageManager)
-        .environmentObject(focusSession)
-        .environment(\.locale, languageManager.activeLocale)
-        .environmentObject(studentStore)
-        .environmentObject(subscriptionManager)
-        .overlay {
-            InAppBannerOverlay()
-        }
-        .sheet(item: $focusSession.completionSummary) { summary in
-            // Sheets presented from this level sit OUTSIDE the environmentObject
-            // chain above — inject explicitly or the celebration crashes.
-            FocusCelebrationView(summary: summary) {
-                focusSession.dismissCompletionSummary()
-            }
-            .environmentObject(todoStore)
-        }
-        .sheet(item: $crewFocusInvitePayload) { payload in
-            CrewFocusInviteSheet(
-                payload: payload,
-                onJoin: {
-                    handleCrewFocusInviteJoin(payload)
-                },
-                onDismiss: {
-                    crewFocusInvitePayload = nil
-                }
-            )
-            .interactiveDismissDisabled(false)
-        }
-        .sheet(item: $friendFocusInvitePayload) { payload in
-            FriendFocusInviteSheet(
-                payload: payload,
-                onJoin: {
-                    handleFriendFocusInviteJoin(payload)
-                },
-                onDecline: {
-                    friendFocusInvitePayload = nil
-                    Task { await FriendFocusBackendClient.shared.decline(sessionID: payload.sessionID) }
-                }
-            )
-            .interactiveDismissDisabled(false)
-        }
-        .confirmationDialog(
-            friendFocusJoinRequestTitle,
-            isPresented: friendFocusJoinRequestPresented,
-            titleVisibility: .visible,
-            actions: { friendFocusJoinRequestActions },
-            message: { Text(friendFocusJoinRequestMessage) }
-        )
+        rootWithPresentations
         .onAppear {
             handleAppAppear()
         }
@@ -315,6 +261,70 @@ struct DailyTodoApp: App {
         .updoColorScheme()
         // Live social banners (friend request received / accepted) float above all.
         .socialBannerOverlay()
+    }
+
+    private var rootWithPresentations: some View {
+        rootEnvironment
+        .sheet(item: $focusSession.completionSummary) { summary in
+            // Sheets presented from this level sit OUTSIDE the environmentObject
+            // chain above — inject explicitly or the celebration crashes.
+            FocusCelebrationView(summary: summary) {
+                focusSession.dismissCompletionSummary()
+            }
+            .environmentObject(todoStore)
+        }
+        .sheet(item: $crewFocusInvitePayload) { payload in
+            CrewFocusInviteSheet(
+                payload: payload,
+                onJoin: {
+                    handleCrewFocusInviteJoin(payload)
+                },
+                onDismiss: {
+                    crewFocusInvitePayload = nil
+                }
+            )
+            .interactiveDismissDisabled(false)
+        }
+        .sheet(item: $friendFocusInvitePayload) { payload in
+            FriendFocusInviteSheet(
+                payload: payload,
+                onJoin: {
+                    handleFriendFocusInviteJoin(payload)
+                },
+                onDecline: {
+                    friendFocusInvitePayload = nil
+                    Task { await FriendFocusBackendClient.shared.decline(sessionID: payload.sessionID) }
+                }
+            )
+            .interactiveDismissDisabled(false)
+        }
+        .confirmationDialog(
+            friendFocusJoinRequestTitle,
+            isPresented: friendFocusJoinRequestPresented,
+            titleVisibility: .visible,
+            actions: { friendFocusJoinRequestActions },
+            message: { Text(friendFocusJoinRequestMessage) }
+        )
+    }
+
+    private var rootEnvironment: some View {
+        RootView(
+            openFocusFromNotification: $openFocusFromNotification
+        )
+        .id(languageManager.selectedLanguage)
+        .modelContainer(container)
+        .environmentObject(todoStore)
+        .environmentObject(session)
+        .environmentObject(crewStore)
+        .environmentObject(friendStore)
+        .environmentObject(languageManager)
+        .environmentObject(focusSession)
+        .environment(\.locale, languageManager.activeLocale)
+        .environmentObject(studentStore)
+        .environmentObject(subscriptionManager)
+        .overlay {
+            InAppBannerOverlay()
+        }
     }
 
     private var resolvedCurrentDisplayName: String {
