@@ -2616,3 +2616,16 @@
 "aep_day_free" = "Bu gün boş — istediğin saati seç.";
 "aep_clash" = "ÇAKIŞIYOR";
 "aep_new_slot" = "Yeni: %@–%@";
+"fvp_session_caps" = "OTURUM";
+"fvp_no_task" = "Görevsiz oturum";
+"fvp_people" = "%d kişi katılıyor";
+"fvp_duo_caps" = "DUO FOCUS";
+"fvp_duo_title" = "Arkadaşınla";
+"fvp_duo_sub" = "Bir arkadaş seç, davet gönder; kabul edince aynı anda başlarsınız.";
+"fvp_duo_with" = "%@ ile";
+"fvp_pick_first" = "Soldan bir arkadaş seç.";
+"fvp_duo_hint" = "Davet bildirim olarak gider; arkadaşın kabul edince oturum ikiniz için başlar.";
+"fvp_send_invite" = "Davet gönder";
+"fnp_total" = "%d formül · %d ders";
+"pep_username_hint" = "Arkadaşların seni bu kullanıcı adıyla bulur ve ekler.";
+"pep_preview_caps" = "ARKADAŞLARIN SENİ BÖYLE GÖRÜR";

@@ -41,6 +41,9 @@ struct FocusView: View {
 
     // Friend (duo) focus
     @State private var showFriendPickerSheet = false
+    /// iPad duo picker: the friend picked on the left, invited from the right.
+    @State private var padDuoFriendID: UUID?
+    @EnvironmentObject private var friendStore: FriendStore
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var localFriends: [Friend]
@@ -1065,6 +1068,9 @@ private extension FocusView {
             )
             .ignoresSafeArea()
 
+            if isPadIdiom {
+                padCrewStartLayout
+            } else {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 22) {
                     crewStartHeader
@@ -1108,9 +1114,143 @@ private extension FocusView {
                 .padding(20)
                 .padding(.bottom, 26)
             }
+            }
         }
         .updoColorScheme()
         .presentationDetents([.large])
+    }
+
+    // MARK: iPad crew start
+
+    /// iPad: choose crew / task / people on the left; the session as a
+    /// "ticket" on the right — duration, finish time, who's in, start.
+    var padCrewStartLayout: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            crewStartHeader
+                .padding(.horizontal, 28)
+                .padding(.top, 24)
+
+            HStack(alignment: .top, spacing: 22) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 22) {
+                        crewPickerSection
+                        crewTaskSection
+                        crewParticipantSection
+                    }
+                    .padding(.bottom, 28)
+                }
+                .frame(maxWidth: .infinity)
+
+                ScrollView(showsIndicators: false) {
+                    padCrewTicket.padding(.bottom, 28)
+                }
+                .frame(width: 360)
+            }
+            .padding(.horizontal, 28)
+        }
+    }
+
+    var padCrewTicket: some View {
+        let crew = crewStore.crews.first { $0.id == selectedCrewID }
+        let task = activeCrewTasks.first { $0.id == selectedCrewTaskID }
+        let people = activeCrewMembers.filter { selectedParticipantIDs.contains($0.user_id) }
+        let accent = selectedModeAccent
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+
+        return VStack(alignment: .leading, spacing: 18) {
+            crewSheetEyebrow(tr("fvp_session_caps"))
+
+            if let crew {
+                HStack(spacing: 12) {
+                    CrewAvatarView(crewID: crew.id, name: crew.name, colorHex: crew.color_hex, size: 46, corner: 14)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(crew.name)
+                            .font(.system(size: 17, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .lineLimit(1)
+                        Text(task?.title ?? tr("fvp_no_task"))
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
+                            .lineLimit(1)
+                    }
+                }
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(resolvedMinutes)")
+                    .font(.system(size: 64, weight: .bold, design: .serif))
+                    .italic()
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .contentTransition(.numericText())
+                Text(tr("focus_minutes_caps"))
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .tracking(2)
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+                Spacer(minLength: 0)
+                Text(tr("focus_finish_prefix", focusFinishText))
+                    .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(accent)
+            }
+            .animation(.snappy, value: resolvedMinutes)
+
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                durationChip(.short, text: appLanguageIsEnglish() ? "15 min" : "15 dk")
+                durationChip(.medium, text: appLanguageIsEnglish() ? "25 min" : "25 dk")
+                durationChip(.long, text: appLanguageIsEnglish() ? "45 min" : "45 dk")
+                customDurationChip
+            }
+
+            Rectangle().fill(UpdoTheme.filmy(0.08)).frame(height: 1)
+
+            HStack(spacing: 12) {
+                HStack(spacing: -10) {
+                    ForEach(people.prefix(5), id: \.id) { member in
+                        UserAvatarView(userID: member.user_id, name: displayName(for: member), tint: accent, size: 34)
+                            .overlay(Circle().stroke(UpdoTheme.background, lineWidth: 2))
+                    }
+                }
+                Text(tr("fvp_people", people.count))
+                    .font(.system(size: 13.5, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 14) {
+                Label(selectedGoal.title, systemImage: selectedGoal.icon)
+                Label(selectedStyle.title, systemImage: selectedStyle.icon)
+            }
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(UpdoTheme.filmy(0.6))
+            .lineLimit(1)
+
+            Button {
+                Task { await startCrewSessionFromSheet() }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "play.fill").font(.system(size: 15, weight: .black))
+                    Text(tr("fv_start_crew")).font(.system(size: 17, weight: .black))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    Capsule().fill(LinearGradient(colors: [accent.opacity(0.95), selectedModeSecondaryAccent.opacity(0.88)],
+                                                  startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .shadow(color: accent.opacity(0.3), radius: 16, y: 8)
+                )
+                .contentShape(.hoverEffect, Capsule())
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.lift)
+            .keyboardShortcut(.return, modifiers: .command)
+            .disabled(selectedCrewID == nil)
+        }
+        .padding(22)
+        .background(
+            shape.fill(LinearGradient(colors: [accent.opacity(0.14), UpdoTheme.filmy(0.04)],
+                                      startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(shape.strokeBorder(accent.opacity(0.28), lineWidth: 1))
+        )
     }
 
     var crewStartHeader: some View {
@@ -1867,7 +2007,267 @@ private extension FocusView {
         }
     }
 
+    @ViewBuilder
     var friendPickerSheet: some View {
+        if isPadIdiom {
+            padFriendPicker
+        } else {
+            phoneFriendPickerSheet
+        }
+    }
+
+    // MARK: iPad duo picker
+
+    private func presence(_ friend: Friend) -> FriendPresenceDTO? {
+        friend.backendUserID.flatMap { friendStore.presenceByUserID[$0] }
+    }
+
+    /// Focusing first, then online, then the rest (by name).
+    private var padSortedFriends: [Friend] {
+        invitableFriends.sorted { a, b in
+            func rank(_ f: Friend) -> Int {
+                let p = presence(f)
+                if FriendPresenceEngine.isFocusing(p) { return 0 }
+                if FriendPresenceEngine.isOnline(p) { return 1 }
+                return 2
+            }
+            let (ra, rb) = (rank(a), rank(b))
+            return ra != rb ? ra < rb : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        }
+    }
+
+    var padFriendPicker: some View {
+        ZStack {
+            ArenaBackground(
+                primaryGlow: selectedModeAccent,
+                secondaryGlow: selectedModeSecondaryAccent,
+                warmGlow: Color(arenaHex: AppArenaPalette.blue),
+                intensity: 0.8
+            )
+            .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        crewSheetEyebrow(tr("fvp_duo_caps"))
+                        HStack(alignment: .firstTextBaseline, spacing: 7) {
+                            Text(tr("fvp_duo_title"))
+                                .font(.system(size: 32, weight: .black))
+                                .foregroundStyle(UpdoTheme.textPrimary)
+                            Text("duo")
+                                .font(.system(size: 29, weight: .regular, design: .serif))
+                                .italic()
+                                .foregroundStyle(selectedModeAccent)
+                        }
+                        Text(tr("fvp_duo_sub"))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.48))
+                    }
+                    Spacer()
+                    Button {
+                        showFriendPickerSheet = false
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .frame(width: 40, height: 40)
+                            .liquidGlass(in: Circle())
+                            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                            .contentShape(.hoverEffect, Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .hoverEffect(.highlight)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityLabel(tr("event_close"))
+                }
+
+                HStack(alignment: .top, spacing: 22) {
+                    ScrollView(showsIndicators: false) {
+                        if invitableFriends.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "person.2")
+                                    .font(.system(size: 34, weight: .semibold))
+                                    .foregroundStyle(UpdoTheme.filmy(0.3))
+                                Text(tr("fv_no_friends"))
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(UpdoTheme.filmy(0.55))
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                        } else {
+                            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                                ForEach(padSortedFriends) { friend in
+                                    padFriendCard(friend)
+                                }
+                            }
+                            .padding(.bottom, 24)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    padDuoTicket
+                        .frame(width: 340)
+                }
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 26)
+        }
+        .updoColorScheme()
+        .onAppear {
+            if padDuoFriendID == nil { padDuoFriendID = padSortedFriends.first?.backendUserID }
+        }
+    }
+
+    private func padFriendCard(_ friend: Friend) -> some View {
+        let p = presence(friend)
+        let focusing = FriendPresenceEngine.isFocusing(p)
+        let online = FriendPresenceEngine.isOnline(p)
+        let isSelected = friend.backendUserID != nil && friend.backendUserID == padDuoFriendID
+        let accent = selectedModeAccent
+        let dot: Color = focusing ? Color(arenaHex: "#7C3AED") : (online ? Color(arenaHex: AppArenaPalette.green) : Color.gray.opacity(0.6))
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+
+        return Button {
+            HapticManager.shared.selection()
+            withAnimation(.snappy) { padDuoFriendID = friend.backendUserID }
+        } label: {
+            HStack(spacing: 12) {
+                ZStack(alignment: .bottomTrailing) {
+                    UserAvatarView(userID: friend.backendUserID, name: friend.name,
+                                   tint: Color(arenaHex: friend.colorHex), size: 52)
+                    Circle().fill(dot).frame(width: 13, height: 13)
+                        .overlay(Circle().stroke(UpdoTheme.background, lineWidth: 2))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(friend.name)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(1)
+                    Text(FriendPresenceEngine.statusText(presence: p, locale: Locale.current))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(focusing ? Color(arenaHex: "#A78BFA") : UpdoTheme.filmy(0.5))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(accent)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .padding(14)
+            .background(shape.fill(isSelected ? accent.opacity(0.14) : UpdoTheme.filmy(0.045)))
+            .overlay(shape.strokeBorder(isSelected ? accent.opacity(0.55) : UpdoTheme.border, lineWidth: isSelected ? 1.5 : 1))
+            .contentShape(.hoverEffect, shape)
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .disabled(friend.backendUserID == nil)
+    }
+
+    private var padDuoTicket: some View {
+        let friend = invitableFriends.first { $0.backendUserID == padDuoFriendID }
+        let accent = selectedModeAccent
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+
+        return VStack(alignment: .leading, spacing: 18) {
+            crewSheetEyebrow(tr("fvp_session_caps"))
+
+            if let friend {
+                HStack(spacing: 12) {
+                    UserAvatarView(userID: friend.backendUserID, name: friend.name,
+                                   tint: Color(arenaHex: friend.colorHex), size: 46)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(tr("fvp_duo_with", friend.name))
+                            .font(.system(size: 16, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .lineLimit(1)
+                        Text(FriendPresenceEngine.statusText(presence: presence(friend), locale: Locale.current))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
+                            .lineLimit(1)
+                    }
+                }
+            } else {
+                Text(tr("fvp_pick_first"))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.55))
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(resolvedMinutes)")
+                    .font(.system(size: 64, weight: .bold, design: .serif))
+                    .italic()
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .contentTransition(.numericText())
+                Text(tr("focus_minutes_caps"))
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .tracking(2)
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+                Spacer(minLength: 0)
+                Text(tr("focus_finish_prefix", focusFinishText))
+                    .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(accent)
+            }
+            .animation(.snappy, value: resolvedMinutes)
+
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                durationChip(.short, text: appLanguageIsEnglish() ? "15 min" : "15 dk")
+                durationChip(.medium, text: appLanguageIsEnglish() ? "25 min" : "25 dk")
+                durationChip(.long, text: appLanguageIsEnglish() ? "45 min" : "45 dk")
+                customDurationChip
+            }
+
+            HStack(spacing: 14) {
+                Label(selectedGoal.title, systemImage: selectedGoal.icon)
+                Label(selectedStyle.title, systemImage: selectedStyle.icon)
+            }
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(UpdoTheme.filmy(0.6))
+            .lineLimit(1)
+
+            Text(tr("fvp_duo_hint"))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(UpdoTheme.filmy(0.45))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                guard let friend, let backendID = friend.backendUserID else { return }
+                HapticManager.shared.action()
+                startFriendDuoSession(friendID: backendID, friendName: friend.name)
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "paperplane.fill").font(.system(size: 15, weight: .black))
+                    Text(tr("fvp_send_invite")).font(.system(size: 17, weight: .black))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    Capsule().fill(friend == nil
+                                   ? AnyShapeStyle(UpdoTheme.filmy(0.12))
+                                   : AnyShapeStyle(LinearGradient(colors: [accent.opacity(0.95), selectedModeSecondaryAccent.opacity(0.88)],
+                                                                   startPoint: .topLeading, endPoint: .bottomTrailing)))
+                )
+                .contentShape(.hoverEffect, Capsule())
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.lift)
+            .disabled(friend == nil)
+            .keyboardShortcut(.return, modifiers: .command)
+        }
+        .padding(22)
+        .background(
+            shape.fill(LinearGradient(colors: [accent.opacity(0.14), UpdoTheme.filmy(0.04)],
+                                      startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(shape.strokeBorder(accent.opacity(0.28), lineWidth: 1))
+        )
+    }
+
+    var phoneFriendPickerSheet: some View {
         NavigationStack {
             ZStack {
                 UpdoTheme.background.ignoresSafeArea()

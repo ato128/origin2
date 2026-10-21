@@ -2615,3 +2615,16 @@
 "aep_day_free" = "This day is free — pick any time.";
 "aep_clash" = "CLASH";
 "aep_new_slot" = "New: %@–%@";
+"fvp_session_caps" = "SESSION";
+"fvp_no_task" = "No task";
+"fvp_people" = "%d joining";
+"fvp_duo_caps" = "DUO FOCUS";
+"fvp_duo_title" = "With a friend";
+"fvp_duo_sub" = "Pick a friend and send an invite; you start together when they accept.";
+"fvp_duo_with" = "With %@";
+"fvp_pick_first" = "Pick a friend on the left.";
+"fvp_duo_hint" = "The invite arrives as a notification; the session starts for both of you once they accept.";
+"fvp_send_invite" = "Send invite";
+"fnp_total" = "%d formulas · %d courses";
+"pep_username_hint" = "Friends find and add you with this username.";
+"pep_preview_caps" = "HOW FRIENDS SEE YOU";

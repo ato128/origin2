@@ -548,6 +548,20 @@ struct InsightsView: View {
             if UserDefaults.standard.bool(forKey: "debugOpenNotebook") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { showNotebook = true }
             }
+            // `-debugProfileSheet edit|share|formulas|patterns|level|settings`
+            if let which = UserDefaults.standard.string(forKey: "debugProfileSheet") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    switch which {
+                    case "edit": showProfileEdit = true
+                    case "share": showProfileShare = true
+                    case "formulas": showFormulaNotebook = true
+                    case "patterns": showQuestionPatterns = true
+                    case "level": showIdentityLevelSheet = true
+                    case "settings": showSettingsHub = true
+                    default: break
+                    }
+                }
+            }
         }
         #endif
         .fullScreenCover(isPresented: $showNotebook) {
@@ -1882,8 +1896,96 @@ struct FormulaNotebookCard: View {
 struct FormulaNotebookView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var notebook = AIFormulaNotebook.shared
+    /// iPad: the course open in the right pane.
+    @State private var padCourse: String?
 
     var body: some View {
+        if UIDevice.current.userInterfaceIdiom == .pad && !notebook.entries.isEmpty {
+            padBody
+        } else {
+            phoneBody
+        }
+    }
+
+    /// iPad: courses on the left, the chosen course's formulas on the right.
+    private var padBody: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .frame(width: 38, height: 38)
+                            .liquidGlass(in: Circle())
+                            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                            .contentShape(.hoverEffect, Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .hoverEffect(.highlight)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityLabel(tr("event_close"))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(tr("fn_title"))
+                            .font(.system(size: 24, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                        Text(tr("fnp_total", notebook.entries.count, notebook.courses.count))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
+                    }
+                }
+                .padding(.bottom, 6)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 8) {
+                        ForEach(notebook.courses, id: \.self) { course in
+                            Button {
+                                HapticManager.shared.selection()
+                                padCourse = course
+                            } label: {
+                                courseRow(course)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .strokeBorder(notebookTint.opacity(selectedCourse == course ? 0.7 : 0), lineWidth: 1.5)
+                                    )
+                                    .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .hoverEffect(.highlight)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 24)
+            .frame(width: 340)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(UpdoFloatingRail.panelBackground.opacity(0.6).ignoresSafeArea())
+
+            Rectangle().fill(UpdoTheme.border).frame(width: 1).ignoresSafeArea()
+
+            NavigationStack {
+                if let course = selectedCourse {
+                    FormulaCourseView(course: course, inlineHeader: true)
+                        .id(course)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .background(
+            ArenaBackground(primaryGlow: notebookTint, secondaryGlow: Color(arenaHex: AppArenaPalette.cyan),
+                            warmGlow: Color(arenaHex: AppArenaPalette.gold), intensity: 0.7)
+                .ignoresSafeArea()
+        )
+        .updoColorScheme()
+    }
+
+    private var selectedCourse: String? { padCourse ?? notebook.courses.first }
+
+    private var phoneBody: some View {
         NavigationStack {
             ZStack {
                 ArenaBackground(
@@ -1979,6 +2081,8 @@ struct FormulaNotebookView: View {
 /// One course: its topics in the order they were studied, each with its formulas.
 struct FormulaCourseView: View {
     let course: String
+    /// iPad pane: the course title is drawn in the content (no nav bar).
+    var inlineHeader: Bool = false
     @ObservedObject private var notebook = AIFormulaNotebook.shared
 
     var body: some View {
@@ -1992,6 +2096,19 @@ struct FormulaCourseView: View {
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 22) {
+                    if inlineHeader {
+                        HStack(spacing: 12) {
+                            Image(systemName: AIChatTopics.icon(for: course))
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(notebookTint)
+                                .frame(width: 48, height: 48)
+                                .background(notebookTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            Text(course)
+                                .font(.system(size: 30, weight: .black))
+                                .foregroundStyle(UpdoTheme.textPrimary)
+                        }
+                        .padding(.top, 8)
+                    }
                     ForEach(notebook.topics(inCourse: course), id: \.topic) { group in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
@@ -2005,6 +2122,10 @@ struct FormulaCourseView: View {
                             }
                             .padding(.leading, 4)
 
+                            // Wide enough for long formulas: a second column
+                            // only when there's real room for it.
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 420), spacing: 12, alignment: .top)],
+                                      alignment: .leading, spacing: 10) {
                             ForEach(group.items) { entry in
                                 FormulaEntryCard(entry: entry)
                                     .contextMenu {
@@ -2020,14 +2141,16 @@ struct FormulaCourseView: View {
                                         }
                                     }
                             }
+                            }
                         }
                     }
                 }
-                .padding(16)
+                .padding(inlineHeader ? 26 : 16)
             }
         }
-        .navigationTitle(course)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle(inlineHeader ? "" : course)
+        .navigationBarTitleDisplayMode(inlineHeader ? .inline : .large)
+        .toolbar(inlineHeader ? .hidden : .automatic, for: .navigationBar)
     }
 }
 

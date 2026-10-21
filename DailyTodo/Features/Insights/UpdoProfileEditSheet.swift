@@ -39,6 +39,9 @@ struct UpdoProfileEditSheet: View {
             ZStack {
                 UpdoTheme.background.ignoresSafeArea()
 
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    padLayout
+                } else {
                 ScrollView {
                     VStack(spacing: 26) {
                         avatarSection
@@ -73,6 +76,7 @@ struct UpdoProfileEditSheet: View {
                     .padding(.horizontal, 20)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                }
             }
             .updoColorScheme()
             .navigationBarTitleDisplayMode(.inline)
@@ -118,6 +122,101 @@ struct UpdoProfileEditSheet: View {
                 Task { await applyPickedPhoto(newItem) }
             }
         }
+    }
+
+    // MARK: - iPad
+
+    /// iPad: your photo and how friends see you on the left; the fields on
+    /// the right.
+    private var padLayout: some View {
+        HStack(alignment: .top, spacing: 28) {
+            VStack(spacing: 22) {
+                avatarSection
+                padPreviewCard
+            }
+            .frame(width: 340)
+            .padding(.top, 20)
+
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(spacing: 12) {
+                    fieldRow(label: tr("pe_name_caps"), text: $fullName, capitalization: .words)
+                    fieldRow(label: tr("pe_username_caps"), text: $username, capitalization: .never, prefix: "@")
+                    Text(tr("pep_username_hint"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                schoolRow
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(Color(arenaHex: "#FF5A44"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Button {
+                    Task { await saveProfile() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSaving { ProgressView().tint(.black) } else { Image(systemName: "checkmark") }
+                        Text(tr("pe_save"))
+                    }
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(Capsule().fill(canSave ? AnyShapeStyle(accent) : AnyShapeStyle(UpdoTheme.filmy(0.12))))
+                    .contentShape(.hoverEffect, Capsule())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.lift)
+                .disabled(!canSave)
+                .keyboardShortcut(.return, modifiers: .command)
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 20)
+        }
+        .padding(.horizontal, 32)
+        .frame(maxWidth: 900)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// How you appear in friends' lists and chats — updates as you type.
+    private var padPreviewCard: some View {
+        let name = fullName.trimmingCharacters(in: .whitespaces).isEmpty ? (session.currentUser?.fullName ?? "") : fullName
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(tr("pep_preview_caps"))
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(1.6)
+                .foregroundStyle(accent)
+            HStack(spacing: 12) {
+                ProfileAvatarCircle(image: avatarStore.image, name: name, accent: accent, size: 50)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(1)
+                    Text("@\(username)")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(accent)
+                        .lineLimit(1)
+                    if let school = ProfileSchoolLine.text(for: studentStore.profile) {
+                        Text(school)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(UpdoTheme.filmy(0.45))
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(16)
+        .background(shape.fill(UpdoTheme.filmy(0.045)))
+        .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 
     // MARK: - Avatar
