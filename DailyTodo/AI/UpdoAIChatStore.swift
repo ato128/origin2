@@ -1295,7 +1295,7 @@ final class AIFormulaNotebook: ObservableObject {
             }
             guard parts.count >= 4 else { continue }
             var body = parts[3].trimmingCharacters(in: CharacterSet(charactersIn: "$ "))
-            if isFormula { body = AIMath.stripBoxed(body) }
+            if isFormula { body = AIMath.repairPlainLatex(AIMath.stripBoxed(body)) }
             let name = AIChatTopics.cleanTitle(parts[2])
             guard !body.isEmpty, body.count <= 300, !name.isEmpty else { continue }
 
@@ -1346,6 +1346,7 @@ final class AIFormulaNotebook: ObservableObject {
             FORMULA NOTEBOOK (hidden lines for the app): if your reply uses or explains an important formula or rule the student should keep in their notes, add one line per item at the VERY END of the reply:
             [[formula: Course | Topic | Short name | LaTeX formula without $ | what the symbols mean, briefly]]
             For rules that aren't formulas (a grammar rule, a theorem statement): [[rule: Course | Topic | Short name | the rule in one sentence]]
+            The formula MUST be real LaTeX commands, never plain text: \\sqrt{2h/g} (not sqrt(2h/g)), \\frac{1}{2}at^2, \\tan\\theta (not tantheta), v_0 and v_x (not v0, vx), x^2. Example: [[formula: Physics 1 | Kinematics | Fall time | t = \\sqrt{\\frac{2h}{g}} | h: height, g: gravity]]
             Course = the course's short name (same as the topic tag, e.g. Physics 1); Topic = the unit (e.g. Kinematics). At most 3 lines, only general reusable formulas — never the numbers or answer of this specific problem. If there's no such formula/rule, write none. The app removes these lines; never mention them.
             """
         }
@@ -1353,6 +1354,7 @@ final class AIFormulaNotebook: ObservableObject {
         FORMÜL DEFTERİ (uygulama için gizli satırlar): cevabında öğrencinin not alması gereken önemli bir formül veya kural kullandıysan ya da açıkladıysan, cevabın EN SONUNA her biri için ayrı satır ekle:
         [[formül: Ders | Konu | Kısa ad | $ olmadan LaTeX formül | sembollerin kısa anlamı]]
         Formül olmayan kurallar için (dil bilgisi kuralı, bir teoremin ifadesi): [[kural: Ders | Konu | Kısa ad | kuralın tek cümlelik ifadesi]]
+        Formül MUTLAKA gerçek LaTeX komutlarıyla yazılmalı, düz metin değil: \\sqrt{2h/g} (sqrt(2h/g) DEĞİL), \\frac{1}{2}at^2, \\tan\\theta (tantheta DEĞİL), v_0 ve v_x (v0, vx DEĞİL), x^2. Örnek: [[formül: Fizik 1 | Kinematik | Düşme süresi | t = \\sqrt{\\frac{2h}{g}} | h: yükseklik, g: yerçekimi]]
         Ders = dersin kısa adı (konu etiketiyle aynı, ör. Fizik 1); Konu = ünite (ör. Kinematik). En fazla 3 satır, sadece genel ve tekrar kullanılabilir formüller — bu sorunun sayılarını veya cevabını YAZMA. Böyle bir formül/kural yoksa hiç yazma. Uygulama bu satırları siler; onlardan asla bahsetme.
         """
     }
@@ -1465,7 +1467,7 @@ final class AIQuestionPatternBook: ObservableObject {
         let steps = Self.list(parts[4], max: 4, length: 160)
         guard !name.isEmpty, !steps.isEmpty else { return }
         let equations = parts.count > 5
-            ? Self.list(parts[5], max: 3, length: 200).map { AIMath.stripBoxed($0.trimmingCharacters(in: CharacterSet(charactersIn: "$ "))) }
+            ? Self.list(parts[5], max: 3, length: 200).map { AIMath.repairPlainLatex(AIMath.stripBoxed($0.trimmingCharacters(in: CharacterSet(charactersIn: "$ ")))) }
             : []
 
         let modelCourse = AIChatTopics.cleanTitle(parts[0])
@@ -1545,13 +1547,13 @@ final class AIQuestionPatternBook: ObservableObject {
             return """
             QUESTION TYPE (hidden line for the app): if the student asked you to solve a problem or question (text or photo), add ONE line at the VERY END naming the TYPE of question it is:
             [[type: Course | Topic | Type name | How to recognize it | Step 1 ; Step 2 ; Step 3 | Equation 1 ; Equation 2]]
-            Type name = a short, general name for this family of questions (e.g. "Range in projectile motion"). How to recognize it = the clue in a question that gives this type away (one short sentence). Steps = the reasoning to set up for EVERY question of this type, at most 4 short steps separated by ";" (math inside a step goes in $…$). Equations = the general equations that should come to mind on seeing this type, LaTeX without $, at most 3, separated by ";" (leave empty if none). Never write this problem's numbers or answer. Only when solving a problem, at most one line per reply — not in chat, plans or general explanations. The app removes this line; never mention it.\(known.isEmpty ? "" : "\nTypes already saved (if the question fits one, use exactly that name): \(known)")
+            Type name = a short, general name for this family of questions (e.g. "Range in projectile motion"). How to recognize it = the clue in a question that gives this type away (one short sentence). Steps = the reasoning to set up for EVERY question of this type, at most 4 short steps separated by ";" (math inside a step goes in $…$). Equations = the general equations that should come to mind on seeing this type, real LaTeX without $ (\\sqrt{}, \\frac{}{}, \\theta, v_0 — never sqrt(), theta, v0), at most 3, separated by ";" (leave empty if none). Never write this problem's numbers or answer. Only when solving a problem, at most one line per reply — not in chat, plans or general explanations. The app removes this line; never mention it.\(known.isEmpty ? "" : "\nTypes already saved (if the question fits one, use exactly that name): \(known)")
             """
         }
         return """
         SORU TİPİ (uygulama için gizli satır): öğrenci bir soru/problem çözdürdüyse (yazıyla ya da fotoğrafla), cevabın EN SONUNA bu sorunun TİPİNİ tek satırda yaz:
         [[tip: Ders | Konu | Tip adı | Nasıl tanınır | Adım 1 ; Adım 2 ; Adım 3 | Denklem 1 ; Denklem 2]]
-        Tip adı = bu soru ailesinin kısa, genel adı (ör. "Eğik atışta menzil"). Nasıl tanınır = soruda bu tipi ele veren ipucu (tek kısa cümle). Adımlar = bu tipteki HER soruda kurulacak mantık, en fazla 4 kısa adım, ";" ile ayrılmış (adımdaki matematik $…$ içinde). Denklemler = bu tip görülünce akla gelmesi gereken genel denklemler, $ olmadan LaTeX, en fazla 3, ";" ile ayrılmış (yoksa boş bırak). Bu sorunun sayılarını veya cevabını YAZMA. Sadece soru çözerken, cevap başına en fazla 1 satır — sohbet, plan veya genel anlatımda yazma. Uygulama bu satırı siler; ondan asla bahsetme.\(known.isEmpty ? "" : "\nKayıtlı tipler (soru bunlardan birine uyuyorsa AYNEN o adı kullan): \(known)")
+        Tip adı = bu soru ailesinin kısa, genel adı (ör. "Eğik atışta menzil"). Nasıl tanınır = soruda bu tipi ele veren ipucu (tek kısa cümle). Adımlar = bu tipteki HER soruda kurulacak mantık, en fazla 4 kısa adım, ";" ile ayrılmış (adımdaki matematik $…$ içinde). Denklemler = bu tip görülünce akla gelmesi gereken genel denklemler, $ olmadan gerçek LaTeX (\\sqrt{}, \\frac{}{}, \\theta, v_0 — asla sqrt(), theta, v0), en fazla 3, ";" ile ayrılmış (yoksa boş bırak). Bu sorunun sayılarını veya cevabını YAZMA. Sadece soru çözerken, cevap başına en fazla 1 satır — sohbet, plan veya genel anlatımda yazma. Uygulama bu satırı siler; ondan asla bahsetme.\(known.isEmpty ? "" : "\nKayıtlı tipler (soru bunlardan birine uyuyorsa AYNEN o adı kullan): \(known)")
         """
     }
 }

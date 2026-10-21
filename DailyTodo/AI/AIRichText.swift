@@ -345,6 +345,41 @@ enum AIMath {
     static func containsBoxed(_ s: String) -> Bool { s.contains("\\boxed") }
 
     /// `\boxed{X}` → `X` (SwiftMath has no \boxed; the card draws the box).
+    /// Fixes LaTeX the model wrote as plain text ("sqrt(2h/g)", "tantheta",
+    /// "v0", "vx"): → \sqrt{2h/g}, \tan\theta, v_0, v_x. Proper LaTeX is left
+    /// untouched (every rule skips anything already behind a backslash), so
+    /// it's safe to run on every formula, old and new.
+    static func repairPlainLatex(_ input: String) -> String {
+        var s = input
+
+        // sqrt(...) → \sqrt{...}, with balanced parentheses.
+        while let range = s.range(of: #"(?<![\\A-Za-z])sqrt\s*\("#, options: .regularExpression) {
+            var depth = 1
+            var index = range.upperBound
+            while index < s.endIndex, depth > 0 {
+                if s[index] == "(" { depth += 1 } else if s[index] == ")" { depth -= 1 }
+                if depth > 0 { index = s.index(after: index) }
+            }
+            guard index < s.endIndex else { break }
+            let inner = String(s[range.upperBound..<index])
+            s.replaceSubrange(range.lowerBound...index, with: "\\sqrt{\(inner)}")
+        }
+
+        func sub(_ pattern: String, _ template: String) {
+            s = s.replacingOccurrences(of: pattern, with: template, options: .regularExpression)
+        }
+
+        // Trig / log names, also when glued to what follows ("tantheta").
+        sub(#"(?<![\\A-Za-z])(arcsin|arccos|arctan|sinh|cosh|tanh|sin|cos|tan|cot|sec|csc|log|ln|exp)(?=[A-Za-z0-9({\s])"#, #"\\$1 "#)
+        // Greek letters spelled out.
+        sub(#"(?<![\\A-Za-z])(alpha|beta|gamma|delta|epsilon|theta|lambda|omega|sigma|rho|tau|phi|psi|mu|pi|eta|Delta|Omega|Sigma|Phi|Lambda)(?![A-Za-z])"#, #"\\$1"#)
+        // v0 / x0 / t0 → v_0 …; vx / vy / ax / Fx … → v_x …
+        sub(#"(?<![\\A-Za-z_])([a-zA-Z])0(?![0-9])"#, "$1_0")
+        sub(#"(?<![\\A-Za-z_])([vVaFpE])([xyz])(?![A-Za-z])"#, "$1_$2")
+        sub(#"\s{2,}"#, " ")
+        return s.trimmingCharacters(in: .whitespaces)
+    }
+
     static func stripBoxed(_ s: String) -> String {
         var out = s
         while let r = out.range(of: "\\boxed") {
@@ -541,6 +576,10 @@ private struct AIRichBlockView: View, Equatable {
 /// A centred display equation; scrolls sideways instead of wrapping when wide.
 struct AIDisplayMath: View {
     let latex: String
+
+    init(latex: String) {
+        self.latex = AIMath.repairPlainLatex(latex)
+    }
 
     var body: some View {
         if let r = AIMath.render(latex, size: AIMath.displaySize, display: true) {
