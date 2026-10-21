@@ -417,21 +417,36 @@ struct UpdoAIView: View {
             }
         }
         .sheet(isPresented: $showBYOKeySheet) {
-            BYOKeySheet()
+            Group {
+                BYOKeySheet()
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showFocusHistory) {
-            FocusHistorySheet(sessions: last7DaysFocus)
+            Group {
+                FocusHistorySheet(sessions: last7DaysFocus)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showExamPlanner) {
-            ExamPlannerSheet(courses: studentStore.courses, ownerUserID: currentUserID)
+            Group {
+                ExamPlannerSheet(courses: studentStore.courses, ownerUserID: currentUserID)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showPaywall) {
-            PaywallView(context: "ai_exhausted")
+            Group {
+                PaywallView(context: "ai_exhausted")
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showScanPreview) {
-            ScheduleScanPreviewSheet(courses: pendingScannedCourses) { kept in
-                saveScannedFromChat(kept)
+            Group {
+                ScheduleScanPreviewSheet(courses: pendingScannedCourses) { kept in
+                    saveScannedFromChat(kept)
+                }
             }
+            .updoPadSheet()
         }
         .photosPicker(
             isPresented: $showScanPicker,
@@ -479,6 +494,20 @@ struct UpdoAIView: View {
             autoStartScanIfNeeded()
             consumeHomeOpenerIfNeeded()
             consumeNotebookPageIfNeeded()
+            #if DEBUG
+            // QA/screenshot hook: `-debugAISheet history|exam|byo|paywall`.
+            if embeddedInHome, let which = UserDefaults.standard.string(forKey: "debugAISheet") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    switch which {
+                    case "history": showFocusHistory = true
+                    case "exam": showExamPlanner = true
+                    case "byo": showBYOKeySheet = true
+                    case "paywall": showPaywall = true
+                    default: break
+                    }
+                }
+            }
+            #endif
         }
         .onReceive(NotificationCenter.default.publisher(for: .presentUpdoAIWithOpener)) { _ in
             consumeHomeOpenerIfNeeded()

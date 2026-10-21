@@ -73,6 +73,8 @@ struct WeekView: View {
     @State private var gridEditingEvent: EventItem? = nil
     /// The day column a dragged block hovers.
     @State private var gridDropColumnDay: Date? = nil
+    /// iPad: the month calendar as a popover under its header button.
+    @State private var showGridCalendar = false
 
     // MARK: Body
 
@@ -112,69 +114,90 @@ struct WeekView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showCalendarSheet) {
-            CalendarSheet(
-                selectedDate: $currentDate,
-                allEvents: userScopedEvents,
-                allTasks: store.items,
-                onPick: { picked in
-                    pageDirection = picked > currentDate ? 1 : -1
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                        currentDate = picked
+            Group {
+                CalendarSheet(
+                    selectedDate: $currentDate,
+                    allEvents: userScopedEvents,
+                    allTasks: store.items,
+                    onPick: { picked in
+                        pageDirection = picked > currentDate ? 1 : -1
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                            currentDate = picked
+                        }
+                        showCalendarSheet = false
                     }
-                    showCalendarSheet = false
-                }
-            )
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+                )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showScheduleEditor) {
-            WeeklyScheduleEditorView()
-                .environmentObject(session)
-                .environmentObject(studentStore)
-                .environmentObject(friendStore)
+            Group {
+                WeeklyScheduleEditorView()
+                    .environmentObject(session)
+                    .environmentObject(studentStore)
+                    .environmentObject(friendStore)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showingAdd, onDismiss: { gridAddStartMinute = nil }) {
-            NavigationStack {
-                AddEventView(
-                    defaultWeekday: weekdayIndex(from: currentDate),
-                    defaultDate: currentDate,
-                    defaultStartMinute: gridAddStartMinute
-                )
-                .environmentObject(session)
-                .environmentObject(friendStore)
-                .environmentObject(studentStore)
-            }
-        }
-        .sheet(isPresented: $showPaywall) {
-            PaywallView(context: "future_week")
-        }
-        .sheet(isPresented: $showTaskAdd) {
-            AddTaskView(
-                defaultAddToWeek: true,
-                defaultWeekDate: currentDate,
-                lockedToTask: true
-            )
-            .environmentObject(store)
-            .environmentObject(session)
-        }
-        .sheet(item: $gridEditingEvent) { event in
-            NavigationStack {
-                EditEventView(event: event)
+            Group {
+                NavigationStack {
+                    AddEventView(
+                        defaultWeekday: weekdayIndex(from: currentDate),
+                        defaultDate: currentDate,
+                        defaultStartMinute: gridAddStartMinute
+                    )
                     .environmentObject(session)
                     .environmentObject(friendStore)
                     .environmentObject(studentStore)
+                }
             }
+            .updoPadSheet()
+        }
+        .sheet(isPresented: $showPaywall) {
+            Group {
+                PaywallView(context: "future_week")
+            }
+            .updoPadSheet()
+        }
+        .sheet(isPresented: $showTaskAdd) {
+            Group {
+                AddTaskView(
+                    defaultAddToWeek: true,
+                    defaultWeekDate: currentDate,
+                    lockedToTask: true
+                )
+                .environmentObject(store)
+                .environmentObject(session)
+            }
+            .updoPadSheet()
+        }
+        .sheet(item: $gridEditingEvent) { event in
+            Group {
+                NavigationStack {
+                    EditEventView(event: event)
+                        .environmentObject(session)
+                        .environmentObject(friendStore)
+                        .environmentObject(studentStore)
+                }
+            }
+            .updoPadSheet()
         }
         .sheet(item: $editingEvent) { event in
-            NavigationStack {
-                AddEventView(
-                    defaultWeekday: event.weekday,
-                    defaultDate: event.scheduledDate
-                )
-                .environmentObject(session)
-                .environmentObject(friendStore)
-                .environmentObject(studentStore)
+            Group {
+                NavigationStack {
+                    AddEventView(
+                        defaultWeekday: event.weekday,
+                        defaultDate: event.scheduledDate
+                    )
+                    .environmentObject(session)
+                    .environmentObject(friendStore)
+                    .environmentObject(studentStore)
+                }
             }
+            .updoPadSheet()
         }
         .onAppear {
             studentStore.reload()
@@ -1726,13 +1749,30 @@ extension WeekView {
             HStack(spacing: 8) {
                 Button {
                     Haptics.impact(.light)
-                    showCalendarSheet = true
+                    showGridCalendar = true
                 } label: {
                     gridHeaderIcon("calendar")
                 }
                 .buttonStyle(.plain)
                 .hoverEffect(.highlight)
                 .accessibilityLabel(appLanguageIsEnglish() ? "Calendar" : "Takvim")
+                // Like Calendar on iPad: the month opens under its button.
+                .popover(isPresented: $showGridCalendar, arrowEdge: .top) {
+                    CalendarSheet(
+                        selectedDate: $currentDate,
+                        allEvents: userScopedEvents,
+                        allTasks: store.items,
+                        onPick: { picked in
+                            pageDirection = picked > currentDate ? 1 : -1
+                            withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                                currentDate = picked
+                            }
+                            showGridCalendar = false
+                        }
+                    )
+                    .frame(width: 440, height: 680)
+                    .presentationCompactAdaptation(.popover)
+                }
 
                 Button {
                     Haptics.impact(.light)
@@ -1819,12 +1859,16 @@ extension WeekView {
         ZStack {
             Button(tr("ipad_week_prev")) { shiftGridWeek(by: -7) }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
+                .accessibilityHidden(true)
             Button(tr("ipad_week_next")) { shiftGridWeek(by: 7) }
                 .keyboardShortcut(.rightArrow, modifiers: .command)
+                .accessibilityHidden(true)
             Button(tr("ipad_week_today")) { selectGridDay(Date()) }
                 .keyboardShortcut("t", modifiers: .command)
+                .accessibilityHidden(true)
             Button(tr("ipad_week_new_event")) { requestAddEvent() }
                 .keyboardShortcut("n", modifiers: .command)
+                .accessibilityHidden(true)
         }
         .opacity(0)
         .frame(width: 0, height: 0)

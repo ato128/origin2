@@ -57,6 +57,9 @@ struct AddFriendSheetView: View {
         ZStack {
             background
 
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                padLayout
+            } else {
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 14) {
                     Color.clear.frame(height: 4)
@@ -85,12 +88,397 @@ struct AddFriendSheetView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 20)
             }
+            }
         }
+        .updoPadSheet()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .sheet(isPresented: $showPaywall) {
             PaywallView(context: "friend_limit")
         }
+    }
+}
+
+// MARK: - iPad
+
+private extension AddFriendSheetView {
+    /// iPad: "be found" on the left (your username to share, the invite
+    /// reward), "find someone" on the right (the username form and what a
+    /// friendship unlocks).
+    var padLayout: some View {
+        VStack(alignment: .leading, spacing: 26) {
+            padHeader
+
+            HStack(alignment: .top, spacing: 24) {
+                VStack(alignment: .leading, spacing: 16) {
+                    AddFriendMyCodeCard(session: session)
+                    AddFriendInviteCard()
+                }
+                .frame(width: 380, alignment: .top)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    padFormCard
+                    padBenefitsCard
+                }
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 36)
+        .padding(.top, 28)
+        .padding(.bottom, 24)
+        .frame(maxWidth: 1000)
+        .frame(maxWidth: .infinity)
+    }
+
+    var padHeader: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .frame(width: 40, height: 40)
+                    .liquidGlass(in: Circle())
+                    .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                    .contentShape(.hoverEffect, Circle())
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.highlight)
+            .keyboardShortcut(.cancelAction)
+            .disabled(isLoading)
+            .accessibilityLabel(tr("event_close"))
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text(tr("afp_title_first"))
+                        .font(.system(size: 32, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text(tr("afp_title_italic"))
+                        .font(.system(size: 29, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(LinearGradient(colors: [AddFriendArenaPalette.cyan, AddFriendArenaPalette.purple],
+                                                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+                Text(tr("afp_subtitle"))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+            }
+        }
+    }
+
+    // MARK: Find someone
+
+    var padFormCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            padEyebrow(tr("afp_find_caps"), tint: AddFriendArenaPalette.cyan)
+
+            Text(tr("afp_find_title"))
+                .font(.system(size: 22, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+
+            HStack(spacing: 10) {
+                Text("@")
+                    .font(.system(size: 24, weight: .black, design: .rounded))
+                    .foregroundStyle(AddFriendArenaPalette.cyan)
+
+                TextField(tr("add_friend_username_placeholder"), text: $username)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.send)
+                    .onSubmit {
+                        guard canSubmit else { return }
+                        Task { await sendRequest() }
+                    }
+                    .onChange(of: username) { _, newValue in
+                        let normalized = newValue
+                            .lowercased()
+                            .filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." }
+                        if normalized != newValue { username = normalized }
+                        errorMessage = nil
+                        successMessage = nil
+                    }
+
+                if !username.isEmpty {
+                    Button { username = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(UpdoTheme.filmy(0.35))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(tr("afp_clear"))
+                }
+            }
+            .padding(.horizontal, 18)
+            .frame(height: 62)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(UpdoTheme.filmy(0.05)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(cleanUsername.isEmpty ? UpdoTheme.border : AddFriendArenaPalette.cyan.opacity(0.55),
+                                  lineWidth: cleanUsername.isEmpty ? 1 : 1.5)
+            )
+
+            Text(tr("afp_field_hint"))
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(UpdoTheme.filmy(0.42))
+
+            if let errorMessage {
+                padStatus(errorMessage, icon: "exclamationmark.circle.fill", tint: AddFriendArenaPalette.coral)
+            }
+            if let successMessage {
+                padStatus(successMessage, icon: "checkmark.circle.fill", tint: AddFriendArenaPalette.green)
+            }
+
+            Button {
+                Task { await sendRequest() }
+            } label: {
+                HStack(spacing: 10) {
+                    if isLoading {
+                        ProgressView().tint(.black)
+                    } else {
+                        Image(systemName: "paperplane.fill").font(.system(size: 15, weight: .black))
+                    }
+                    Text(cleanUsername.isEmpty ? tr("afp_send") : tr("afp_send_to", cleanUsername))
+                        .font(.system(size: 16, weight: .black))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(
+                    Capsule().fill(canSubmit
+                                   ? AnyShapeStyle(LinearGradient(colors: [AddFriendArenaPalette.cyan, AddFriendArenaPalette.blue],
+                                                                   startPoint: .leading, endPoint: .trailing))
+                                   : AnyShapeStyle(UpdoTheme.filmy(0.12)))
+                )
+                .contentShape(.hoverEffect, Capsule())
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.lift)
+            .disabled(!canSubmit)
+            .keyboardShortcut(.defaultAction)
+        }
+        .padding(22)
+        .background(cardBackground)
+    }
+
+    var padBenefitsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            padEyebrow(tr("afp_unlock_caps"), tint: AddFriendArenaPalette.gold)
+
+            VStack(spacing: 12) {
+                benefitRow(icon: "timer", tint: AddFriendArenaPalette.purple,
+                           title: tr("afp_b1_title"), subtitle: tr("afp_b1_sub"))
+                benefitRow(icon: "bubble.left.and.bubble.right.fill", tint: AddFriendArenaPalette.blue,
+                           title: tr("afp_b2_title"), subtitle: tr("afp_b2_sub"))
+                benefitRow(icon: "chart.bar.xaxis", tint: AddFriendArenaPalette.green,
+                           title: tr("afp_b3_title"), subtitle: tr("afp_b3_sub"))
+            }
+        }
+        .padding(22)
+        .background(cardBackground)
+    }
+
+    func benefitRow(icon: String, tint: Color, title: String, subtitle: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: 40, height: 40)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(tint.opacity(0.14)))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(UpdoTheme.filmy(0.52))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    func padStatus(_ text: String, icon: String, tint: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).foregroundStyle(tint)
+            Text(text)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(tint.opacity(0.12)))
+        .transition(.opacity)
+    }
+
+    func padEyebrow(_ text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.system(size: 10.5, weight: .black, design: .monospaced))
+            .tracking(1.8)
+            .foregroundStyle(tint)
+    }
+}
+
+// MARK: - iPad: be found
+
+/// Your own username, ready to copy or share — so friends can add you.
+private struct AddFriendMyCodeCard: View {
+    @ObservedObject var session: SessionStore
+    @State private var copied = false
+
+    private var username: String { session.currentUser?.username ?? "" }
+    private var name: String {
+        let full = session.currentUser?.fullName.trimmingCharacters(in: .whitespaces) ?? ""
+        return full.isEmpty ? username : full
+    }
+    private var shareText: String { tr("afp_share_text", username, AppLinks.appStore) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(tr("afp_me_caps"))
+                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                .tracking(1.8)
+                .foregroundStyle(AddFriendArenaPalette.purple)
+
+            HStack(spacing: 14) {
+                UserAvatarView(userID: session.currentUser?.id, name: name,
+                               tint: AddFriendArenaPalette.purple, size: 58)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(name)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(1)
+                    Text("@\(username)")
+                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .foregroundStyle(LinearGradient(colors: [AddFriendArenaPalette.cyan, AddFriendArenaPalette.purple],
+                                                        startPoint: .leading, endPoint: .trailing))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .textSelection(.enabled)
+                }
+                Spacer(minLength: 0)
+            }
+
+            Text(tr("afp_me_sub"))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(UpdoTheme.filmy(0.52))
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                Button {
+                    UIPasteboard.general.string = "@\(username)"
+                    Haptics.notify(.success)
+                    withAnimation(.snappy) { copied = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                        withAnimation(.snappy) { copied = false }
+                    }
+                } label: {
+                    Label(copied ? tr("afp_copied") : tr("afp_copy"),
+                          systemImage: copied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Capsule().fill(UpdoTheme.filmy(0.07)))
+                        .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                        .contentTransition(.symbolEffect(.replace))
+                        .contentShape(.hoverEffect, Capsule())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+
+                ShareLink(item: shareText) {
+                    Label(tr("afp_share"), systemImage: "square.and.arrow.up")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(UpdoTheme.onAccent)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Capsule().fill(LinearGradient(colors: [AddFriendArenaPalette.blue, AddFriendArenaPalette.purple],
+                                                                  startPoint: .leading, endPoint: .trailing)))
+                        .contentShape(.hoverEffect, Capsule())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.lift)
+            }
+            .disabled(username.isEmpty)
+        }
+        .padding(22)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(LinearGradient(colors: [AddFriendArenaPalette.purple.opacity(0.16), AddFriendArenaPalette.blue.opacity(0.08),
+                                              AddFriendArenaPalette.surface.opacity(0.96)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(AddFriendArenaPalette.purple.opacity(0.22), lineWidth: 1))
+        )
+    }
+}
+
+/// The invite reward (3 new friends → 1 month Premium), with real progress.
+private struct AddFriendInviteCard: View {
+    @State private var status: ReferralBackendClient.Status?
+
+    var body: some View {
+        let needed = max(status?.needed ?? 3, 1)
+        let qualified = min(status?.qualified ?? 0, needed)
+        let granted = status?.rewardGranted ?? false
+        let link = status?.link ?? AppLinks.appStore
+
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: granted ? "checkmark.seal.fill" : "gift.fill")
+                    .foregroundStyle(AddFriendArenaPalette.gold)
+                Text(tr("afp_invite_caps"))
+                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                    .tracking(1.8)
+                    .foregroundStyle(AddFriendArenaPalette.gold)
+            }
+
+            Text(granted ? tr("afp_invite_done") : tr("afp_invite_title", needed))
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !granted {
+                HStack(spacing: 8) {
+                    ForEach(0..<needed, id: \.self) { index in
+                        Capsule()
+                            .fill(index < qualified ? AnyShapeStyle(AddFriendArenaPalette.gold) : AnyShapeStyle(UpdoTheme.filmy(0.12)))
+                            .frame(height: 8)
+                    }
+                }
+                Text(tr("afp_invite_progress", qualified, needed))
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+            }
+
+            ShareLink(item: tr("afp_invite_text", link)) {
+                Label(tr("afp_invite_share"), systemImage: "link")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(Capsule().fill(AddFriendArenaPalette.gold))
+                    .contentShape(.hoverEffect, Capsule())
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.lift)
+        }
+        .padding(22)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(LinearGradient(colors: [AddFriendArenaPalette.gold.opacity(0.12), AddFriendArenaPalette.surface.opacity(0.96)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(AddFriendArenaPalette.gold.opacity(0.22), lineWidth: 1))
+        )
+        .task { status = try? await ReferralBackendClient.shared.status() }
     }
 }
 

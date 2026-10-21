@@ -511,21 +511,36 @@ struct InsightsView: View {
                 .hidden()
         }
         .sheet(isPresented: $showSettingsHub) {
-            NavigationStack {
-                ProfileHubView()
+            Group {
+                NavigationStack {
+                    ProfileHubView()
+                }
             }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showProfileEdit) {
-            UpdoProfileEditSheet()
+            Group {
+                UpdoProfileEditSheet()
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showProfileShare) {
-            UpdoProfileShareSheet(data: profileShareCardData)
+            Group {
+                UpdoProfileShareSheet(data: profileShareCardData)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showStreakRestorePaywall) {
-            PaywallView(context: "streak_restore")
+            Group {
+                PaywallView(context: "streak_restore")
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showPremium) {
-            PaywallView(context: "insights_premium")
+            Group {
+                PaywallView(context: "insights_premium")
+            }
+            .updoPadSheet()
         }
         #if DEBUG
         // QA/screenshot hook: `-debugOpenNotebook YES` opens the Defter.
@@ -541,12 +556,18 @@ struct InsightsView: View {
                 .environmentObject(studentStore)
         }
         .sheet(isPresented: $showFormulaNotebook) {
-            FormulaNotebookView()
-                .presentationDragIndicator(.visible)
+            Group {
+                FormulaNotebookView()
+                    .presentationDragIndicator(.visible)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showQuestionPatterns) {
-            QuestionPatternsView(onPractice: practice)
-                .presentationDragIndicator(.visible)
+            Group {
+                QuestionPatternsView(onPractice: practice)
+                    .presentationDragIndicator(.visible)
+            }
+            .updoPadSheet()
         }
         .onReceive(SubscriptionManager.shared.$isPro) { isPro in
             withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
@@ -573,17 +594,20 @@ struct InsightsView: View {
             preparePendingLevelUpIfNeeded()
             showLevelUpCelebration = true
         }) {
-            InsightsIdentityLevelSheet(
-                snapshot: identitySnapshot,
-                onLevelUp: {
-                    // Flag + dismiss; the celebration fires in onDismiss once the
-                    // sheet has fully gone away.
-                    wantsCelebrationAfterSheet = true
-                    showIdentityLevelSheet = false
-                }
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            Group {
+                InsightsIdentityLevelSheet(
+                    snapshot: identitySnapshot,
+                    onLevelUp: {
+                        // Flag + dismiss; the celebration fires in onDismiss once the
+                        // sheet has fully gone away.
+                        wantsCelebrationAfterSheet = true
+                        showIdentityLevelSheet = false
+                    }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+            .updoPadSheet()
         }
         .fullScreenCover(isPresented: $showLevelUpCelebration) {
             let targetLevel = pendingLevelUp?.pendingLevel ?? identitySnapshot.nextRequirement.level

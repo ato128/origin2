@@ -97,6 +97,9 @@ struct CreateCrewBackendView: View {
         ZStack {
             background
 
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                padLayout
+            } else {
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 14) {
                     Color.clear.frame(height: 4)
@@ -125,11 +128,192 @@ struct CreateCrewBackendView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 20)
             }
+            }
         }
+        .updoPadSheet()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .sheet(isPresented: $showPaywall) {
             PaywallView(context: "crew_limit")
+        }
+    }
+}
+
+// MARK: - iPad
+
+private extension CreateCrewBackendView {
+    /// iPad: the crew as it will look (photo + live preview) stays on the
+    /// left while you shape it on the right.
+    var padLayout: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            header
+                .padding(.horizontal, 32)
+                .padding(.top, 28)
+
+            HStack(alignment: .top, spacing: 24) {
+                VStack(alignment: .leading, spacing: 14) {
+                    crewPhotoCard
+                    padPreviewCard
+                    padNextStepsCard
+                }
+                .frame(width: 400, alignment: .top)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        crewInfoCard
+                        iconPickerCard
+                        colorPickerCard
+
+                        if let errorMessage {
+                            errorCard(errorMessage)
+                        }
+
+                        saveButton
+                    }
+                    .padding(.bottom, 28)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: 1040)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private extension CreateCrewBackendView {
+    var padDisplayName: String { cleanName.isEmpty ? tr("ccp_placeholder_name") : cleanName }
+
+    /// The crew's mark: the picked photo, or its icon on its color.
+    func padCrewMark(size: CGFloat) -> some View {
+        let tint = hexColor(colorHex)
+        let shape = RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+        return ZStack {
+            if let pickedImage {
+                Image(uiImage: pickedImage).resizable().scaledToFill()
+            } else {
+                shape.fill(LinearGradient(colors: [tint, CreateCrewArenaPalette.purple.opacity(0.85)],
+                                          startPoint: .topLeading, endPoint: .bottomTrailing))
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.42, weight: .black))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(shape)
+    }
+
+    /// Live preview: the crew as it will appear in Social and in its chat.
+    var padPreviewCard: some View {
+        let tint = hexColor(colorHex)
+        return VStack(alignment: .leading, spacing: 14) {
+            Text(tr("ccp_preview_caps"))
+                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                .tracking(1.8)
+                .foregroundStyle(CreateCrewArenaPalette.cyan)
+
+            // As a card in the Social list
+            HStack(spacing: 13) {
+                ZStack(alignment: .bottomTrailing) {
+                    padCrewMark(size: 54)
+                    Circle()
+                        .fill(Color(arenaHex: "#34D44A"))
+                        .frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(CreateCrewArenaPalette.surface, lineWidth: 2))
+                }
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(padDisplayName)
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(1)
+                    Text(tr("ccp_members_line"))
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .tracking(0.8)
+                        .foregroundStyle(UpdoTheme.filmy(0.4))
+                    Capsule()
+                        .fill(LinearGradient(colors: [tint, CreateCrewArenaPalette.purple], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: 120, height: 4)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(UpdoTheme.filmy(0.3))
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(UpdoTheme.filmy(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(UpdoTheme.border, lineWidth: 1))
+
+            // As the chat header + a first message
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    padCrewMark(size: 32)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(padDisplayName)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .lineLimit(1)
+                        Text(tr("ccp_chat_sub"))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(UpdoTheme.filmy(0.45))
+                    }
+                    Spacer(minLength: 0)
+                }
+                HStack {
+                    Spacer(minLength: 40)
+                    Text(tr("ccp_chat_bubble"))
+                        .font(.system(size: 13.5, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(tint))
+                }
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(UpdoTheme.filmy(0.035)))
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(LinearGradient(colors: [tint.opacity(0.14), CreateCrewArenaPalette.surface.opacity(0.97)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(tint.opacity(0.22), lineWidth: 1))
+        )
+        .animation(.snappy, value: colorHex)
+        .animation(.snappy, value: icon)
+    }
+
+    /// What happens after "Create".
+    var padNextStepsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(tr("ccp_next_caps"))
+                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                .tracking(1.8)
+                .foregroundStyle(CreateCrewArenaPalette.gold)
+            padStep(1, title: tr("ccp_s1_title"), subtitle: tr("ccp_s1_sub"))
+            padStep(2, title: tr("ccp_s2_title"), subtitle: tr("ccp_s2_sub"))
+            padStep(3, title: tr("ccp_s3_title"), subtitle: tr("ccp_s3_sub"))
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    func padStep(_ number: Int, title: String, subtitle: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.system(size: 13, weight: .black, design: .rounded))
+                .foregroundStyle(.black)
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(CreateCrewArenaPalette.gold))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14.5, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                Text(subtitle)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
         }
     }
 }

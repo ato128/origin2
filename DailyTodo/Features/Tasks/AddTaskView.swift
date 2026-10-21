@@ -79,6 +79,9 @@ struct AddTaskView: View {
                     .offset(x: -170, y: 380)
                     .ignoresSafeArea()
 
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    padLayout
+                } else {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         if !lockedToTask {
@@ -102,6 +105,7 @@ struct AddTaskView: View {
                     .padding(.bottom, 40)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                }
             }
             .navigationTitle(tr("at_nav_title"))
             .navigationBarTitleDisplayMode(.inline)
@@ -128,6 +132,122 @@ struct AddTaskView: View {
     // MARK: - Entry kind (Görev / Sınav)
 
     /// Top-level record kind: a clean two-way segmented control.
+    // MARK: - iPad
+
+    /// iPad: what it is (title, type, details) on the left; when, a live
+    /// preview and the add button on the right.
+    private var padLayout: some View {
+        HStack(alignment: .top, spacing: 22) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    if !lockedToTask { entryKindSection }
+                    titleSection
+                    if entryKind == .task {
+                        taskTypeSection
+                    } else {
+                        examTypeSection
+                    }
+                    detailsCard
+                }
+                .padding(.bottom, 40)
+            }
+            .frame(maxWidth: .infinity)
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    padPreviewCard
+                    if entryKind == .task {
+                        taskScheduleSection
+                    } else {
+                        examScheduleSection
+                    }
+                    Button(action: add) {
+                        Label(tr("common_add"), systemImage: "plus")
+                            .font(.system(size: 16, weight: .black))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(
+                                Capsule().fill(trimmedTitle.isEmpty
+                                               ? AnyShapeStyle(UpdoTheme.filmy(0.12))
+                                               : AnyShapeStyle(LinearGradient(colors: [UpdoTheme.cyan, Color(arenaHex: "#1593FF")],
+                                                                               startPoint: .leading, endPoint: .trailing)))
+                            )
+                            .contentShape(.hoverEffect, Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .hoverEffect(.lift)
+                    .disabled(trimmedTitle.isEmpty)
+                    .keyboardShortcut(.return, modifiers: .command)
+                }
+                .padding(.bottom, 40)
+            }
+            .frame(width: 360)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 14)
+        .scrollDismissesKeyboard(.interactively)
+    }
+
+    /// The entry as it will show up — in your week and on Home.
+    private var padPreviewCard: some View {
+        let isTask = entryKind == .task
+        let tint = isTask ? selectedColor.color : Color.orange
+        let icon = isTask ? selectedType.icon : "graduationcap"
+        let kind = isTask ? selectedType.title : selectedExamType.title
+        let name = trimmedTitle.isEmpty ? tr("atp_placeholder") : trimmedTitle
+        let course = courseName.trimmingCharacters(in: .whitespaces)
+        let date: Date? = isTask ? (hasDueDate ? dueDate : nil) : examDate
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(tr("atp_preview_caps"))
+                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                .tracking(1.8)
+                .foregroundStyle(UpdoTheme.cyan)
+
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(tint)
+                    .frame(width: 42, height: 42)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(tint.opacity(0.16)))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(name)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(trimmedTitle.isEmpty ? UpdoTheme.filmy(0.4) : UpdoTheme.textPrimary)
+                        .lineLimit(2)
+                    HStack(spacing: 6) {
+                        Text(kind)
+                        if !course.isEmpty { Text("·"); Text(course).lineLimit(1) }
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(tint)
+                    if let date {
+                        Label(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()),
+                              systemImage: "calendar")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(UpdoTheme.filmy(0.55))
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(tint.opacity(0.08)))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(tint.opacity(0.3), lineWidth: 1))
+
+            if isTask && addToWeek {
+                Label(tr("atp_in_week"), systemImage: "calendar.badge.checkmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.55))
+            }
+        }
+        .padding(18)
+        .background(sectionCardBackground)
+        .animation(.snappy, value: selectedType)
+        .animation(.snappy, value: selectedColor)
+    }
+
     private var entryKindSection: some View {
         HStack(spacing: 4) {
             entryKindSegment(.task, title: tr("at_kind_task"), icon: "checklist")

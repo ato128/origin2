@@ -64,6 +64,9 @@ struct AddEventView: View {
                 intensity: 0.94
             )
 
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                padLayout
+            } else {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     header
@@ -78,12 +81,18 @@ struct AddEventView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 30)
             }
+            }
         }
         .toolbar(.hidden, for: .navigationBar)
         .updoColorScheme()
         .onAppear {
             applyDefaultDateIfNeeded()
             studentStore.reload()
+            // iPad: with no saved courses, open the custom-event form so the
+            // right column isn't empty.
+            if UIDevice.current.userInterfaceIdiom == .pad, studentStore.courses.isEmpty, selectedCourseID == nil {
+                showCustomEvent = true
+            }
         }
         .onChange(of: courseCode) { _, newValue in
             autoFillFromCode(newValue)
@@ -256,6 +265,107 @@ struct AddEventView: View {
         }
         .padding(18)
         .background(cardBackground(tint: accent, radius: 28, strength: 0.76))
+    }
+
+    // MARK: - iPad
+
+    /// iPad: what you're adding and the day it lands in (with its existing
+    /// classes, so a clash is visible) on the left; choose / fill on the right.
+    private var padLayout: some View {
+        HStack(alignment: .top, spacing: 22) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    header
+                    livePreviewCard
+                    padDayContextCard
+                }
+                .padding(.bottom, 30)
+            }
+            .frame(width: 380)
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    coursesSection
+                    manualCourseSection
+                    customEventSection
+                }
+                .padding(.top, 6)
+                .padding(.bottom, 30)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 26)
+        .padding(.top, 20)
+    }
+
+    /// The chosen weekday's classes, and whether the picked time clashes.
+    private var padDayContextCard: some View {
+        let day = max(0, min(6, weekday))
+        let dayEvents = currentUserEventsFromContext()
+            .filter { $0.scheduledDate == nil && $0.weekday == day }
+            .sorted { $0.startMinute < $1.startMinute }
+        let start = minutesFrom(startTime)
+        let end = minutesFrom(endTime)
+        let isPicking = showCustomEvent || selectedCourseID != nil
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(tr("aep_day_caps", localizedWeekdayFull(day).uppercased()))
+                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                Spacer()
+                Text(tr("aep_day_count", dayEvents.count))
+                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
+            }
+
+            if dayEvents.isEmpty {
+                Label(tr("aep_day_free"), systemImage: "sun.max")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
+                    .padding(.vertical, 6)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(dayEvents, id: \.id) { ev in
+                        let clash = isPicking && max(start, ev.startMinute) < min(end, ev.startMinute + ev.durationMinute)
+                        HStack(spacing: 10) {
+                            Text("\(hm(ev.startMinute))–\(hm(ev.startMinute + ev.durationMinute))")
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundStyle(UpdoTheme.filmy(0.6))
+                                .frame(width: 92, alignment: .leading)
+                            RoundedRectangle(cornerRadius: 2).fill(colorFromHex(ev.colorHex)).frame(width: 3, height: 24)
+                            Text(ev.title)
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(UpdoTheme.textPrimary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            if clash {
+                                Text(tr("aep_clash"))
+                                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 7)
+                                    .frame(height: 20)
+                                    .background(Capsule().fill(Color(arenaHex: AppArenaPalette.coral)))
+                            }
+                        }
+                    }
+                }
+            }
+
+            if isPicking {
+                Divider().overlay(UpdoTheme.filmy(0.08))
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill").foregroundStyle(accent)
+                    Text(tr("aep_new_slot", hm(start), hm(end)))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                }
+            }
+        }
+        .padding(18)
+        .background(cardBackground(tint: Color(arenaHex: AppArenaPalette.cyan), radius: 22, strength: 0.4))
+        .animation(.snappy, value: weekday)
     }
 
     private var coursesSection: some View {

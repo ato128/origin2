@@ -314,15 +314,22 @@ struct CrewHomeView: View {
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showRequestsSheet) {
-            CrewRequestsSheet(
-                incomingRequests: incomingRequests,
-                sentRequests: sentRequests,
-                onAcceptRequest: onAcceptRequest,
-                onRemoveRequest: onRemoveRequest
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-            .presentationCornerRadius(28)
+            Group {
+                CrewRequestsSheet(
+                    incomingRequests: incomingRequests,
+                    sentRequests: sentRequests,
+                    onAcceptRequest: onAcceptRequest,
+                    onRemoveRequest: onRemoveRequest,
+                    onAddFriend: {
+                        showRequestsSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { onAddFriend() }
+                    }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
+            }
+            .updoPadSheet()
         }
         .fullScreenCover(isPresented: $showReferralInvite) {
             OnboardingInviteView(onFinish: { showReferralInvite = false })
@@ -809,7 +816,10 @@ private struct CrewSocialContent: View {
             )
         }
         .sheet(isPresented: $showStatsPaywall) {
-            PaywallView(context: "social_stats")
+            Group {
+                PaywallView(context: "social_stats")
+            }
+            .updoPadSheet()
         }
     }
 
@@ -1693,11 +1703,17 @@ private struct CrewRequestsSheet: View {
     let sentRequests: [CrewSocialRequestCardData]
     let onAcceptRequest: (UUID) -> Void
     let onRemoveRequest: (UUID) -> Void
+    var onAddFriend: (() -> Void)? = nil
+
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
             CrewArenaBackground()
 
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                padLayout
+            } else {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
@@ -1722,7 +1738,143 @@ private struct CrewRequestsSheet: View {
                 }
                 .padding(.horizontal, 18)
             }
+            }
         }
+        .updoPadSheet()
+    }
+
+    /// iPad: incoming and sent side by side, each with its own empty state.
+    private var padLayout: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            HStack(alignment: .center, spacing: 14) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .frame(width: 40, height: 40)
+                        .liquidGlass(in: Circle())
+                        .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                        .contentShape(.hoverEffect, Circle())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+                .keyboardShortcut(.cancelAction)
+                .accessibilityLabel(tr("event_close"))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tr("ch_requests"))
+                        .font(.system(size: 31, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text(tr("ch_requests_sub"))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
+                }
+            }
+
+            HStack(alignment: .top, spacing: 22) {
+                padColumn(
+                    eyebrow: tr("ch_incoming_caps"),
+                    first: "Cevap",
+                    italic: "bekliyor",
+                    hint: tr("ipad_req_incoming_hint"),
+                    items: incomingRequests,
+                    empty: tr("ipad_req_incoming_empty"),
+                    emptyIcon: "tray",
+                    emptyAction: nil
+                ) { request in
+                    CrewPadRequestRow(
+                        request: request,
+                        primary: (tr("ipad_req_accept"), { onAcceptRequest(request.id) }),
+                        secondary: (tr("ipad_req_decline"), { onRemoveRequest(request.id) })
+                    )
+                }
+
+                padColumn(
+                    eyebrow: tr("ch_sent_caps"),
+                    first: "Bekleyen",
+                    italic: "istekler",
+                    hint: tr("ipad_req_sent_hint"),
+                    items: sentRequests,
+                    empty: tr("ipad_req_sent_empty"),
+                    emptyIcon: "paperplane",
+                    emptyAction: onAddFriend
+                ) { request in
+                    CrewPadRequestRow(
+                        request: request,
+                        primary: nil,
+                        secondary: (tr("ipad_req_cancel"), { onRemoveRequest(request.id) })
+                    )
+                }
+            }
+            // Nothing pending: the two empty columns sit mid-page.
+            .frame(maxHeight: .infinity,
+                   alignment: incomingRequests.isEmpty && sentRequests.isEmpty ? .center : .top)
+        }
+        .padding(.horizontal, 32)
+        .padding(.top, 28)
+        .padding(.bottom, 20)
+    }
+
+    private func padColumn<Row: View>(
+        eyebrow: String,
+        first: String,
+        italic: String,
+        hint: String,
+        items: [CrewSocialRequestCardData],
+        empty: String,
+        emptyIcon: String,
+        emptyAction: (() -> Void)?,
+        @ViewBuilder row: @escaping (CrewSocialRequestCardData) -> Row
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            CrewSectionTitle(eyebrow: eyebrow, titleFirst: first, titleItalic: italic,
+                             trailing: items.isEmpty ? nil : "\(items.count)")
+            Text(hint)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(UpdoTheme.filmy(0.48))
+
+            if items.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: emptyIcon)
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.filmy(0.35))
+                    Text(empty)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    if let emptyAction {
+                        Button(action: emptyAction) {
+                            Label(tr("ch_add_friend"), systemImage: "person.badge.plus")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 18)
+                                .frame(height: 40)
+                                .background(Capsule().fill(Color(arenaHex: CrewArenaPalette.appBlue)))
+                                .contentShape(.hoverEffect, Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .hoverEffect(.lift)
+                        .padding(.top, 6)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .background(CrewSurface(cornerRadius: 22))
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 10) {
+                        ForEach(items) { request in
+                            row(request)
+                        }
+                    }
+                    .padding(.bottom, 20)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 }
 // MARK: - Requests Section
@@ -1791,6 +1943,71 @@ private struct CrewSocialRequestsSection: View {
                 }
             }
         }
+    }
+}
+
+/// iPad request row: bigger, with clear "Accept" / "Decline" buttons.
+private struct CrewPadRequestRow: View {
+    let request: CrewSocialRequestCardData
+    let primary: (String, () -> Void)?
+    let secondary: (String, () -> Void)?
+
+    var body: some View {
+        let accent = Color(arenaHex: request.kind.accentHex)
+        HStack(spacing: 14) {
+            UserAvatarView(userID: request.userID, name: request.title, tint: accent, size: 56)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(request.title)
+                    .font(.system(size: 16.5, weight: .black))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                    .lineLimit(1)
+                Text("@\(request.username)")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(accent)
+                    .lineLimit(1)
+                if !request.subtitle.isEmpty {
+                    Text(request.subtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 8) {
+                if let secondary {
+                    Button(action: secondary.1) {
+                        Text(secondary.0)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(UpdoTheme.filmy(0.8))
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .background(Capsule().fill(UpdoTheme.filmy(0.07)))
+                            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                            .contentShape(.hoverEffect, Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .hoverEffect(.highlight)
+                }
+                if let primary {
+                    Button(action: primary.1) {
+                        Label(primary.0, systemImage: "checkmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .background(Capsule().fill(Color(arenaHex: CrewArenaPalette.liveGreen)))
+                            .contentShape(.hoverEffect, Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .hoverEffect(.lift)
+                }
+            }
+        }
+        .padding(16)
+        .background(CrewSurface(cornerRadius: 22))
     }
 }
 

@@ -115,6 +115,8 @@ struct FriendChatView: View {
     let friend: Friend
 
     @Environment(\.dismiss) private var dismiss
+    /// iPad Messages detail column: no back button (the list is beside it).
+    @Environment(\.chatIsSplitRoot) private var chatIsSplitRoot
     @Environment(\.locale) private var locale
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
@@ -433,17 +435,19 @@ private extension FriendChatView {
                 .ignoresSafeArea(edges: .top)
 
             HStack(alignment: .center, spacing: 10) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
-                        .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(UpdoTheme.textPrimary)
-                        .frame(width: 46, height: 46)
-                        .liquidGlass(in: Circle())
-                        .contentShape(Rectangle())
+                if !chatIsSplitRoot {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
+                            .font(.system(size: 19, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .frame(width: 46, height: 46)
+                            .liquidGlass(in: Circle())
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
 
                 Button {
                     showFriendInfo = true

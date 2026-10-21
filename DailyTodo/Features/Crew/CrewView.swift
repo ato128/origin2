@@ -57,19 +57,28 @@ struct CrewView: View {
             }
         }
         .sheet(isPresented: $showCreateCrewBackend) {
-            CreateCrewBackendView()
-                .environmentObject(session)
-                .environmentObject(crewStore)
+            Group {
+                CreateCrewBackendView()
+                    .environmentObject(session)
+                    .environmentObject(crewStore)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showJoinCrewSheet) {
-            JoinCrewSheet(code: pendingInviteCode)
-                .environmentObject(crewStore)
-                .environmentObject(session)
+            Group {
+                JoinCrewSheet(code: pendingInviteCode)
+                    .environmentObject(crewStore)
+                    .environmentObject(session)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showAddFriendSheet) {
-            AddFriendSheetView()
-                .environmentObject(friendStore)
-                .environmentObject(session)
+            Group {
+                AddFriendSheetView()
+                    .environmentObject(friendStore)
+                    .environmentObject(session)
+            }
+            .updoPadSheet()
         }
         .task {
             guard !didLoad else { return }

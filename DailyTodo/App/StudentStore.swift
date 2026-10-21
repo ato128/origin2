@@ -28,22 +28,6 @@ private struct StudentProfileRow: Codable {
     let updated_at: String?
 }
 
-private struct StudentCourseRow: Codable {
-    let id: UUID
-    let user_id: UUID
-    let course_code: String
-    let course_name: String
-    let institution_name: String?
-    let major_name: String?
-    let grade_level: String?
-    let year_number: Int?
-    let term_number: Int?
-    let source_type: String
-    let is_archived: Bool
-    let created_at: String?
-    let updated_at: String?
-}
-
 @MainActor
 final class StudentStore: ObservableObject {
     private let context: ModelContext
@@ -145,19 +129,17 @@ final class StudentStore: ObservableObject {
                 upsertLocalProfile(from: profileRow)
             }
 
-            let coursesResponse = try await SupabaseManager.shared.client
-                .from("student_courses")
-                .select()
-                .eq("user_id", value: userUUID.uuidString)
-                .eq("is_archived", value: false)
-                .order("created_at", ascending: true)
-                .execute()
-
-            if let rows = try? JSONDecoder().decode([StudentCourseRow].self, from: coursesResponse.data) {
-                replaceLocalCourses(from: rows)
-            }
+            // Courses live on our own backend now (the first call copies the
+            // user's old Supabase rows over). If it fails, local ones stay.
+            let remoteCourses = try await CoursesBackendClient.shared.list()
+            replaceLocalCourses(from: remoteCourses)
 
             reload()
+
+            // Heal: lessons in the weekly schedule that never made it to the
+            // remote list (older builds' writes were rejected) come back as
+            // active courses.
+            await syncScheduleCourses()
         } catch {
             Log.debug("❌ StudentStore.loadFromRemote error:", error)
             reload()
@@ -352,18 +334,20 @@ final class StudentStore: ObservableObject {
             .upsert(profile, onConflict: "user_id")
             .execute()
 
-        try await SupabaseManager.shared.client
-            .from("student_courses")
-            .delete()
-            .eq("user_id", value: userUUID.uuidString)
-            .execute()
-
-        for payload in courses {
-            try await SupabaseManager.shared.client
-                .from("student_courses")
-                .insert(payload)
-                .execute()
-        }
+        // Courses → our own backend (one call replaces the list).
+        try await CoursesBackendClient.shared.replaceAll(courses.map { payload in
+            BackendCourseInput(
+                code: payload.course_code,
+                name: payload.course_name,
+                color_hex: nil,
+                source_type: payload.source_type,
+                institution_name: payload.institution_name,
+                major_name: payload.major_name,
+                grade_level: payload.grade_level,
+                year_number: payload.year_number,
+                term_number: payload.term_number
+            )
+        })
     }
 
     // MARK: - Deferred onboarding sync (offline / retry-later)
@@ -516,23 +500,17 @@ final class StudentStore: ObservableObject {
         )
 
         do {
-            let payload = StudentCourseInsertPayload(
-                user_id: userUUID,
-                course_code: trimmedCode,
-                course_name: trimmedName,
+            try await CoursesBackendClient.shared.add(BackendCourseInput(
+                code: trimmedCode,
+                name: trimmedName,
+                color_hex: colorHex,
+                source_type: sourceType,
                 institution_name: profile?.institutionName,
                 major_name: profile?.majorName,
                 grade_level: profile?.gradeLevel,
                 year_number: yearNumber,
-                term_number: termNumber,
-                source_type: sourceType,
-                is_archived: false
-            )
-
-            try await SupabaseManager.shared.client
-                .from("student_courses")
-                .insert(payload)
-                .execute()
+                term_number: termNumber
+            ))
 
             reload()
         } catch {
@@ -551,14 +529,7 @@ final class StudentStore: ObservableObject {
         deleteCourse(course)
 
         do {
-            try await SupabaseManager.shared.client
-                .from("student_courses")
-                .delete()
-                .eq("user_id", value: userUUID.uuidString)
-                .eq("course_code", value: code)
-                .eq("course_name", value: name)
-                .execute()
-
+            try await CoursesBackendClient.shared.delete(name: name, code: code)
             reload()
         } catch {
             Log.debug("❌ deleteCourseAndSync error:", error)
@@ -761,7 +732,7 @@ final class StudentStore: ObservableObject {
         saveContextOnly()
     }
 
-    private func replaceLocalCourses(from rows: [StudentCourseRow]) {
+    private func replaceLocalCourses(from rows: [BackendCourse]) {
         guard let currentUserID else { return }
 
         do {
@@ -772,16 +743,25 @@ final class StudentStore: ObservableObject {
                 context.delete(item)
             }
 
-            for row in rows where row.user_id.uuidString == currentUserID {
+            // Rows saved without a color take the lesson's color from the
+            // weekly schedule (first event with that title), else blue.
+            var scheduleColor: [String: String] = [:]
+            for ev in (try? context.fetch(FetchDescriptor<EventItem>())) ?? [] where ev.ownerUserID == currentUserID {
+                let key = ev.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if scheduleColor[key] == nil { scheduleColor[key] = ev.colorHex }
+            }
+
+            for row in rows where !row.isArchived {
+                let key = row.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 let course = Course(
                     ownerUserID: currentUserID,
-                    name: row.course_name,
-                    code: row.course_code,
-                    colorHex: "#3B82F6",
-                    sourceType: row.source_type,
-                    yearNumber: row.year_number,
-                    termNumber: row.term_number,
-                    isArchived: row.is_archived
+                    name: row.name,
+                    code: row.code,
+                    colorHex: row.colorHex ?? scheduleColor[key] ?? "#3B82F6",
+                    sourceType: row.sourceType,
+                    yearNumber: row.yearNumber,
+                    termNumber: row.termNumber,
+                    isArchived: row.isArchived
                 )
                 context.insert(course)
             }

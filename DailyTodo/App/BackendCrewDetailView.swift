@@ -172,35 +172,50 @@ struct BackendCrewDetailView: View {
             Task { await uploadCrewPhoto(newItem) }
         }
         .sheet(isPresented: $showAddMember) {
-            AddCrewMemberView(crewID: crew.id)
-                .environmentObject(crewStore)
+            Group {
+                AddCrewMemberView(crewID: crew.id)
+                    .environmentObject(crewStore)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showCreateTask) {
-            BackendCreateCrewTaskSheet(
-                crew: crew,
-                members: crewStore.crewMembers.filter { $0.crew_id == crew.id },
-                memberProfiles: crewStore.memberProfiles
-            )
-            .environmentObject(crewStore)
-            .environmentObject(session)
-        }
-        .sheet(item: $selectedTask) { task in
-            BackendCrewTaskDetailView(task: task, crew: crew)
+            Group {
+                BackendCreateCrewTaskSheet(
+                    crew: crew,
+                    members: crewStore.crewMembers.filter { $0.crew_id == crew.id },
+                    memberProfiles: crewStore.memberProfiles
+                )
                 .environmentObject(crewStore)
                 .environmentObject(session)
+            }
+            .updoPadSheet()
+        }
+        .sheet(item: $selectedTask) { task in
+            Group {
+                BackendCrewTaskDetailView(task: task, crew: crew)
+                    .environmentObject(crewStore)
+                    .environmentObject(session)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showShareSheet) {
-            ShareSheet(items: [
-                String(
-                    format: String(localized: "backend_crew_share_text"),
-                    inviteCode
-                )
-            ])
+            Group {
+                ShareSheet(items: [
+                    String(
+                        format: String(localized: "backend_crew_share_text"),
+                        inviteCode
+                    )
+                ])
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showInviteSheet, onDismiss: {
             inviteCopied = false
         }) {
-            inviteSheet
+            Group {
+                inviteSheet
+            }
+            .updoPadSheet()
         }
         .alert(
             String(localized: "common_error"),

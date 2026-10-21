@@ -377,6 +377,19 @@ extension EnvironmentValues {
     }
 }
 
+private struct ChatIsSplitRootKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// iPad Messages: this chat is the root of the detail column (the list
+    /// stays on the left), so it shows no back button.
+    var chatIsSplitRoot: Bool {
+        get { self[ChatIsSplitRootKey.self] }
+        set { self[ChatIsSplitRootKey.self] = newValue }
+    }
+}
+
 // MARK: - iPad readable column
 
 /// The widest a phone-designed screen gets. Above it (iPad, a wide Split View
@@ -400,7 +413,12 @@ extension View {
 
 private struct ReadableColumnModifier: ViewModifier {
     var maxWidth: CGFloat = updoReadableColumnWidth
-    @Environment(\.padRailInset) private var railInset
+    @Environment(\.padRailInset) private var envRailInset
+    /// Inside a sheet / full-screen cover the rail is covered (or out of
+    /// reach), but SwiftUI still hands the presenter's environment down —
+    /// so the inset only applies on the main screen.
+    @State private var isInPresentation = false
+    private var railInset: CGFloat { isInPresentation ? 0 : envRailInset }
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -413,6 +431,17 @@ private struct ReadableColumnModifier: ViewModifier {
     }
 
     private func column(_ content: Content) -> some View {
+        columnLayout(content)
+            .background {
+                if envRailInset > 0 {
+                    PresentationProbe(isInPresentation: $isInPresentation)
+                        .frame(width: 0, height: 0)
+                        .allowsHitTesting(false)
+                }
+            }
+    }
+
+    private func columnLayout(_ content: Content) -> some View {
         GeometryReader { geo in
             let margin = max(0, (geo.size.width - maxWidth) / 2)
             content
@@ -420,6 +449,59 @@ private struct ReadableColumnModifier: ViewModifier {
                 .safeAreaPadding(.leading, max(margin, railInset))
                 .safeAreaPadding(.trailing, margin)
                 .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+}
+
+/// Reports whether this view lives in a presented sheet / full-screen cover
+/// (its top-level view controller was presented) rather than the app's main
+/// screen — pushes inside the main tabs count as the main screen.
+private struct PresentationProbe: UIViewRepresentable {
+    @Binding var isInPresentation: Bool
+
+    func makeUIView(context: Context) -> ProbeView {
+        let view = ProbeView()
+        view.onResolve = { value in
+            if isInPresentation != value { isInPresentation = value }
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: ProbeView, context: Context) {}
+
+    final class ProbeView: UIView {
+        var onResolve: ((Bool) -> Void)?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.onResolve?(self.isPresented())
+            }
+        }
+
+        private func isPresented() -> Bool {
+            var responder: UIResponder? = self
+            while let current = responder, !(current is UIViewController) { responder = current.next }
+            guard var top = responder as? UIViewController else { return false }
+            while let parent = top.parent { top = parent }
+            return top.presentingViewController != nil
+        }
+    }
+}
+
+// MARK: - iPad sheets
+
+extension View {
+    /// iPad: present this sheet as a large page (like the paywall) instead of
+    /// the small centered form sheet. No-op on iPhone.
+    @ViewBuilder
+    func updoPadSheet() -> some View {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            self.presentationSizing(.page)
+        } else {
+            self
         }
     }
 }

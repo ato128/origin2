@@ -64,6 +64,9 @@ struct WeeklyScheduleEditorView: View {
                     .offset(x: -170, y: 380)
                     .ignoresSafeArea()
 
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    padLayout
+                } else {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
                         actionsCard
@@ -80,6 +83,7 @@ struct WeeklyScheduleEditorView: View {
                     .padding(.top, 12)
                     .padding(.bottom, 48)
                 }
+                }
             }
             .navigationTitle(tr("wk_sched_title"))
             .navigationBarTitleDisplayMode(.inline)
@@ -92,39 +96,54 @@ struct WeeklyScheduleEditorView: View {
         .updoColorScheme()
         .tint(UpdoTheme.cyan)
         .sheet(isPresented: $showingAdd) {
-            NavigationStack {
-                AddEventView(defaultWeekday: todayWeekday, defaultDate: nil)
-                    .environmentObject(session)
-                    .environmentObject(friendStore)
-                    .environmentObject(studentStore)
+            Group {
+                NavigationStack {
+                    AddEventView(defaultWeekday: todayWeekday, defaultDate: nil)
+                        .environmentObject(session)
+                        .environmentObject(friendStore)
+                        .environmentObject(studentStore)
+                }
             }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showPaywall) {
-            PaywallView(context: "schedule_scan")
+            Group {
+                PaywallView(context: "schedule_scan")
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showScanPreview) {
-            ScheduleScanPreviewSheet(
-                courses: scannedCourses,
-                onSave: { kept in saveScannedCourses(kept) }
-            )
+            Group {
+                ScheduleScanPreviewSheet(
+                    courses: scannedCourses,
+                    onSave: { kept in saveScannedCourses(kept) }
+                )
+            }
+            .updoPadSheet()
         }
         .onChange(of: scanPickerItems) { _, newItems in
             guard !newItems.isEmpty else { return }
             Task { await runScheduleScan(newItems) }
         }
         .sheet(item: $editingEvent) { event in
-            NavigationStack {
-                EditEventView(event: event)
-                    .environmentObject(session)
-                    .environmentObject(friendStore)
+            Group {
+                NavigationStack {
+                    EditEventView(event: event)
+                        .environmentObject(session)
+                        .environmentObject(friendStore)
+                }
             }
+            .updoPadSheet()
         }
         .sheet(item: $examCourse) { course in
-            ExamDateSheet(
-                courseName: course.title,
-                colorHex: course.colorHex,
-                onSave: { date in addExam(courseName: course.title, colorHex: course.colorHex, date: date) }
-            )
+            Group {
+                ExamDateSheet(
+                    courseName: course.title,
+                    colorHex: course.colorHex,
+                    onSave: { date in addExam(courseName: course.title, colorHex: course.colorHex, date: date) }
+                )
+            }
+            .updoPadSheet()
         }
         .fullScreenCover(isPresented: $showUpdoAI) {
             UpdoAIView(
@@ -391,6 +410,219 @@ struct WeeklyScheduleEditorView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .background(cardBackground)
+    }
+
+    // MARK: - iPad
+
+    /// iPad: the week at a glance on the left (load per day, your courses,
+    /// actions), every day as a card on the right.
+    private var padLayout: some View {
+        GeometryReader { geo in
+            if geo.size.width >= 1000 {
+                // Wide page: overview column + day grid.
+                HStack(alignment: .top, spacing: 22) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 16) {
+                            padSummaryCard
+                            if !padCourses.isEmpty { padCoursesCard }
+                            actionsCard
+                        }
+                        .padding(.bottom, 32)
+                    }
+                    .frame(width: 340)
+
+                    ScrollView(showsIndicators: false) {
+                        padDays.padding(.bottom, 32)
+                    }
+                }
+                .padding(.horizontal, 26)
+                .padding(.top, 14)
+            } else {
+                // Narrower page (portrait): overview on top, days below.
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        HStack(alignment: .top, spacing: 16) {
+                            VStack(spacing: 16) {
+                                padSummaryCard
+                                if !padCourses.isEmpty { padCoursesCard }
+                            }
+                            .frame(maxWidth: .infinity)
+                            actionsCard
+                                .frame(width: 280)
+                        }
+                        padDays
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.top, 14)
+                    .padding(.bottom, 32)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var padDays: some View {
+        if eventsByWeekday.isEmpty {
+            emptyState
+        } else {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)],
+                      alignment: .leading, spacing: 16) {
+                ForEach(eventsByWeekday, id: \.weekday) { group in
+                    padDayCard(group.weekday, group.events)
+                }
+            }
+        }
+    }
+
+    private var padWeekMinutes: Int { recurringEvents.reduce(0) { $0 + $1.durationMinute } }
+
+    /// Distinct courses: name, color, classes a week, minutes a week.
+    private var padCourses: [(name: String, colorHex: String, count: Int, minutes: Int)] {
+        var order: [String] = []
+        var info: [String: (name: String, colorHex: String, count: Int, minutes: Int)] = [:]
+        for ev in recurringEvents.sorted(by: { ($0.weekday, $0.startMinute) < ($1.weekday, $1.startMinute) }) {
+            let key = ev.title.trimmingCharacters(in: .whitespaces).lowercased()
+            guard !key.isEmpty else { continue }
+            if var current = info[key] {
+                current.count += 1
+                current.minutes += ev.durationMinute
+                info[key] = current
+            } else {
+                order.append(key)
+                info[key] = (ev.title, ev.colorHex, 1, ev.durationMinute)
+            }
+        }
+        return order.compactMap { info[$0] }.sorted { $0.minutes > $1.minutes }
+    }
+
+    private func padHours(_ minutes: Int) -> String {
+        minutes >= 60
+            ? (minutes % 60 == 0 ? tr("ipad_week_h", minutes / 60) : tr("ipad_today_hm", minutes / 60, minutes % 60))
+            : tr("ipad_today_m", minutes)
+    }
+
+    private var padSummaryCard: some View {
+        let perDay = (0...6).map { day in
+            recurringEvents.filter { $0.weekday == day }.reduce(0) { $0 + $1.durationMinute }
+        }
+        let peak = max(perDay.max() ?? 0, 60)
+        return VStack(alignment: .leading, spacing: 16) {
+            Text(tr("wsp_week_caps"))
+                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                .tracking(1.8)
+                .foregroundStyle(UpdoTheme.cyan)
+
+            HStack(alignment: .top, spacing: 22) {
+                padStat("\(recurringEvents.count)", tr("wsp_classes"))
+                padStat(padHours(padWeekMinutes), tr("wsp_weekly"))
+                padStat("\(padCourses.count)", tr("wsp_courses"))
+                Spacer(minLength: 0)
+            }
+
+            HStack(alignment: .bottom, spacing: 8) {
+                ForEach(0..<7, id: \.self) { day in
+                    VStack(spacing: 6) {
+                        Capsule()
+                            .fill(perDay[day] > 0
+                                  ? AnyShapeStyle(LinearGradient(colors: [UpdoTheme.cyan, UpdoTheme.purple], startPoint: .top, endPoint: .bottom))
+                                  : AnyShapeStyle(UpdoTheme.filmy(0.1)))
+                            .frame(width: 14, height: max(6, 64 * CGFloat(perDay[day]) / CGFloat(peak)))
+                        Text(localizedWeekdayLetter(day))
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundStyle(UpdoTheme.filmy(day == todayWeekday ? 0.9 : 0.4))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(height: 84, alignment: .bottom)
+            .accessibilityHidden(true)
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    private func padStat(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 22, weight: .regular, design: .serif))
+                .italic()
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+            Text(label)
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(UpdoTheme.filmy(0.5))
+        }
+        .fixedSize()
+    }
+
+    private var padCoursesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(tr("wsp_courses_caps"))
+                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                .tracking(1.8)
+                .foregroundStyle(UpdoTheme.purple)
+
+            ForEach(padCourses, id: \.name) { course in
+                HStack(spacing: 10) {
+                    Circle().fill(Color(arenaHex: course.colorHex)).frame(width: 9, height: 9)
+                    Text(course.name)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
+                    Text(tr("wsp_course_line", course.count, padHours(course.minutes)))
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
+                }
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    private func padDayCard(_ weekday: Int, _ events: [EventItem]) -> some View {
+        let minutes = events.reduce(0) { $0 + $1.durationMinute }
+        let isToday = weekday == todayWeekday
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(localizedWeekdayFull(weekday))
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(isToday ? UpdoTheme.cyan : UpdoTheme.textPrimary)
+                    .lineLimit(1)
+                    .fixedSize()
+                if isToday {
+                    Text(tr("ipad_today_eyebrow"))
+                        .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                        .tracking(1)
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 6)
+                        .frame(height: 18)
+                        .background(Capsule().fill(UpdoTheme.cyan))
+                }
+                Spacer(minLength: 6)
+                Text(tr("wsp_day_line", events.count, padHours(minutes)))
+                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(UpdoTheme.filmy(0.45))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+
+            VStack(spacing: 8) {
+                ForEach(events) { event in
+                    eventRow(event)
+                        .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .hoverEffect(.highlight)
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(UpdoTheme.filmy(isToday ? 0.05 : 0.025))
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(isToday ? UpdoTheme.cyan.opacity(0.35) : UpdoTheme.border, lineWidth: 1))
+        )
     }
 
     private var emptyState: some View {

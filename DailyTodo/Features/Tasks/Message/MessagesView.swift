@@ -47,6 +47,9 @@ struct MessagesView: View {
     @State private var backendLiveRefreshTask: Task<Void, Never>?
     @State private var isRefreshingBackendConversations = false
     @State private var showArchivedSheet = false
+    /// iPad (wide): list | conversation, like Messages.
+    @State private var isSplit = false
+    @State private var padSelected: MessagesHubItem?
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
@@ -246,6 +249,73 @@ struct MessagesView: View {
     }
 
     var body: some View {
+        GeometryReader { geo in
+            let split = UIDevice.current.userInterfaceIdiom == .pad && geo.size.width >= 900
+            Group {
+                if split {
+                    HStack(spacing: 0) {
+                        listStack
+                            .frame(width: 400)
+
+                        Rectangle().fill(UpdoTheme.border).frame(width: 1).ignoresSafeArea()
+
+                        padDetail
+                            .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    listStack
+                }
+            }
+            .onAppear { isSplit = split }
+            .onChange(of: split) { _, value in isSplit = value }
+        }
+    }
+
+    /// iPad: the open conversation (its own stack), or a prompt to pick one.
+    private var padDetail: some View {
+        NavigationStack {
+            if let item = padSelected {
+                destinationView(for: item)
+                    .environment(\.chatIsSplitRoot, true)
+            } else {
+                MessagesSplitPlaceholder()
+            }
+        }
+        .id(padSelected?.id)
+    }
+
+    /// iPad: a row selects (detail on the right); iPhone: a row pushes.
+    @ViewBuilder
+    private func hubLink<Label: View>(_ item: MessagesHubItem, cornerRadius: CGFloat = 16,
+                                      @ViewBuilder label: () -> Label) -> some View {
+        if isSplit {
+            let isSelected = padSelected?.id == item.id
+            Button {
+                Haptics.selection()
+                padSelected = item
+            } label: {
+                label()
+                    .background(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(Color(arenaHex: AppArenaPalette.blue).opacity(isSelected ? 0.16 : 0))
+                            .padding(.horizontal, -8)
+                    )
+                    .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .hoverEffect(.highlight)
+        } else {
+            NavigationLink {
+                destinationView(for: item)
+                    .updoReadableColumn()
+            } label: {
+                label()
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var listStack: some View {
         NavigationStack {
             messagesRoot
                 .updoReadableColumn()
@@ -301,12 +371,18 @@ struct MessagesView: View {
                     backendLiveRefreshTask = nil
                 }
                 .sheet(isPresented: $showAddFriend) {
-                    AddFriendSheetView()
-                        .environmentObject(friendStore)
-                        .environmentObject(session)
+                    Group {
+                        AddFriendSheetView()
+                            .environmentObject(friendStore)
+                            .environmentObject(session)
+                    }
+                    .updoPadSheet()
                 }
                 .sheet(isPresented: $showArchivedSheet) {
-                    archivedSheet
+                    Group {
+                        archivedSheet
+                    }
+                    .updoPadSheet()
                 }
         }
     }
@@ -519,13 +595,9 @@ private extension MessagesView {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(onlineItems) { item in
-                        NavigationLink {
-                            destinationView(for: item)
-                                .updoReadableColumn()
-                        } label: {
+                        hubLink(item) {
                             onlineCard(item)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 2)
@@ -553,13 +625,9 @@ private extension MessagesView {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(filteredConversationItems.enumerated()), id: \.element.id) { index, item in
-                        NavigationLink {
-                            destinationView(for: item)
-                                .updoReadableColumn()
-                        } label: {
+                        hubLink(item, cornerRadius: 14) {
                             conversationRow(item)
                         }
-                        .buttonStyle(.plain)
 
                         if index < filteredConversationItems.count - 1 {
                             // iMessage tarzı hairline ayraç — avatardan sonra başlar
@@ -1871,4 +1939,39 @@ struct MessagesHubItem: Identifiable {
     var isFocusing: Bool = false
     /// Kaç dakikadır odakta (bilinmiyorsa nil) → "ODAKTA · 12 DK".
     var focusMinutes: Int? = nil
+}
+
+/// iPad Messages detail column before a conversation is picked.
+private struct MessagesSplitPlaceholder: View {
+    var body: some View {
+        ZStack {
+            ArenaBackground(
+                primaryGlow: Color(arenaHex: AppArenaPalette.blue),
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: Color(arenaHex: AppArenaPalette.coral),
+                intensity: 0.7
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 40, weight: .semibold))
+                    .foregroundStyle(LinearGradient(colors: [UpdoTheme.cyan, UpdoTheme.purple],
+                                                    startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 100, height: 100)
+                    .background(Circle().fill(UpdoTheme.filmy(0.05)))
+                    .overlay(Circle().strokeBorder(UpdoTheme.filmy(0.1), lineWidth: 1))
+                Text(tr("mv_split_empty_title"))
+                    .font(.system(size: 26, weight: .black))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+                Text(tr("mv_split_empty_sub"))
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 400)
+            }
+            .padding(40)
+        }
+        .toolbar(.hidden, for: .navigationBar)
+    }
 }

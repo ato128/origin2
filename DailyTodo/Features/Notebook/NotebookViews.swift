@@ -1010,7 +1010,10 @@ struct NotebookReaderView: View {
 
 // MARK: - Profile card
 
-/// Profile's entry to the notebook: the page count and the latest pages.
+/// Profile's entry to the notebook — the size the streak calendar had. Empty,
+/// it previews what a page looks like (paper, handwriting, a formula, the AI
+/// summary chip); with pages, the latest page as a little sheet of paper
+/// beside the most recent pages.
 struct NotebookProfileCard: View {
     let onOpen: () -> Void
 
@@ -1018,69 +1021,24 @@ struct NotebookProfileCard: View {
     @EnvironmentObject private var studentStore: StudentStore
     @ObservedObject private var store = NotebookStore.shared
 
+    /// The preview area's height (≈ the old streak calendar card in total).
+    private static let previewHeight: CGFloat = 190
+
     var body: some View {
         let pages = store.liveNotes
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
         return Button(action: onOpen) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .center, spacing: 12) {
-                    Image(systemName: "book.pages.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(LinearGradient(colors: [UpdoTheme.cyan, UpdoTheme.purple],
-                                                        startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 42, height: 42)
-                        .background(Circle().fill(UpdoTheme.cyan.opacity(0.12)))
+            VStack(alignment: .leading, spacing: 16) {
+                header(pages)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(tr("nb_eyebrow"))
-                            .font(.system(size: 10.5, weight: .black, design: .monospaced))
-                            .tracking(1.6)
-                            .foregroundStyle(UpdoTheme.cyan)
-                        Text(pages.isEmpty ? tr("nb_card_empty") : tr("nb_card_count", pages.count))
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(UpdoTheme.filmy(0.35))
-                }
-
-                if pages.isEmpty {
-                    Text(UIDevice.current.userInterfaceIdiom == .pad ? tr("nb_card_hint_pad") : tr("nb_card_hint_phone"))
-                        .font(.system(size: 13))
-                        .foregroundStyle(UpdoTheme.filmy(0.55))
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    VStack(spacing: 8) {
-                        ForEach(pages.prefix(3)) { note in
-                            HStack(spacing: 10) {
-                                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                    .fill(NotebookColors.color(for: note.course, in: studentStore.courses))
-                                    .frame(width: 3, height: 26)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(note.displayTitle)
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(UpdoTheme.filmy(0.9))
-                                        .lineLimit(1)
-                                    Text([note.course, note.updatedAt.formatted(.relative(presentation: .named))]
-                                        .compactMap { $0 }.joined(separator: " · "))
-                                        .font(.system(size: 11.5, weight: .medium))
-                                        .foregroundStyle(UpdoTheme.filmy(0.45))
-                                        .lineLimit(1)
-                                }
-                                Spacer(minLength: 0)
-                                if note.hasDrawing {
-                                    Image(systemName: "pencil.tip")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(UpdoTheme.filmy(0.4))
-                                }
-                            }
-                        }
+                Group {
+                    if let latest = pages.first {
+                        filledPreview(latest: latest, pages: pages)
+                    } else {
+                        emptyPreview
                     }
                 }
+                .frame(height: Self.previewHeight)
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1093,5 +1051,250 @@ struct NotebookProfileCard: View {
         .buttonStyle(.plain)
         .hoverEffect(.lift)
         .onAppear { store.activate(userID: session.currentUser?.id.uuidString) }
+    }
+
+    private func header(_ pages: [NotebookNote]) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "book.pages.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(LinearGradient(colors: [UpdoTheme.cyan, UpdoTheme.purple],
+                                                startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: 42, height: 42)
+                .background(Circle().fill(UpdoTheme.cyan.opacity(0.12)))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(tr("nb_eyebrow"))
+                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(UpdoTheme.cyan)
+                Text(pages.isEmpty ? tr("nb_card_empty") : tr("nb_card_count", pages.count))
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(UpdoTheme.filmy(0.35))
+        }
+    }
+
+    // MARK: Empty — a sample page
+
+    private var emptyPreview: some View {
+        HStack(alignment: .center, spacing: 16) {
+            NotebookSamplePage()
+                .frame(width: UIDevice.current.userInterfaceIdiom == .pad ? 168 : 138)
+                .rotationEffect(.degrees(-2.5))
+                .padding(.leading, 4)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(UIDevice.current.userInterfaceIdiom == .pad ? tr("nb_card_hint_pad") : tr("nb_card_hint_phone"))
+                    .font(.system(size: 13.5, weight: .medium))
+                    .foregroundStyle(UpdoTheme.filmy(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // Writing happens on iPad; the phone reads and sends to AI.
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    VStack(alignment: .leading, spacing: 7) {
+                        featureLine("pencil.tip", tr("nb_feat_pen"))
+                        featureLine("keyboard", tr("nb_feat_text"))
+                        featureLine("sparkles", tr("nb_feat_ai"))
+                    }
+
+                    Label(tr("nb_new_page"), systemImage: "square.and.pencil")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 14)
+                        .frame(height: 34)
+                        .background(Capsule().fill(LinearGradient(colors: [UpdoTheme.cyan, Color(arenaHex: "#1593FF")],
+                                                                  startPoint: .leading, endPoint: .trailing)))
+                        .padding(.top, 2)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func featureLine(_ icon: String, _ text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(UpdoTheme.cyan)
+                .frame(width: 16)
+            Text(text)
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(UpdoTheme.filmy(0.62))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+    }
+
+    // MARK: With pages — the latest page + recent list
+
+    private func filledPreview(latest: NotebookNote, pages: [NotebookNote]) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            NotebookPageThumbnail(note: latest,
+                                  tint: NotebookColors.color(for: latest.course, in: studentStore.courses))
+                .frame(width: 150)
+
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(pages.prefix(4)) { note in
+                    HStack(spacing: 10) {
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(NotebookColors.color(for: note.course, in: studentStore.courses))
+                            .frame(width: 3, height: 30)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(note.displayTitle)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(UpdoTheme.filmy(0.9))
+                                .lineLimit(1)
+                            Text([note.course, note.updatedAt.formatted(.relative(presentation: .named))]
+                                .compactMap { $0 }.joined(separator: " · "))
+                                .font(.system(size: 11.5, weight: .medium))
+                                .foregroundStyle(UpdoTheme.filmy(0.45))
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                        if note.summary != nil {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(UpdoTheme.cyan.opacity(0.8))
+                        }
+                        if note.hasDrawing {
+                            Image(systemName: "pencil.tip")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(UpdoTheme.filmy(0.4))
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// A made-up page for the empty card: lined paper, a handwritten title, a
+/// pen-drawn curve, a formula and the AI summary chip.
+private struct NotebookSamplePage: View {
+    private var ink: Color { Color.adaptive(light: Color(arenaHex: "#1E2A44"), dark: Color(arenaHex: "#E8EEFF")) }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        ZStack(alignment: .topLeading) {
+            NotebookPaperBackground(paper: .lined)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(tr("nb_preview_title"))
+                    .font(.system(size: 17, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                // A quick pen sketch: axes and a parabola, underlined in cyan.
+                Canvas { context, size in
+                    var axes = Path()
+                    axes.move(to: CGPoint(x: 6, y: size.height - 6))
+                    axes.addLine(to: CGPoint(x: size.width - 6, y: size.height - 6))
+                    axes.move(to: CGPoint(x: size.width / 2, y: 4))
+                    axes.addLine(to: CGPoint(x: size.width / 2, y: size.height - 2))
+                    context.stroke(axes, with: .color(ink.opacity(0.5)), style: StrokeStyle(lineWidth: 1.2, lineCap: .round))
+
+                    var curve = Path()
+                    let w = size.width - 24, h = size.height - 14
+                    for step in 0...24 {
+                        let t = Double(step) / 24
+                        let x = 12 + w * t
+                        let y = 4 + h * pow(2 * t - 1, 2)
+                        if step == 0 { curve.move(to: CGPoint(x: x, y: y)) } else { curve.addLine(to: CGPoint(x: x, y: y)) }
+                    }
+                    context.stroke(curve, with: .color(UpdoTheme.cyan), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+                }
+                .frame(height: 52)
+
+                Text(tr("nb_preview_formula"))
+                    .font(.system(size: 13, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(ink.opacity(0.85))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+
+            HStack(spacing: 4) {
+                Image(systemName: "sparkles").font(.system(size: 9, weight: .bold))
+                Text(tr("nb_preview_chip")).font(.system(size: 10, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .frame(height: 22)
+            .background(Capsule().fill(LinearGradient(colors: [Color(arenaHex: "#1593FF"), UpdoTheme.purple],
+                                                      startPoint: .leading, endPoint: .trailing)))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .padding(8)
+        }
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(UpdoTheme.filmy(0.12), lineWidth: 1))
+        .shadow(color: UpdoTheme.cardShadow(0.35), radius: 12, y: 6)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The latest page as a small sheet of paper: its title, a few lines of text
+/// and its ink.
+private struct NotebookPageThumbnail: View {
+    let note: NotebookNote
+    let tint: Color
+
+    @State private var ink: UIImage?
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        ZStack(alignment: .topLeading) {
+            NotebookPaperBackground(paper: note.paper)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 5) {
+                    Circle().fill(tint).frame(width: 6, height: 6)
+                    Text(note.displayTitle)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(1)
+                }
+                if !note.preview.isEmpty {
+                    Text(note.preview)
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(UpdoTheme.filmy(0.7))
+                        .lineLimit(4)
+                }
+                if let ink {
+                    Image(uiImage: ink)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+        }
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(UpdoTheme.filmy(0.12), lineWidth: 1))
+        .shadow(color: UpdoTheme.cardShadow(0.3), radius: 10, y: 5)
+        .accessibilityHidden(true)
+        .task(id: note.drawingUpdatedAt ?? note.updatedAt) {
+            guard note.hasDrawing,
+                  let data = NotebookStore.shared.cachedDrawingData(for: note.id),
+                  let drawing = try? PKDrawing(data: data) else {
+                ink = nil
+                return
+            }
+            // Ink in the card's own appearance (white on dark paper).
+            let bounds = drawing.bounds
+            ink = drawing.image(from: CGRect(x: 0, y: 0, width: max(bounds.maxX, 1), height: max(bounds.maxY, 1)), scale: 1)
+        }
     }
 }

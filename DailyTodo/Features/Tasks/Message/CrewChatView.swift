@@ -14,6 +14,8 @@ struct CrewChatView: View {
     let crew: WeekCrewItem
 
     @Environment(\.dismiss) var dismiss
+    /// iPad Messages detail column: no back button (the list is beside it).
+    @Environment(\.chatIsSplitRoot) var chatIsSplitRoot
     @Environment(\.locale) private var locale
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore

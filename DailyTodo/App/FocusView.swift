@@ -115,23 +115,43 @@ struct FocusView: View {
                     .transition(.opacity)
             }
         }
-        .sheet(isPresented: $showCustomDurationSheet) {
-            customDurationSheet
+        // iPad: these pickers open as popovers next to what was tapped
+        // (see `padPopover`); the phone keeps its bottom sheets.
+        .sheet(isPresented: phoneSheet($showCustomDurationSheet)) {
+            Group {
+                customDurationSheet
+            }
+            .updoPadSheet()
         }
-        .sheet(isPresented: $showGoalPicker) {
-            goalPickerSheet
+        .sheet(isPresented: phoneSheet($showGoalPicker)) {
+            Group {
+                goalPickerSheet
+            }
+            .updoPadSheet()
         }
-        .sheet(isPresented: $showCoursePicker) {
-            coursePickerSheet
+        .sheet(isPresented: phoneSheet($showCoursePicker)) {
+            Group {
+                coursePickerSheet
+            }
+            .updoPadSheet()
         }
-        .sheet(isPresented: $showStylePicker) {
-            stylePickerSheet
+        .sheet(isPresented: phoneSheet($showStylePicker)) {
+            Group {
+                stylePickerSheet
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showCrewStartSheet) {
-            crewStartSheet
+            Group {
+                crewStartSheet
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showFriendPickerSheet) {
-            friendPickerSheet
+            Group {
+                friendPickerSheet
+            }
+            .updoPadSheet()
         }
         .fullScreenCover(isPresented: $focusSession.isExpanded) {
             // Full-bleed on iPad too: the ring scales itself to the screen.
@@ -490,6 +510,7 @@ private extension FocusView {
                     icon: selectedGoal.icon,
                     action: { showGoalPicker = true }
                 )
+                .modifier(padPopover($showGoalPicker) { goalPickerSheet })
 
                 editorialDivider
 
@@ -501,6 +522,7 @@ private extension FocusView {
                         icon: "book.closed.fill",
                         action: { showCoursePicker = true }
                     )
+                    .modifier(padPopover($showCoursePicker) { coursePickerSheet })
 
                     editorialDivider
                 }
@@ -512,9 +534,23 @@ private extension FocusView {
                     icon: selectedStyle.icon,
                     action: { showStylePicker = true }
                 )
+                .modifier(padPopover($showStylePicker) { stylePickerSheet })
 
                 editorialDivider
             }
+    }
+
+    private var isPadIdiom: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    /// iPad never shows these pickers as sheets (they're popovers there).
+    func phoneSheet(_ binding: Binding<Bool>) -> Binding<Bool> {
+        isPadIdiom ? .constant(false) : binding
+    }
+
+    /// iPad: the picker as a popover anchored to the tapped control.
+    func padPopover<Content: View>(_ isPresented: Binding<Bool>,
+                                   @ViewBuilder content: @escaping () -> Content) -> FocusPadPopover<Content> {
+        FocusPadPopover(isEnabled: isPadIdiom, isPresented: isPresented, content: content)
     }
 
     func editorialSettingRow(
@@ -637,6 +673,7 @@ private extension FocusView {
                 .editorialDurationChip(selected: selectedPreset == .custom, accent: selectedModeAccent)
         }
         .buttonStyle(.plain)
+        .modifier(padPopover($showCustomDurationSheet) { customDurationSheet })
     }
 
     func compactInfoCard(
@@ -2505,6 +2542,25 @@ private extension View {
                             )
                     )
             )
+    }
+}
+
+/// iPad: a Focus picker as a popover (Calendar-like), sized to its content.
+struct FocusPadPopover<PopoverContent: View>: ViewModifier {
+    let isEnabled: Bool
+    @Binding var isPresented: Bool
+    @ViewBuilder let content: () -> PopoverContent
+
+    func body(content base: Content) -> some View {
+        if isEnabled {
+            base.popover(isPresented: $isPresented, arrowEdge: .leading) {
+                content()
+                    .frame(width: 400, height: 520)
+                    .presentationCompactAdaptation(.popover)
+            }
+        } else {
+            base
+        }
     }
 }
 

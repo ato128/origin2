@@ -43,6 +43,8 @@ struct ProfileHubView: View {
     @State private var showDeleteAccountConfirm = false
     @State private var isDeletingAccount = false
     @State private var showDeleteAccountError = false
+    /// iPad: the section open in the right pane.
+    @State private var padSection: PadSettingsSection = .smart
 
     private var pageAccent: Color {
         Color(arenaHex: AppArenaPalette.cyan)
@@ -65,6 +67,9 @@ struct ProfileHubView: View {
                 intensity: 0.94
             )
 
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                padLayout
+            } else {
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     headerSection
@@ -92,31 +97,55 @@ struct ProfileHubView: View {
                 .padding(.top, 10)
                 .padding(.bottom, 28)
             }
+            }
         }
+        // iPad: a large page, like the paywall — sections left, content right.
+        .presentationSizing(.page)
         .updoColorScheme()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAuthSheet) {
-            AuthView()
-                .environmentObject(session)
+            Group {
+                AuthView()
+                    .environmentObject(session)
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showNotificationSettings) {
-            SmartNotificationSettingsView()
+            Group {
+                SmartNotificationSettingsView()
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showAboutApp) {
-            AboutUpdoView()
+            Group {
+                AboutUpdoView()
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showMadeWithCare) {
-            MadeWithCareView()
+            Group {
+                MadeWithCareView()
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showAppIconPicker) {
-            AppIconPickerView()
+            Group {
+                AppIconPickerView()
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showLiveStylePicker) {
-            LiveActivityStylePickerView()
+            Group {
+                LiveActivityStylePickerView()
+            }
+            .updoPadSheet()
         }
         .sheet(isPresented: $showWidgetStylePicker) {
-            WidgetStylePickerView()
+            Group {
+                WidgetStylePickerView()
+            }
+            .updoPadSheet()
         }
         .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
         .alert(tr("ph_restore_title"), isPresented: $showRestoreResult) {
@@ -1930,7 +1959,10 @@ struct AppIconPickerView: View {
             }
             .updoColorScheme()
             .sheet(isPresented: $showPaywall) {
-                PaywallView(context: "app_icon")
+                Group {
+                    PaywallView(context: "app_icon")
+                }
+                .updoPadSheet()
             }
         }
     }
@@ -2065,7 +2097,10 @@ struct LiveActivityStylePickerView: View {
             }
             .updoColorScheme()
             .sheet(isPresented: $showPaywall) {
-                PaywallView(context: "live_activity_style")
+                Group {
+                    PaywallView(context: "live_activity_style")
+                }
+                .updoPadSheet()
             }
             .onAppear { previewStyle = effectiveCurrent }
         }
@@ -2265,7 +2300,10 @@ struct WidgetStylePickerView: View {
             }
             .updoColorScheme()
             .sheet(isPresented: $showPaywall) {
-                PaywallView(context: "widget_style")
+                Group {
+                    PaywallView(context: "widget_style")
+                }
+                .updoPadSheet()
             }
             .onAppear { previewStyle = effectiveCurrent }
         }
@@ -2472,3 +2510,186 @@ private struct ProfileNorthArrow: Shape {
     }
     private func dist(_ a: CGPoint, _ b: CGPoint) -> CGFloat { ((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)).squareRoot() }
 }
+
+// MARK: - iPad: two-pane settings (like the iPad Settings app)
+
+enum PadSettingsSection: String, CaseIterable, Identifiable {
+    case smart, appearance, language, about, subscription, account
+    #if DEBUG
+    case proTest
+    #endif
+    var id: String { rawValue }
+
+    var titleKey: String {
+        switch self {
+        case .smart: return "ph_smart_system_caps"
+        case .appearance: return "ph_appearance_caps"
+        case .language: return "ph_language_caps"
+        case .about: return "ph_updo_caps"
+        case .subscription: return "ph_sub_legal_caps"
+        case .account: return "ph_account_caps"
+        #if DEBUG
+        case .proTest: return "ph_account_caps"
+        #endif
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .smart: return "sparkles"
+        case .appearance: return "paintpalette.fill"
+        case .language: return "globe"
+        case .about: return "info.circle.fill"
+        case .subscription: return "creditcard.fill"
+        case .account: return "person.crop.circle.fill"
+        #if DEBUG
+        case .proTest: return "hammer.fill"
+        #endif
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .smart: return Color(arenaHex: AppArenaPalette.green)
+        case .appearance: return Color(arenaHex: AppArenaPalette.purple)
+        case .language: return Color(arenaHex: AppArenaPalette.cyan)
+        case .about: return Color(arenaHex: AppArenaPalette.blue)
+        case .subscription: return Color(arenaHex: AppArenaPalette.gold)
+        case .account: return Color(arenaHex: AppArenaPalette.coral)
+        #if DEBUG
+        case .proTest: return Color.gray
+        #endif
+        }
+    }
+}
+
+extension ProfileHubView {
+    var padLayout: some View {
+        HStack(spacing: 0) {
+            padSidebar
+                .frame(width: 290)
+
+            Rectangle().fill(UpdoTheme.border).frame(width: 1).ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    padSectionContent
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 28)
+                .padding(.bottom, 40)
+                .frame(maxWidth: 640, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .id(padSection)
+                .transition(.opacity)
+            }
+            .animation(.easeInOut(duration: 0.18), value: padSection)
+        }
+    }
+
+    private var padSidebar: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 12) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .frame(width: 38, height: 38)
+                        .liquidGlass(in: Circle())
+                        .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                        .contentShape(.hoverEffect, Circle())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+                .keyboardShortcut(.cancelAction)
+                .accessibilityLabel(tr("event_close"))
+
+                Text(tr("ph_header_title"))
+                    .font(.system(size: 30, weight: .black))
+                    .foregroundStyle(UpdoTheme.textPrimary)
+            }
+            .padding(.bottom, 18)
+
+            ForEach(padSections) { section in
+                padSidebarRow(section)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 22)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(UpdoFloatingRail.panelBackground.opacity(0.6).ignoresSafeArea())
+    }
+
+    private var padSections: [PadSettingsSection] { PadSettingsSection.allCases }
+
+    private func padSidebarRow(_ section: PadSettingsSection) -> some View {
+        let isSelected = padSection == section
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return Button {
+            Haptics.selection()
+            padSection = section
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(section.tint))
+                Text(padTitle(section))
+                    .font(.system(size: 15, weight: isSelected ? .bold : .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(isSelected ? 0.98 : 0.75))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 48)
+            .background { if isSelected { shape.fill(section.tint.opacity(0.16)) } }
+            .overlay { if isSelected { shape.strokeBorder(section.tint.opacity(0.35), lineWidth: 1) } }
+            .contentShape(.hoverEffect, shape)
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// "AKILLI SİSTEM" → "Akıllı sistem" for the sidebar.
+    private func padTitle(_ section: PadSettingsSection) -> String {
+        #if DEBUG
+        if section == .proTest { return "Pro test" }
+        #endif
+        let raw = tr(section.titleKey)
+        let locale = Locale(identifier: appLanguageIsEnglish() ? "en_US" : "tr_TR")
+        let lower = raw.lowercased(with: locale)
+        return lower.prefix(1).uppercased(with: locale) + lower.dropFirst()
+    }
+
+    @ViewBuilder
+    private var padSectionContent: some View {
+        switch padSection {
+        case .smart:
+            if challengeAcceptedTotal > 0 { challengeStreakBadge }
+            productivitySection
+        case .appearance:
+            appearanceSection
+        case .language:
+            languageSection
+        case .about:
+            supportSection
+        case .subscription:
+            subscriptionLegalSection
+        case .account:
+            if session.currentUser == nil { accountSection }
+            logoutSection
+        #if DEBUG
+        case .proTest:
+            proTestSection
+        #endif
+        }
+    }
+}
+

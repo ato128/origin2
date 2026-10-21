@@ -87,21 +87,28 @@ struct PaywallView: View {
             backgroundLayer
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    header.padding(.top, 44)
-                    tierSelector.padding(.top, 24)
-                    benefitsCard.padding(.top, 16)
-                    planSelector.padding(.top, 16)
-                    renewalLine.padding(.top, 12)
-                    ctaSection.padding(.top, 16)
-                    trustRow.padding(.top, 14)
-                    legal.padding(.top, 16).padding(.bottom, 40)
+                if isPad {
+                    padContent
+                } else {
+                    VStack(spacing: 0) {
+                        header.padding(.top, 44)
+                        tierSelector.padding(.top, 24)
+                        benefitsCard.padding(.top, 16)
+                        planSelector.padding(.top, 16)
+                        renewalLine.padding(.top, 12)
+                        ctaSection.padding(.top, 16)
+                        trustRow.padding(.top, 14)
+                        legal.padding(.top, 16).padding(.bottom, 40)
+                    }
+                    .padding(.horizontal, 20)
                 }
-                .padding(.horizontal, 20)
             }
 
             closeButton
         }
+        // iPad: a large page sheet, so the whole offer — and the buy button —
+        // is on screen without scrolling.
+        .presentationSizing(.page)
         .onAppear {
             Analytics.shared.track("paywall_viewed", properties: ["context": context])
             Task { await manager.prepareForPurchase() }
@@ -109,6 +116,34 @@ struct PaywallView: View {
         }
         // Premium paywall keeps its fixed gold-on-dark luxury look in any app appearance.
         .preferredColorScheme(.dark)
+    }
+
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    /// iPad: why (emblem, promise, what's included) on the left; choose and
+    /// buy on the right.
+    private var padContent: some View {
+        HStack(alignment: .top, spacing: 36) {
+            VStack(spacing: 22) {
+                header
+                benefitsCard
+            }
+            .frame(maxWidth: .infinity)
+
+            VStack(spacing: 0) {
+                tierSelector
+                planSelector.padding(.top, 16)
+                renewalLine.padding(.top, 12)
+                ctaSection.padding(.top, 18)
+                trustRow.padding(.top, 14)
+                legal.padding(.top, 16)
+            }
+            .frame(width: 400)
+            .padding(.top, 24)
+        }
+        .padding(.horizontal, 40)
+        .padding(.top, 48)
+        .padding(.bottom, 36)
     }
 
     private var topTint: Color {
