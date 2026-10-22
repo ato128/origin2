@@ -1830,6 +1830,16 @@ private struct InsightsScrollOffsetBridge: ViewModifier {
 
 private let notebookTint = Color(arenaHex: AppArenaPalette.purple)
 
+/// "1 formula" / "2 formulas" — the English strings needed singulars; the
+/// Turkish ones have no plural form and stay as they are.
+private func enCount(_ n: Int, _ word: String) -> String {
+    "\(n) \(word)\(n == 1 ? "" : "s")"
+}
+
+private func countMeta(_ key: String, _ args: CVarArg..., en: @autoclosure () -> String) -> String {
+    appLanguageIsEnglish() ? en() : String(format: tr(key), arguments: args)
+}
+
 struct FormulaNotebookCard: View {
     let onOpen: () -> Void
     @ObservedObject private var notebook = AIFormulaNotebook.shared
@@ -1862,7 +1872,7 @@ struct FormulaNotebookCard: View {
                                     .font(.system(size: 19, weight: .bold))
                                     .foregroundStyle(UpdoTheme.textPrimary)
                                     .monospacedDigit()
-                                Text(tr("fn_card_count", notebook.courses.count))
+                                Text(countMeta("fn_card_count", notebook.courses.count, en: "\(notebook.entries.count == 1 ? "formula" : "formulas") · \(enCount(notebook.courses.count, "course"))"))
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(UpdoTheme.filmy(0.5))
                             }
@@ -1896,6 +1906,7 @@ struct FormulaNotebookCard: View {
 struct FormulaNotebookView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var notebook = AIFormulaNotebook.shared
+    @ObservedObject private var tx = AINotebookTranslator.shared
     /// iPad: the course open in the right pane.
     @State private var padCourse: String?
 
@@ -1932,7 +1943,7 @@ struct FormulaNotebookView: View {
                             .foregroundStyle(UpdoTheme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
-                        Text(tr("fnp_total", notebook.entries.count, notebook.courses.count))
+                        Text(countMeta("fnp_total", notebook.entries.count, notebook.courses.count, en: "\(enCount(notebook.entries.count, "formula")) · \(enCount(notebook.courses.count, "course"))"))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(UpdoTheme.filmy(0.5))
                     }
@@ -2039,10 +2050,10 @@ struct FormulaNotebookView: View {
                 .background(notebookTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(course)
+                Text(tx.text(course))
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(UpdoTheme.textPrimary)
-                Text(tr("fn_course_meta", items.count, topicCount))
+                Text(countMeta("fn_course_meta", items.count, topicCount, en: "\(enCount(items.count, "formula")) · \(enCount(topicCount, "topic"))"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(UpdoTheme.filmy(0.5))
             }
@@ -2084,6 +2095,7 @@ struct FormulaCourseView: View {
     /// iPad pane: the course title is drawn in the content (no nav bar).
     var inlineHeader: Bool = false
     @ObservedObject private var notebook = AIFormulaNotebook.shared
+    @ObservedObject private var tx = AINotebookTranslator.shared
 
     var body: some View {
         ZStack {
@@ -2103,7 +2115,7 @@ struct FormulaCourseView: View {
                                 .foregroundStyle(notebookTint)
                                 .frame(width: 48, height: 48)
                                 .background(notebookTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            Text(course)
+                            Text(tx.text(course))
                                 .font(.system(size: 30, weight: .black))
                                 .foregroundStyle(UpdoTheme.textPrimary)
                         }
@@ -2112,7 +2124,7 @@ struct FormulaCourseView: View {
                     ForEach(notebook.topics(inCourse: course), id: \.topic) { group in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
-                                Text(group.topic.uppercased(with: Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")))
+                                Text(tx.text(group.topic).uppercased(with: Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")))
                                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                                     .tracking(1.4)
                                     .foregroundStyle(notebookTint)
@@ -2148,7 +2160,7 @@ struct FormulaCourseView: View {
                 .padding(inlineHeader ? 26 : 16)
             }
         }
-        .navigationTitle(inlineHeader ? "" : course)
+        .navigationTitle(inlineHeader ? "" : tx.text(course))
         .navigationBarTitleDisplayMode(inlineHeader ? .inline : .large)
         .toolbar(inlineHeader ? .hidden : .automatic, for: .navigationBar)
     }
@@ -2156,6 +2168,7 @@ struct FormulaCourseView: View {
 
 private struct FormulaEntryCard: View {
     let entry: AIFormulaEntry
+    @ObservedObject private var tx = AINotebookTranslator.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -2163,7 +2176,7 @@ private struct FormulaEntryCard: View {
                 Image(systemName: entry.kind == .formula ? "function" : "text.quote")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(notebookTint)
-                Text(entry.name)
+                Text(tx.text(entry.name))
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(UpdoTheme.textPrimary)
             }
@@ -2171,14 +2184,14 @@ private struct FormulaEntryCard: View {
             if entry.kind == .formula {
                 AIDisplayMath(latex: entry.body)
             } else {
-                AIInline.text(entry.body)
+                AIInline.text(tx.text(entry.body))
                     .font(.body)
                     .foregroundStyle(UpdoTheme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             if !entry.note.isEmpty {
-                AIInline.text(entry.note)
+                AIInline.text(tx.text(entry.note))
                     .font(.footnote)
                     .foregroundStyle(UpdoTheme.filmy(0.6))
                     .fixedSize(horizontal: false, vertical: true)
@@ -2202,6 +2215,7 @@ private let patternTint = Color(arenaHex: AppArenaPalette.cyan)
 struct QuestionPatternsCard: View {
     let onOpen: () -> Void
     @ObservedObject private var book = AIQuestionPatternBook.shared
+    @ObservedObject private var tx = AINotebookTranslator.shared
 
     var body: some View {
         Button(action: onOpen) {
@@ -2226,11 +2240,11 @@ struct QuestionPatternsCard: View {
                                     .font(.system(size: 19, weight: .bold))
                                     .foregroundStyle(UpdoTheme.textPrimary)
                                     .monospacedDigit()
-                                Text(tr("qp_card_count", book.totalSeen))
+                                Text(countMeta("qp_card_count", book.totalSeen, en: "\(book.patterns.count == 1 ? "type" : "types") · \(enCount(book.totalSeen, "question"))"))
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(UpdoTheme.filmy(0.5))
                             }
-                            Text(tr("qp_card_top", top.name, top.count))
+                            Text(tr("qp_card_top", tx.text(top.name), top.count))
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(UpdoTheme.filmy(0.55))
                                 .lineLimit(1)
@@ -2259,6 +2273,7 @@ struct QuestionPatternsView: View {
     let onPractice: (AIQuestionPattern) -> Void
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var book = AIQuestionPatternBook.shared
+    @ObservedObject private var tx = AINotebookTranslator.shared
 
     var body: some View {
         NavigationStack {
@@ -2332,10 +2347,10 @@ struct QuestionPatternsView: View {
                 .background(patternTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(course)
+                Text(tx.text(course))
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(UpdoTheme.textPrimary)
-                Text(tr("qp_course_meta", items.count, seen))
+                Text(countMeta("qp_course_meta", items.count, seen, en: "\(enCount(items.count, "type")) · \(enCount(seen, "question"))"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(UpdoTheme.filmy(0.5))
             }
@@ -2385,6 +2400,7 @@ struct QuestionPatternCourseView: View {
     let course: String
     let onPractice: (AIQuestionPattern) -> Void
     @ObservedObject private var book = AIQuestionPatternBook.shared
+    @ObservedObject private var tx = AINotebookTranslator.shared
 
     var body: some View {
         ZStack {
@@ -2394,7 +2410,7 @@ struct QuestionPatternCourseView: View {
                 LazyVStack(alignment: .leading, spacing: 22) {
                     ForEach(book.topics(inCourse: course), id: \.topic) { group in
                         VStack(alignment: .leading, spacing: 10) {
-                            Text(group.topic.uppercased(with: Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")))
+                            Text(tx.text(group.topic).uppercased(with: Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")))
                                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                                 .tracking(1.4)
                                 .foregroundStyle(patternTint)
@@ -2421,7 +2437,7 @@ struct QuestionPatternCourseView: View {
                 .padding(16)
             }
         }
-        .navigationTitle(course)
+        .navigationTitle(tx.text(course))
         .navigationBarTitleDisplayMode(.large)
     }
 }
@@ -2429,21 +2445,22 @@ struct QuestionPatternCourseView: View {
 private struct QuestionPatternRow: View {
     let pattern: AIQuestionPattern
     let showCourse: Bool
+    @ObservedObject private var tx = AINotebookTranslator.shared
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
                 if showCourse {
-                    Text(pattern.course)
+                    Text(tx.text(pattern.course))
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(patternTint)
                 }
-                Text(pattern.name)
+                Text(tx.text(pattern.name))
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(UpdoTheme.textPrimary)
                     .multilineTextAlignment(.leading)
                 if !pattern.cue.isEmpty {
-                    AIInline.text(pattern.cue)
+                    AIInline.text(tx.text(pattern.cue))
                         .font(.footnote)
                         .foregroundStyle(UpdoTheme.filmy(0.6))
                         .lineLimit(2)
@@ -2475,6 +2492,7 @@ struct QuestionPatternDetailView: View {
     let patternID: UUID
     let onPractice: (AIQuestionPattern) -> Void
     @ObservedObject private var book = AIQuestionPatternBook.shared
+    @ObservedObject private var tx = AINotebookTranslator.shared
 
     var body: some View {
         ZStack {
@@ -2483,14 +2501,14 @@ struct QuestionPatternDetailView: View {
             if let p = book.pattern(patternID) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(tr("qp_detail_meta", p.course, p.topic, p.count))
+                        Text(tr("qp_detail_meta", tx.text(p.course), tx.text(p.topic), p.count))
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(UpdoTheme.filmy(0.55))
                             .padding(.leading, 4)
 
                         if !p.cue.isEmpty {
                             section(tr("qp_cue_header"), icon: "eye.fill") {
-                                AIInline.text(p.cue)
+                                AIInline.text(tx.text(p.cue))
                                     .font(.body)
                                     .foregroundStyle(UpdoTheme.textPrimary)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -2506,7 +2524,7 @@ struct QuestionPatternDetailView: View {
                                             .foregroundStyle(patternTint)
                                             .frame(width: 22, height: 22)
                                             .background(patternTint.opacity(0.14), in: Circle())
-                                        AIInline.text(step)
+                                        AIInline.text(tx.text(step))
                                             .font(.body)
                                             .foregroundStyle(UpdoTheme.textPrimary)
                                             .fixedSize(horizontal: false, vertical: true)
@@ -2557,7 +2575,7 @@ struct QuestionPatternDetailView: View {
                     }
                     .padding(16)
                 }
-                .navigationTitle(p.name)
+                .navigationTitle(tx.text(p.name))
             }
         }
         .navigationBarTitleDisplayMode(.inline)

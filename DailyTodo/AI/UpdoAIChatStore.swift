@@ -1309,6 +1309,7 @@ final class AIFormulaNotebook: ObservableObject {
                 kind: isFormula ? .formula : .rule, course: course, topic: topic, name: name,
                 body: body, note: note, createdAt: .now
             )
+            AINotebookTranslator.shared.markNative([course, topic, name, note] + (isFormula ? [] : [body]))
             // Same course + same formula → refresh it instead of duplicating.
             let courseKey = AIChatTopics.key(course)
             let bodyKey = Self.bodyKey(body)
@@ -1475,6 +1476,7 @@ final class AIQuestionPatternBook: ObservableObject {
                                     ? (appLanguageIsEnglish() ? "General" : "Genel") : modelCourse)
         let topic = parts[1].isEmpty ? name : AIChatTopics.cleanTitle(parts[1])
         let cue = Self.clean(parts[3], max: 200)
+        AINotebookTranslator.shared.markNative([course, topic, name, cue] + steps)
 
         // The student's question, if it says more than "solve this".
         let example = userText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1555,5 +1557,138 @@ final class AIQuestionPatternBook: ObservableObject {
         [[tip: Ders | Konu | Tip adı | Nasıl tanınır | Adım 1 ; Adım 2 ; Adım 3 | Denklem 1 ; Denklem 2]]
         Tip adı = bu soru ailesinin kısa, genel adı (ör. "Eğik atışta menzil"). Nasıl tanınır = soruda bu tipi ele veren ipucu (tek kısa cümle). Adımlar = bu tipteki HER soruda kurulacak mantık, en fazla 4 kısa adım, ";" ile ayrılmış (adımdaki matematik $…$ içinde). Denklemler = bu tip görülünce akla gelmesi gereken genel denklemler, $ olmadan gerçek LaTeX (\\sqrt{}, \\frac{}{}, \\theta, v_0 — asla sqrt(), theta, v0), en fazla 3, ";" ile ayrılmış (yoksa boş bırak). Bu sorunun sayılarını veya cevabını YAZMA. Sadece soru çözerken, cevap başına en fazla 1 satır — sohbet, plan veya genel anlatımda yazma. Uygulama bu satırı siler; ondan asla bahsetme.\(known.isEmpty ? "" : "\nKayıtlı tipler (soru bunlardan birine uyuyorsa AYNEN o adı kullan): \(known)")
         """
+    }
+}
+
+// MARK: - AINotebookTranslator
+//
+//  Formulas & Rules and Question Types are written by Updo AI in the language
+//  the chat was in, so switching the app language left course / topic / names
+//  / notes / steps in the old one. The screens show every such string through
+//  `text(_:)`: a string not yet seen in the current language is translated
+//  (one small batched coach call) and cached on device. Strings saved while
+//  the app is in a language are recorded as already in it — no call for them.
+//  LaTeX is never sent here; `$…$` math inside a sentence is kept as is.
+
+@MainActor
+final class AINotebookTranslator: ObservableObject {
+    static let shared = AINotebookTranslator()
+
+    /// language ("en" / "tr") → original string → string in that language.
+    @Published private(set) var cache: [String: [String: String]] = [:]
+
+    private let storageKey = "updo_ai_notebook_translations_v1"
+    private let maxPerLanguage = 3000
+    private var pending: [String] = []
+    private var failed: Set<String> = []
+    private var isFlushing = false
+    private var flushScheduled = false
+
+    private init() {
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let saved = try? JSONDecoder().decode([String: [String: String]].self, from: data) {
+            cache = saved
+        }
+    }
+
+    private var language: String { appLanguageIsEnglish() ? "en" : "tr" }
+
+    /// `s` in the app's language — the original until its translation lands.
+    func text(_ s: String) -> String {
+        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.contains(where: \.isLetter) else { return s }
+        if let hit = cache[language]?[s] { return hit }
+        // Turkish letters → already Turkish; no call for older Turkish entries.
+        if language == "tr", s.contains(where: { "çğıöşüÇĞİÖŞÜ".contains($0) }) { return s }
+        enqueue(s)
+        return s
+    }
+
+    /// Strings just written in the current language: nothing to translate.
+    func markNative(_ strings: [String]) {
+        let lang = language
+        var table = cache[lang] ?? [:]
+        var changed = false
+        for s in strings where !s.isEmpty && table[s] == nil {
+            table[s] = s
+            changed = true
+        }
+        guard changed else { return }
+        cache[lang] = table
+        persist()
+    }
+
+    private func enqueue(_ s: String) {
+        let key = language + "\u{1F}" + s
+        guard !failed.contains(key), !pending.contains(s) else { return }
+        pending.append(s)
+        guard !flushScheduled else { return }
+        flushScheduled = true
+        // Called from view bodies: never publish during the update.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            self.flushScheduled = false
+            await self.flush()
+        }
+    }
+
+    private func flush() async {
+        guard !isFlushing, !pending.isEmpty else { return }
+        isFlushing = true
+        defer { isFlushing = false }
+
+        let lang = language
+        while !pending.isEmpty {
+            let batch = Array(pending.prefix(40))
+            pending.removeFirst(batch.count)
+            let todo = batch.filter { cache[lang]?[$0] == nil }
+            guard !todo.isEmpty else { continue }
+
+            if let out = await translate(todo, to: lang) {
+                var table = cache[lang] ?? [:]
+                for (src, dst) in zip(todo, out) { table[src] = dst }
+                if table.count > maxPerLanguage { table = [:] }   // crude cap; refills on demand
+                cache[lang] = table
+                persist()
+            } else {
+                // Offline / out of credits: show the originals, retry next launch.
+                for s in todo { failed.insert(lang + "\u{1F}" + s) }
+            }
+        }
+    }
+
+    private func translate(_ strings: [String], to lang: String) async -> [String]? {
+        let target = lang == "en" ? "English" : "Turkish"
+        let system = """
+        You translate short labels and sentences from a student's study notebook (course names, \
+        topics, formula names, notes, problem-solving steps) into \(target). Rules: keep anything \
+        inside $…$ and every math symbol, variable, number and unit exactly as written; keep course \
+        numbers (Fizik 1 → Physics 1); if a string is already in \(target), return it unchanged; \
+        keep each translation about as short as the original. Input is a JSON array of strings. \
+        Reply with ONLY a JSON array of the translated strings — same length, same order, nothing else.
+        """
+        guard let json = try? JSONSerialization.data(withJSONObject: strings),
+              let content = String(data: json, encoding: .utf8) else { return nil }
+        do {
+            let (reply, _) = try await AIService.shared.coachChat(
+                system: system,
+                messages: [["role": "user", "content": content]],
+                maxTokens: 1800
+            )
+            guard let start = reply.firstIndex(of: "["), let end = reply.lastIndex(of: "]"),
+                  let data = String(reply[start...end]).data(using: .utf8),
+                  let out = try? JSONSerialization.jsonObject(with: data) as? [String],
+                  out.count == strings.count else { return nil }
+            return out.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        } catch {
+            Log.debug("❌ notebook translate:", error)
+            return nil
+        }
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder().encode(cache) {
+            UserDefaults.standard.set(data, forKey: storageKey)
+        }
     }
 }
