@@ -2841,7 +2841,7 @@ extension FocusView {
                     .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(UpdoTheme.textPrimary)
                     .lineLimit(1)
-                Text(record.endedAt.formatted(.relative(presentation: .named)))
+                Text(appRelativeDate(record.endedAt))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

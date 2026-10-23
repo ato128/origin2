@@ -85,3 +85,10 @@ func localizedMonthShort(_ index: Int) -> String {
     let enList = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
     return (appLanguageIsEnglish() ? enList : trList)[i]
 }
+
+/// "yesterday" / "dün" in the app's language — `.formatted(.relative…)` alone
+/// follows the device locale, so an English app on a Turkish phone said "evvelsi gün".
+func appRelativeDate(_ date: Date) -> String {
+    date.formatted(.relative(presentation: .named)
+        .locale(Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")))
+}

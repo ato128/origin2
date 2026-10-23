@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import Translation
 import SwiftData
 import Combine
 
@@ -1832,6 +1833,22 @@ private let notebookTint = Color(arenaHex: AppArenaPalette.purple)
 
 /// "1 formula" / "2 formulas" — the English strings needed singulars; the
 /// Turkish ones have no plural form and stay as they are.
+/// Hosts the on-device translation (and its one-time language download
+/// prompt) when the coach call couldn't translate the notebook.
+private struct NotebookTranslationHost: ViewModifier {
+    @ObservedObject private var tx = AINotebookTranslator.shared
+
+    func body(content: Content) -> some View {
+        content.translationTask(tx.appleConfig) { session in
+            await AINotebookTranslator.shared.runApple(session)
+        }
+    }
+}
+
+private extension View {
+    func notebookTranslation() -> some View { modifier(NotebookTranslationHost()) }
+}
+
 private func enCount(_ n: Int, _ word: String) -> String {
     "\(n) \(word)\(n == 1 ? "" : "s")"
 }
@@ -1911,11 +1928,14 @@ struct FormulaNotebookView: View {
     @State private var padCourse: String?
 
     var body: some View {
-        if UIDevice.current.userInterfaceIdiom == .pad && !notebook.entries.isEmpty {
-            padBody
-        } else {
-            phoneBody
+        Group {
+            if UIDevice.current.userInterfaceIdiom == .pad && !notebook.entries.isEmpty {
+                padBody
+            } else {
+                phoneBody
+            }
         }
+        .notebookTranslation()
     }
 
     /// iPad: courses on the left, the chosen course's formulas on the right.
@@ -2173,7 +2193,7 @@ private struct FormulaEntryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: entry.kind == .formula ? "function" : "text.quote")
+                Image(systemName: entry.showsAsMath ? "function" : "text.quote")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(notebookTint)
                 Text(tx.text(entry.name))
@@ -2181,7 +2201,7 @@ private struct FormulaEntryCard: View {
                     .foregroundStyle(UpdoTheme.textPrimary)
             }
 
-            if entry.kind == .formula {
+            if entry.showsAsMath {
                 AIDisplayMath(latex: entry.body)
             } else {
                 AIInline.text(tx.text(entry.body))
@@ -2276,6 +2296,10 @@ struct QuestionPatternsView: View {
     @ObservedObject private var tx = AINotebookTranslator.shared
 
     var body: some View {
+        content.notebookTranslation()
+    }
+
+    private var content: some View {
         NavigationStack {
             ZStack {
                 patternBackground

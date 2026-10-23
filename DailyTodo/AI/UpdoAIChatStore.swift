@@ -5,6 +5,8 @@
 
 import Foundation
 import Combine
+import NaturalLanguage
+import Translation
 import QuartzCore
 import SwiftUI
 import UIKit
@@ -1222,6 +1224,16 @@ struct AIFormulaEntry: Identifiable, Codable, Equatable {
     /// What the symbols mean / when to use it.
     var note: String
     var createdAt: Date
+
+    /// A "formula" the model filled with a sentence ("Bir noktasal yükün
+    /// potansiyeli…") reads as text — typeset, it loses its spaces.
+    var showsAsMath: Bool {
+        guard kind == .formula else { return false }
+        if body.contains(where: { "=<>≤≥≈".contains($0) }) { return true }
+        let words = body.split(whereSeparator: { $0 == " " })
+            .filter { $0.count >= 3 && $0.allSatisfy(\.isLetter) }
+        return words.count < 3
+    }
 }
 
 @MainActor
@@ -1309,7 +1321,7 @@ final class AIFormulaNotebook: ObservableObject {
                 kind: isFormula ? .formula : .rule, course: course, topic: topic, name: name,
                 body: body, note: note, createdAt: .now
             )
-            AINotebookTranslator.shared.markNative([course, topic, name, note] + (isFormula ? [] : [body]))
+            AINotebookTranslator.shared.markNative([course, topic, name, note] + (entry.showsAsMath ? [] : [body]))
             // Same course + same formula → refresh it instead of duplicating.
             let courseKey = AIChatTopics.key(course)
             let bodyKey = Self.bodyKey(body)
@@ -1566,9 +1578,12 @@ final class AIQuestionPatternBook: ObservableObject {
 //  the chat was in, so switching the app language left course / topic / names
 //  / notes / steps in the old one. The screens show every such string through
 //  `text(_:)`: a string not yet seen in the current language is translated
-//  (one small batched coach call) and cached on device. Strings saved while
-//  the app is in a language are recorded as already in it — no call for them.
-//  LaTeX is never sent here; `$…$` math inside a sentence is kept as is.
+//  and cached on device — with Apple's on-device Translation when that
+//  language pair is installed (free), else one small batched coach call.
+//  If the coach call fails (no credits / offline), the notebook sheets ask
+//  the system to download the language and translate on device
+//  (`appleConfig` → `.notebookTranslation()`). Strings saved in the app's
+//  language are recorded as already in it. `$…$` math is never translated.
 
 @MainActor
 final class AINotebookTranslator: ObservableObject {
@@ -1577,7 +1592,7 @@ final class AINotebookTranslator: ObservableObject {
     /// language ("en" / "tr") → original string → string in that language.
     @Published private(set) var cache: [String: [String: String]] = [:]
 
-    private let storageKey = "updo_ai_notebook_translations_v1"
+    private let storageKey = "updo_ai_notebook_translations_v2"  // v1 could hold Turkish marked as English
     private let maxPerLanguage = 3000
     private var pending: [String] = []
     private var failed: Set<String> = []
@@ -1591,7 +1606,18 @@ final class AINotebookTranslator: ObservableObject {
         }
     }
 
+    /// Set when the strings waiting in `applePending` need the system's
+    /// download prompt; the notebook sheets run it via `.translationTask`.
+    @Published private(set) var appleConfig: TranslationSession.Configuration?
+    private var applePending: [String] = []
+
     private var language: String { appLanguageIsEnglish() ? "en" : "tr" }
+
+    private func languages(to lang: String) -> (source: Locale.Language, target: Locale.Language) {
+        lang == "en"
+            ? (Locale.Language(identifier: "tr"), Locale.Language(identifier: "en"))
+            : (Locale.Language(identifier: "en"), Locale.Language(identifier: "tr"))
+    }
 
     /// `s` in the app's language — the original until its translation lands.
     func text(_ s: String) -> String {
@@ -1605,8 +1631,16 @@ final class AINotebookTranslator: ObservableObject {
     }
 
     /// Strings just written in the current language: nothing to translate.
+    /// The AI answers in the language the student writes in, not the app's,
+    /// so only skip translation when the text really is in the app language.
     func markNative(_ strings: [String]) {
         let lang = language
+        let joined = strings.filter { !$0.isEmpty }.joined(separator: ". ")
+        if lang == "en", joined.contains(where: { "çğıöşüÇĞİÖŞÜ".contains($0) }) { return }
+        let recognizer = NLLanguageRecognizer()
+        recognizer.languageConstraints = [.english, .turkish]
+        recognizer.processString(joined)
+        guard recognizer.dominantLanguage == (lang == "en" ? .english : .turkish) else { return }
         var table = cache[lang] ?? [:]
         var changed = false
         for s in strings where !s.isEmpty && table[s] == nil {
@@ -1644,16 +1678,104 @@ final class AINotebookTranslator: ObservableObject {
             let todo = batch.filter { cache[lang]?[$0] == nil }
             guard !todo.isEmpty else { continue }
 
-            if let out = await translate(todo, to: lang) {
-                var table = cache[lang] ?? [:]
-                for (src, dst) in zip(todo, out) { table[src] = dst }
-                if table.count > maxPerLanguage { table = [:] }   // crude cap; refills on demand
-                cache[lang] = table
-                persist()
+            let pair = languages(to: lang)
+            let status = await onDeviceStatus(pair.source, pair.target)
+            Log.debug("🌐 notebook translate \(todo.count) → \(lang), on-device: \(String(describing: status))")
+
+            var out: [String]?
+            if status == .installed, #available(iOS 26.0, *) {
+                out = try? await translateOnDevice(
+                    todo, session: TranslationSession(installedSource: pair.source, target: pair.target))
+            }
+            if out == nil { out = await translate(todo, to: lang) }
+
+            if let out {
+                store(zip(todo, out), lang: lang)
+            } else if status == .supported || status == .installed {
+                // No credits / offline: translate on device once the system
+                // has the language (a notebook sheet shows its download prompt).
+                applePending.append(contentsOf: todo.filter { !applePending.contains($0) })
+                if appleConfig == nil {
+                    appleConfig = .init(source: pair.source, target: pair.target)
+                } else {
+                    appleConfig?.invalidate()
+                }
             } else {
-                // Offline / out of credits: show the originals, retry next launch.
+                // Show the originals; retry next launch.
                 for s in todo { failed.insert(lang + "\u{1F}" + s) }
             }
+        }
+    }
+
+    /// Apple's language status, or nil if it doesn't answer within 3 s
+    /// (it never does in the Simulator) — the coach call then goes ahead.
+    private func onDeviceStatus(_ source: Locale.Language, _ target: Locale.Language) async -> LanguageAvailability.Status? {
+        final class Once { var done = false }
+        let once = Once()
+        return await withCheckedContinuation { (cont: CheckedContinuation<LanguageAvailability.Status?, Never>) in
+            @MainActor func finish(_ status: LanguageAvailability.Status?) {
+                guard !once.done else { return }
+                once.done = true
+                cont.resume(returning: status)
+            }
+            Task { @MainActor in finish(await LanguageAvailability().status(from: source, to: target)) }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(3))
+                finish(nil)
+            }
+        }
+    }
+
+    /// Runs inside `.translationTask(appleConfig)` — may first show the
+    /// system's language download sheet.
+    func runApple(_ session: TranslationSession) async {
+        let lang = language
+        let todo = applePending.filter { cache[lang]?[$0] == nil }
+        applePending.removeAll()
+        guard !todo.isEmpty else { return }
+        if let out = try? await translateOnDevice(todo, session: session) {
+            store(zip(todo, out), lang: lang)
+        } else {
+            for s in todo { failed.insert(lang + "\u{1F}" + s) }
+        }
+    }
+
+    private func store(_ pairs: Zip2Sequence<[String], [String]>, lang: String) {
+        var table = cache[lang] ?? [:]
+        for (src, dst) in pairs where !dst.isEmpty { table[src] = dst }
+        if table.count > maxPerLanguage { table = [:] }   // crude cap; refills on demand
+        cache[lang] = table
+        persist()
+    }
+
+    /// Apple Translation, prose only: `$…$` math is split out and kept.
+    private func translateOnDevice(_ strings: [String], session: TranslationSession) async throws -> [String] {
+        // Each string → alternating prose / math pieces; only prose with
+        // letters goes to the session.
+        let split = strings.map { s -> [(String, Bool)] in
+            s.components(separatedBy: "$").enumerated().map { ($0.element, $0.offset % 2 == 1) }
+        }
+        var requests: [TranslationSession.Request] = []
+        for (i, pieces) in split.enumerated() {
+            for (j, piece) in pieces.enumerated() where !piece.1 && piece.0.contains(where: \.isLetter) {
+                requests.append(.init(sourceText: piece.0, clientIdentifier: "\(i).\(j)"))
+            }
+        }
+        var translated: [String: String] = [:]
+        if !requests.isEmpty {
+            for response in try await session.translations(from: requests) {
+                if let id = response.clientIdentifier { translated[id] = response.targetText }
+            }
+        }
+        return split.enumerated().map { i, pieces in
+            pieces.enumerated().map { j, piece in
+                if piece.1 { return "$" + piece.0 + "$" }
+                guard let t = translated["\(i).\(j)"] else { return piece.0 }
+                // keep the original's edge spaces ("Simetri: $…$")
+                let lead = piece.0.prefix(while: \.isWhitespace)
+                let trail = String(piece.0.reversed().prefix(while: \.isWhitespace))
+                return lead + t.trimmingCharacters(in: .whitespaces) + trail
+            }.joined()
         }
     }
 

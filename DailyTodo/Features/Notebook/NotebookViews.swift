@@ -306,7 +306,7 @@ struct NotebookPageList: View {
                         .lineLimit(1)
 
                     HStack(spacing: 6) {
-                        Text(note.updatedAt.formatted(.relative(presentation: .named)))
+                        Text(appRelativeDate(note.updatedAt))
                         if let course = note.course {
                             Text("·")
                             Text(course).lineLimit(1)
@@ -941,7 +941,7 @@ struct NotebookReaderView: View {
                                 .font(.system(size: 11, weight: .black, design: .monospaced))
                                 .tracking(1.4)
                                 .foregroundStyle(UpdoTheme.filmy(0.55))
-                            Text("· " + note.updatedAt.formatted(.relative(presentation: .named)))
+                            Text("· " + appRelativeDate(note.updatedAt))
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(UpdoTheme.filmy(0.4))
                         }
@@ -1067,7 +1067,7 @@ struct NotebookProfileCard: View {
                     .font(.system(size: 10.5, weight: .black, design: .monospaced))
                     .tracking(1.6)
                     .foregroundStyle(UpdoTheme.cyan)
-                Text(pages.isEmpty ? tr("nb_card_empty") : tr("nb_card_count", pages.count))
+                Text(pages.isEmpty ? tr("nb_card_empty") : (appLanguageIsEnglish() && pages.count == 1 ? "1 page" : tr("nb_card_count", pages.count)))
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(UpdoTheme.textPrimary)
             }
@@ -1150,7 +1150,7 @@ struct NotebookProfileCard: View {
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(UpdoTheme.filmy(0.9))
                                 .lineLimit(1)
-                            Text([note.course, note.updatedAt.formatted(.relative(presentation: .named))]
+                            Text([note.course, appRelativeDate(note.updatedAt)]
                                 .compactMap { $0 }.joined(separator: " · "))
                                 .font(.system(size: 11.5, weight: .medium))
                                 .foregroundStyle(UpdoTheme.filmy(0.45))
