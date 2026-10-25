@@ -629,6 +629,46 @@ final class CrewBackendClient {
         }
     }
 
+    enum NudgeResult {
+        /// Sent; the next nudge to this member is allowed at the date.
+        case sent(nextAllowedAt: Date?)
+        /// Already nudged recently.
+        case cooldown(nextAllowedAt: Date?)
+        case failed
+    }
+
+    /// Dürt: pings a crewmate (push + socket) to come focus.
+    func nudgeMember(crewID: UUID, toUserID: UUID, fromName: String) async -> NudgeResult {
+        struct Response: Decodable {
+            let ok: Bool?
+            let next_allowed_at: String?
+        }
+
+        do {
+            let request = try await makeRequest(
+                path: "/v1/crews/\(crewID.uuidString)/nudge",
+                method: "POST",
+                body: ["to_user_id": toUserID.uuidString, "from_name": fromName],
+                timeout: 20
+            )
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let decoded = try? jsonDecoder.decode(Response.self, from: data)
+            let next = decoded?.next_allowed_at.flatMap { CrewDateParser.parse($0) }
+
+            switch status {
+            case 200..<300: return .sent(nextAllowedAt: next)
+            case 429: return .cooldown(nextAllowedAt: next)
+            default:
+                ChatBackendLogger.error("❌ CREW BACKEND nudge STATUS:", status)
+                return .failed
+            }
+        } catch {
+            ChatBackendLogger.error("❌ CREW BACKEND nudge ERROR:", error.localizedDescription)
+            return .failed
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════
     // INVITES
     // ═════════════════════════════════════════════════════════════════

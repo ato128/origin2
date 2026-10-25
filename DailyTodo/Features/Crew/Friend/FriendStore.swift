@@ -2424,6 +2424,12 @@ final class FriendStore: ObservableObject {
         Task { await loadPresence(for: userIDs) }
     }
 
+    /// Adds people (e.g. crewmates who aren't friends) to the polled set
+    /// without dropping the friends already being polled.
+    func loadPresence(including extraIDs: [UUID]) async {
+        await loadPresence(for: retainedPresenceOtherIDs + extraIDs)
+    }
+
     func loadPresence(for userIDs: [UUID]) async {
         let uniqueIDs = Array(Set(userIDs))
         guard !uniqueIDs.isEmpty else { return }

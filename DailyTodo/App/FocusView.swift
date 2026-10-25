@@ -163,6 +163,11 @@ struct FocusView: View {
         }
         .onAppear {
             pageAppeared = true
+            // "Birlikte odaklan" on a crew's page → that crew, crew mode.
+            if let crewID = CrewDeepLink.takeFocusCrew() {
+                selectedMode = .crew
+                selectedCrewID = crewID
+            }
             focusSession.configure(sessionStore: session, crewStore: crewStore)
             consumeWidgetAutostartIfNeeded()
 

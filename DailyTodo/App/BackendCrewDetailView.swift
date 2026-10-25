@@ -10,43 +10,44 @@ import UIKit
 import SwiftData
 import PhotosUI
 
-private enum BackendCrewArenaPalette {
-    static let backgroundTop = Color.adaptive(light: Color(arenaHex: "#FBF6EC"), dark: Color(arenaHex: "#05060D"))
-    static let backgroundMid = Color.adaptive(light: Color(arenaHex: "#F4EEE1"), dark: Color(arenaHex: "#070713"))
-    static let backgroundBottom = Color.adaptive(light: Color(arenaHex: "#EFE7D6"), dark: Color(arenaHex: "#07040C"))
+/// Cross-tab hand-offs into a crew: "Birlikte odaklan" preselects the crew on
+/// the Focus tab, a nudge push opens the crew's page. Tabs are rebuilt on
+/// switch, so the target is parked here and taken when the screen appears.
+enum CrewDeepLink {
+    static var pendingFocusCrewID: UUID?
+    static var pendingDetailCrewID: UUID?
 
-    static let blue = Color(arenaHex: "#1593FF")
-    static let cyan = Color(arenaHex: "#2DD4FF")
-    static let purple = Color(arenaHex: "#7C3AED")
-    static let coral = Color(arenaHex: "#FF5A44")
-    static let gold = Color(arenaHex: "#FBBF24")
-    static let green = Color(arenaHex: "#A3E635")
-
-    static let surface = Color.adaptive(light: Color(arenaHex: "#FFFDF7"), dark: Color(arenaHex: "#101118"))
-    static let surface2 = Color.adaptive(light: Color(arenaHex: "#F1EADC"), dark: Color(arenaHex: "#171821"))
-
-    static var appGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(arenaHex: "#1E6BFF"),
-                Color(arenaHex: "#7C3AED")
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    static func takeFocusCrew() -> UUID? {
+        defer { pendingFocusCrewID = nil }
+        return pendingFocusCrewID
     }
 
-    static var crewGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(arenaHex: "#1E6BFF").opacity(0.88),
-                Color(arenaHex: "#7C3AED").opacity(0.86),
-                Color(arenaHex: "#FF5A44").opacity(0.58)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    static func takeDetailCrew() -> UUID? {
+        defer { pendingDetailCrewID = nil }
+        return pendingDetailCrewID
     }
+}
+
+extension Notification.Name {
+    /// object: crew id (String) — Social tab opens that crew.
+    static let openCrewDetail = Notification.Name("openCrewDetail")
+}
+
+/// One crewmate, with everything the page shows about them precomputed.
+private struct CrewMateStat: Identifiable {
+    let member: CrewMemberDTO
+    let name: String
+    let firstName: String
+    let weekMinutes: Int
+    let todayMinutes: Int
+    let isMe: Bool
+    let isOwner: Bool
+    let isFocusing: Bool
+    let focusingSince: Date?
+    let isOnline: Bool
+    let color: Color
+
+    var id: UUID { member.user_id }
 }
 
 struct BackendCrewDetailView: View {
@@ -62,10 +63,7 @@ struct BackendCrewDetailView: View {
     }
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
-    @ObservedObject private var socialStats = SocialStatsStore.shared
-
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-    private var palette: ThemePalette { ThemePalette() }
+    @EnvironmentObject var friendStore: FriendStore
 
     @State private var showAddMember = false
     @State private var showCreateTask = false
@@ -80,12 +78,6 @@ struct BackendCrewDetailView: View {
     private var allLocalFriends: [Friend]
     @State private var errorMessage: String?
 
-    @State private var showHeroCard = false
-    @State private var showStatsRow = false
-    @State private var showMembersSection = false
-    @State private var showTasksSection = false
-    @State private var showFocusSection = false
-    @State private var showActivitySection = false
     @State private var showShareSheet = false
     @State private var didInitialLoad = false
     @State private var memberToRemove: CrewMemberDTO?
@@ -94,201 +86,185 @@ struct BackendCrewDetailView: View {
     @State private var showDeleteCrewConfirm = false
     @State private var isDeletingCrew = false
     @State private var crewPhotoItem: PhotosPickerItem?
-    @State private var taskFilter: CrewTaskFilter = .open
+    @State private var showDoneTasks = false
     @State private var weeklyGoalMinutes = 0
-    
-    enum CrewTaskFilter: String, CaseIterable, Identifiable {
-            case open
-            case done
-            case all
 
-            var id: String { rawValue }
-
-            var title: String {
-                switch self {
-                case .open: return tr("tv_open")
-                case .done: return "Biten"
-                case .all: return tr("tv_all")
-                }
-            }
-        }
+    @State private var ringProgress: Double = 0
+    @State private var appeared = false
+    @State private var titleVisible = false
+    @State private var nudgedUntil: [UUID: Date] = [:]
+    @State private var nudgingID: UUID?
+    @State private var toast: String?
+    @State private var celebrate = false
 
     var body: some View {
+        attachDialogs(to: attachSheets(to: page))
+    }
+
+    private var page: some View {
         ZStack(alignment: .top) {
-            ambientBackground
+            AppBackground()
+            ambientGlow
 
-            ScrollView(showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 14) {
-                    Color.clear.frame(height: 6)
-
-                    customHeader
-
-                    heroCard(
-                        memberCount: crewMembers.count,
-                        totalTasks: sortedCrewTasks.count,
-                        progress: crewProgressValue
-                    )
-
-                    quickStatsRow(
-                        completed: completedTasksCount,
-                        pending: pendingTasksCount,
-                        memberCount: crewMembers.count
-                    )
-
-                    weeklyGoalCard
-
-                    membersSection(crewMembers)
-
-                    tasksSection(filteredCrewTasks)
-
-                    Color.clear.frame(height: 100)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 4)
-                .padding(.bottom, 18)
-            }
-            .refreshable {
-                await loadCrewDetail()
-            }
+            content(crewMates)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { topBar }
+        .overlay(alignment: .top) { toastView }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .task {
             guard !didInitialLoad else { return }
             didInitialLoad = true
-
+            nudgedUntil = loadNudges()
             await loadCrewDetail()
-            playEntranceAnimations()
+            withAnimation(.spring(response: 0.9, dampingFraction: 0.9)) {
+                ringProgress = 1
+            }
+            celebrateGoalIfNeeded()
         }
         .onAppear {
             weeklyGoalMinutes = crewStore.weeklyGoalMinutes(for: crew.id)
-
-            Task {
-                await loadCrewDetail()
+            withAnimation(.easeOut(duration: 0.45)) { appeared = true }
+            if didInitialLoad {
+                Task { await loadCrewDetail() }
             }
         }
         .onChange(of: crewPhotoItem) { _, newItem in
             guard let newItem else { return }
             Task { await uploadCrewPhoto(newItem) }
         }
-        .sheet(isPresented: $showAddMember) {
-            Group {
-                AddCrewMemberView(crewID: crew.id)
-                    .environmentObject(crewStore)
+        .onReceive(crewStore.$weeklyGoalMinutesByCrew) { byCrew in
+            if let shared = byCrew[crew.id], shared != weeklyGoalMinutes {
+                weeklyGoalMinutes = shared
             }
-            .updoPadSheet()
         }
-        .sheet(isPresented: $showCreateTask) {
-            Group {
-                BackendCreateCrewTaskSheet(
-                    crew: crew,
-                    members: crewStore.crewMembers.filter { $0.crew_id == crew.id },
-                    memberProfiles: crewStore.memberProfiles
-                )
-                .environmentObject(crewStore)
-                .environmentObject(session)
-            }
-            .updoPadSheet()
-        }
-        .sheet(item: $selectedTask) { task in
-            Group {
-                BackendCrewTaskDetailView(task: task, crew: crew)
-                    .environmentObject(crewStore)
-                    .environmentObject(session)
-            }
-            .updoPadSheet()
-        }
-        .sheet(isPresented: $showShareSheet) {
-            Group {
-                ShareSheet(items: [
-                    String(
-                        format: String(localized: "backend_crew_share_text"),
-                        inviteCode
-                    )
-                ])
-            }
-            .updoPadSheet()
-        }
-        .sheet(isPresented: $showInviteSheet, onDismiss: {
-            inviteCopied = false
-        }) {
-            Group {
-                inviteSheet
-            }
-            .updoPadSheet()
-        }
-        .alert(
-            String(localized: "common_error"),
-            isPresented: Binding(
-                get: { errorMessage != nil },
-                set: { if !$0 { errorMessage = nil } }
-            )
-        ) {
-            Button(String(localized: "common_ok"), role: .cancel) {
-                errorMessage = nil
-            }
-        } message: {
-            Text(errorMessage ?? String(localized: "common_unknown_error"))
-        }
-        .confirmationDialog(
-            String(localized: "backend_crew_remove_member_title"),
-            isPresented: $showRemoveMemberConfirm,
-            titleVisibility: .visible
-        ) {
-            Button(String(localized: "backend_crew_remove_member_action"), role: .destructive) {
-                guard let member = memberToRemove else { return }
+        .sensoryFeedback(.success, trigger: celebrate) { _, new in new }
+    }
 
-                guard member.role.lowercased() != "owner" else {
-                    errorMessage = String(localized: "backend_crew_owner_cannot_be_removed")
-                    return
+    private func content(_ mates: [CrewMateStat]) -> some View {
+        ScrollViewReader { proxy in
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 18) {
+                stage(mates)
+                    .padding(.top, 4)
+
+                weekCard(mates)
+                    .crewReveal(appeared, delay: 0.05)
+                    .id("week")
+
+                if mates.count < 3 {
+                    completeCrewCard(mates)
+                        .crewReveal(appeared, delay: 0.1)
                 }
 
-                Task {
-                    do {
-                        try await crewStore.removeMember(member, from: crew.id)
-                        memberToRemove = nil
-                    } catch {
-                        errorMessage = error.localizedDescription
-                    }
+                if mates.count > 1 {
+                    standingsCard(mates)
+                        .crewReveal(appeared, delay: 0.12)
+                        .id("standings")
                 }
-            }
 
-            Button(String(localized: "common_cancel"), role: .cancel) {
-                memberToRemove = nil
+                tasksCard(mates)
+                    .crewReveal(appeared, delay: 0.16)
+                    .id("tasks")
+
+                if !recentActivities.isEmpty {
+                    activityCard
+                        .crewReveal(appeared, delay: 0.2)
+                }
+
+                Color.clear.frame(height: 90)
             }
-        } message: {
-            Text(tr("backend_crew_remove_member_message"))
+            .padding(.horizontal, 16)
         }
-        .confirmationDialog(
-            String(localized: "backend_crew_delete_title"),
-            isPresented: $showDeleteCrewConfirm,
-            titleVisibility: .visible
-        ) {
-            Button(String(localized: "backend_crew_delete_action"), role: .destructive) {
-                Task {
-                    guard let currentUserID = session.currentUser?.id else { return }
-
-                    isDeletingCrew = true
-
-                    do {
-                        try await crewStore.deleteCrew(
-                            crewID: crew.id,
-                            currentUserID: currentUserID
-                        )
-                        leave()
-                    } catch {
-                        errorMessage = error.localizedDescription
-                    }
-
-                    isDeletingCrew = false
-                }
+        .onScrollGeometryChange(for: Bool.self) { geo in
+            geo.contentOffset.y + geo.contentInsets.top > 190
+        } action: { _, past in
+            withAnimation(.easeInOut(duration: 0.2)) { titleVisible = past }
+        }
+        .refreshable {
+            await loadCrewDetail()
+        }
+        #if DEBUG
+        // QA/screenshot hook: `-debugCrewScroll standings` scrolls there.
+        .task {
+            if let target = UserDefaults.standard.string(forKey: "debugCrewScroll") {
+                try? await Task.sleep(for: .seconds(2.5))
+                proxy.scrollTo(target, anchor: .top)
             }
-
-            Button(String(localized: "common_cancel"), role: .cancel) { }
-        } message: {
-            Text(tr("backend_crew_delete_message"))
+        }
+        #endif
         }
     }
+
+    // MARK: - Loading
+
+    private func loadCrewDetail() async {
+        await crewStore.loadMembers(for: crew.id)
+        await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
+
+        let memberIDs = crewMembers.map(\.user_id)
+        // Crewmates who aren't friends join the presence poll (live "Odakta").
+        Task { await friendStore.loadPresence(including: memberIDs) }
+
+        await crewStore.loadActiveFocusSession(for: crew.id)
+        if let live = crewStore.activeFocusSessionByCrew[crew.id] {
+            await crewStore.loadFocusParticipants(sessionID: live.id)
+        }
+
+        await crewStore.loadTasks(for: crew.id)
+        await crewStore.loadActivities(for: crew.id)
+        await crewStore.loadFocusRecords(for: crew.id)
+
+        #if DEBUG
+        // QA/screenshot hook: `-debugCrewMock YES` adds in-memory crewmates,
+        // focus minutes and tasks (nothing is written to the backend).
+        if UserDefaults.standard.bool(forKey: "debugCrewMock") { injectDebugCrew() }
+        #endif
+    }
+
+    #if DEBUG
+    private func injectDebugCrew() {
+        let iso = ISO8601DateFormatter()
+        let cal = Calendar.current
+        let start = Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        let mates: [(String, String, [Int])] = [
+            ("İpek Yılmaz", "ipek", [50, 0, 75, 40, 0, 25, 0]),
+            ("Arda Kaya", "arda", [25, 45, 0, 30, 50, 0, 0]),
+            ("Deniz Aydın", "deniz", [0, 0, 25, 0, 0, 0, 0])
+        ]
+        var ids: [UUID] = []
+        for (index, mate) in mates.enumerated() {
+            let id = UUID()
+            ids.append(id)
+            crewStore.crewMembers.append(
+                CrewMemberDTO(id: UUID(), crew_id: crew.id, user_id: id, role: "member", created_at: "2026-10-2\(index + 1)T10:00:00Z")
+            )
+            crewStore.memberProfiles.append(ProfileDTO(id: id, email: nil, username: mate.1, full_name: mate.0))
+            for (day, minutes) in mate.2.enumerated() where minutes > 0 {
+                guard let date = cal.date(byAdding: .hour, value: day * 24 + 15, to: start), date < Date() else { continue }
+                crewStore.crewFocusRecords.append(
+                    CrewFocusRecordDTO(id: UUID(), crew_id: crew.id, user_id: id, member_name: mate.0, minutes: minutes, created_at: iso.string(from: date))
+                )
+            }
+        }
+        if let me = myUserID, let date = cal.date(byAdding: .hour, value: 2 * 24 + 18, to: start) {
+            crewStore.crewFocusRecords.append(
+                CrewFocusRecordDTO(id: UUID(), crew_id: crew.id, user_id: me, member_name: "Me", minutes: 95, created_at: iso.string(from: date))
+            )
+        }
+        let now = iso.string(from: Date())
+        friendStore.presenceByUserID[ids[0]] = FriendPresenceDTO(
+            user_id: ids[0], is_online: true, last_seen_at: now, updated_at: now,
+            is_focusing: true, focusing_since: iso.string(from: Date().addingTimeInterval(-18 * 60))
+        )
+        friendStore.presenceByUserID[ids[1]] = FriendPresenceDTO(user_id: ids[1], is_online: true, last_seen_at: now, updated_at: now)
+        crewStore.crewTasks.append(contentsOf: [
+            CrewTaskDTO(id: UUID(), crew_id: crew.id, created_by: ids[0], title: "Fizik 2. ünite soru bankası", is_done: false, assigned_to: ids[0], created_at: now, details: nil, priority: "high", status: "inProgress", show_on_week: true, scheduled_weekday: 3, scheduled_start_minute: 19 * 60, scheduled_duration_minute: 60),
+            CrewTaskDTO(id: UUID(), crew_id: crew.id, created_by: ids[1], title: "Deneme sınavı analizi", is_done: false, assigned_to: myUserID, created_at: now, details: nil, priority: "medium", status: "todo", show_on_week: false, scheduled_weekday: nil, scheduled_start_minute: nil, scheduled_duration_minute: nil),
+            CrewTaskDTO(id: UUID(), crew_id: crew.id, created_by: ids[1], title: "Kimya formül kartları", is_done: true, assigned_to: ids[1], created_at: now, details: nil, priority: "low", status: "done", show_on_week: false, scheduled_weekday: nil, scheduled_start_minute: nil, scheduled_duration_minute: nil)
+        ])
+    }
+    #endif
 
     @MainActor
     private func uploadCrewPhoto(_ item: PhotosPickerItem) async {
@@ -298,11 +274,9 @@ struct BackendCrewDetailView: View {
         let resized = crewDownscaledImage(image, maxDimension: 512)
         guard let jpeg = resized.jpegData(compressionQuality: 0.82) else { return }
 
-        await MainActor.run {
-            // Anında yerel gösterim; backend'e yazımı beklemeden.
-            RemoteAvatarStore.shared.overrideLocal(resized, for: crew.id)
-            crewPhotoItem = nil
-        }
+        // Anında yerel gösterim; backend'e yazımı beklemeden.
+        RemoteAvatarStore.shared.overrideLocal(resized, for: crew.id)
+        crewPhotoItem = nil
 
         await AvatarBackendClient.shared.uploadCrewAvatar(
             crewID: crew.id.uuidString,
@@ -322,105 +296,150 @@ struct BackendCrewDetailView: View {
             image.draw(in: CGRect(origin: .zero, size: target))
         }
     }
-
-    private func loadCrewDetail() async {
-        await crewStore.loadMembers(for: crew.id)
-        await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
-
-        // Pro-only social stats for crew members (no request when not Pro).
-        let memberIDs = crewStore.crewMembers
-            .filter { $0.crew_id == crew.id }
-            .map { $0.user_id }
-        socialStats.refresh(userIDs: memberIDs, isPro: SubscriptionManager.shared.isPro, force: true)
-
-        await crewStore.loadTasks(for: crew.id)
-        await crewStore.loadActivities(for: crew.id)
-        await crewStore.loadFocusRecords(for: crew.id)
-    }
 }
 
-extension BackendCrewDetailView {
-    
-    var inviteSheet: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 22) {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(BackendCrewArenaPalette.appGradient)
-                    .frame(width: 74, height: 74)
-                    .overlay(
-                        Image(systemName: "person.badge.plus")
-                            .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                    )
+// MARK: - Derived data
 
-                VStack(spacing: 8) {
-                    Text(tr("bcd_invite_code"))
-                        .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(UpdoTheme.textPrimary)
+private extension BackendCrewDetailView {
+    var accent: Color { hexColor(crew.color_hex) }
 
-                    Text(tr("bcd_share_code"))
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(UpdoTheme.filmy(0.52))
-                        .multilineTextAlignment(.center)
-                }
+    var myUserID: UUID? { session.currentUser?.id }
 
-                Text(inviteCode)
-                    .font(.system(size: 42, weight: .black, design: .rounded))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(UpdoTheme.filmy(0.075))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(UpdoTheme.filmy(0.12), lineWidth: 1)
-                            )
-                    )
+    var isOwner: Bool { myUserID == crew.owner_id }
 
-                Button {
-                    UIPasteboard.general.string = inviteCode
-                    inviteCopied = true
-                } label: {
-                    Text(inviteCopied ? String(localized: "common_copied") : String(localized: "common_copy"))
-                        .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            Capsule()
-                                .fill(BackendCrewArenaPalette.green)
-                        )
-                }
-                .buttonStyle(.plain)
+    var crewMembers: [CrewMemberDTO] {
+        crewStore.crewMembers
+            .filter { $0.crew_id == crew.id }
+            .sorted { ($0.created_at ?? "") < ($1.created_at ?? "") }
+    }
 
-                if inviteCopied {
-                    Text(tr("backend_crew_code_copied_success"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(UpdoTheme.filmy(0.52))
-                        .transition(.opacity)
-                }
+    var memberProfilesByID: [UUID: ProfileDTO] {
+        Dictionary(crewStore.memberProfiles.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+    }
 
-                inviteFriendsSection
-            }
-            .padding(24)
+    var crewRecords: [CrewFocusRecordDTO] {
+        crewStore.crewFocusRecords.filter { $0.crew_id == crew.id }
+    }
+
+    var weekStart: Date {
+        Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start
+            ?? Calendar.current.startOfDay(for: Date())
+    }
+
+    var liveSession: CrewFocusSessionDTO? {
+        guard let s = crewStore.activeFocusSessionByCrew[crew.id], s.is_active else { return nil }
+        return s
+    }
+
+    var liveParticipants: [CrewFocusParticipantDTO] {
+        guard let liveSession else { return [] }
+        return (crewStore.focusParticipantsBySession[liveSession.id] ?? []).filter(\.is_active)
+    }
+
+    /// Fixed per-member colors (join order), so a person keeps their color in
+    /// the ring and the standings week after week.
+    static let mateColors: [Color] = [
+        Color(arenaHex: "#2DD4FF"), Color(arenaHex: "#FF5A44"), Color(arenaHex: "#FBBF24"),
+        Color(arenaHex: "#A78BFA"), Color(arenaHex: "#A3E635"), Color(arenaHex: "#1593FF"),
+        Color(arenaHex: "#FF7A59"), Color(arenaHex: "#8B5CF6")
+    ]
+
+    var crewMates: [CrewMateStat] {
+        let cal = Calendar.current
+        let start = weekStart
+        let todayStart = cal.startOfDay(for: Date())
+        let profiles = memberProfilesByID
+        let participantIDs = Set(liveParticipants.compactMap(\.user_id))
+
+        var week: [String: Int] = [:]
+        var today: [String: Int] = [:]
+        for record in crewRecords {
+            guard let date = record.created_at.flatMap({ CrewDateParser.parse($0) }), date >= start else { continue }
+            let key = record.user_id?.uuidString ?? "name:" + record.member_name
+            week[key, default: 0] += record.minutes
+            if date >= todayStart { today[key, default: 0] += record.minutes }
         }
-        .background(Color.black)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+
+        return crewMembers.enumerated().map { index, member in
+            let profile = profiles[member.user_id]
+            let name = memberName(from: profile)
+            let byName = "name:" + name
+            let presence = friendStore.presenceByUserID[member.user_id]
+            let isMe = member.user_id == myUserID
+            let presenceFocusing = presence?.is_focusing ?? false
+            // My own state comes from this device; the backend flag can lag.
+            let focusing = isMe
+                ? FocusSessionManager.shared.isSessionActive
+                : participantIDs.contains(member.user_id) || presenceFocusing
+
+            return CrewMateStat(
+                member: member,
+                name: name,
+                firstName: name.split(separator: " ").first.map(String.init) ?? name,
+                weekMinutes: (week[member.user_id.uuidString] ?? 0) + (week[byName] ?? 0),
+                todayMinutes: (today[member.user_id.uuidString] ?? 0) + (today[byName] ?? 0),
+                isMe: isMe,
+                isOwner: member.role.lowercased() == "owner",
+                isFocusing: focusing,
+                focusingSince: isMe
+                    ? FocusSessionManager.shared.currentSession?.startDate
+                    : presence?.focusing_since.flatMap { CrewDateParser.parse($0) },
+                isOnline: isMe || FriendPresenceEngine.isOnline(presence),
+                color: Self.mateColors[index % Self.mateColors.count]
+            )
+        }
+    }
+
+    var weekTotalMinutes: Int {
+        CrewHomeFormatters.weeklyFocusMinutes(records: crewStore.crewFocusRecords, crewID: crew.id)
+    }
+
+    var streakDays: Int {
+        CrewHomeFormatters.crewStreakDays(records: crewStore.crewFocusRecords, crewID: crew.id)
+    }
+
+    /// The 7 days of this week and whether the crew focused on each.
+    var weekDays: [(date: Date, active: Bool)] {
+        let cal = Calendar.current
+        let days = Set(
+            crewRecords
+                .compactMap { $0.created_at.flatMap { CrewDateParser.parse($0) } }
+                .map { cal.startOfDay(for: $0) }
+        )
+        return (0..<7).compactMap { offset in
+            guard let day = cal.date(byAdding: .day, value: offset, to: weekStart) else { return nil }
+            return (day, days.contains(day))
+        }
+    }
+
+    var allTimeMinutes: Int {
+        max(crewStore.totalFocusMinutesByCrew[crew.id] ?? 0, crewRecords.reduce(0) { $0 + $1.minutes })
+    }
+
+    static let levelTargets = [15, 30, 60, 120, 180, 300, 480, 720, 1080, 1500, 2400, 3600, 6000]
+
+    var crewLevel: Int {
+        Self.levelTargets.filter { allTimeMinutes >= $0 }.count + 1
+    }
+
+    var sortedCrewTasks: [CrewTaskDTO] {
+        crewStore.crewTasks
+            .filter { $0.crew_id == crew.id }
+            .sorted {
+                if $0.is_done != $1.is_done { return !$0.is_done }
+                return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+    }
+
+    var recentActivities: [CrewActivityDTO] {
+        Array(crewStore.crewActivities.filter { $0.crew_id == crew.id }.prefix(5))
     }
 
     /// Friends not yet in this crew — one tap sends the invite into your 1:1
     /// chat as a join card. No code copying needed on either side.
-    private var invitableFriends: [Friend] {
-        guard let currentUserID = session.currentUser?.id else { return [] }
-
-        let memberUserIDs = Set(
-            crewStore.crewMembers
-                .filter { $0.crew_id == crew.id }
-                .map(\.user_id)
-        )
+    var invitableFriends: [Friend] {
+        guard let currentUserID = myUserID else { return [] }
+        let memberUserIDs = Set(crewMembers.map(\.user_id))
 
         return allLocalFriends.filter { friend in
             friend.ownerUserID == currentUserID.uuidString
@@ -429,41 +448,1008 @@ extension BackendCrewDetailView {
         }
     }
 
-    private var inviteFriendsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("— \(tr("bcd_invite_friends_caps")) —")
-                .font(.system(size: 10, weight: .black, design: .monospaced))
-                .tracking(2.2)
-                .foregroundStyle(UpdoTheme.filmy(0.34))
-                .frame(maxWidth: .infinity, alignment: .leading)
+    func memberName(from profile: ProfileDTO?) -> String {
+        guard let profile else { return String(localized: "backend_crew_unknown_user") }
 
-            if invitableFriends.isEmpty {
-                Text(tr("bcd_invite_no_friends"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(UpdoTheme.filmy(0.45))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        if let fullName = profile.full_name,
+           !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return fullName
+        }
+        if let username = profile.username,
+           !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return username
+        }
+        return profile.email ?? String(localized: "backend_crew_unknown_user")
+    }
+
+    func focusTimeText(_ minutes: Int) -> String {
+        let hours = minutes / 60
+        let mins = minutes % 60
+        if appLanguageIsEnglish() {
+            return hours > 0 ? (mins > 0 ? "\(hours)h \(mins)m" : "\(hours)h") : "\(mins)m"
+        }
+        return hours > 0 ? (mins > 0 ? "\(hours) sa \(mins) dk" : "\(hours) sa") : "\(mins) dk"
+    }
+}
+
+// MARK: - Updo ink
+
+/// Updo's arena palette for this page. Fills use the vivid arena hexes; text
+/// that sits on the page uses the adaptive UpdoTheme tones (readable in light).
+private enum CrewInk {
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let violet = Color(arenaHex: "#8B5CF6")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let lime = Color(arenaHex: "#A3E635")
+
+    static var brand: LinearGradient {
+        LinearGradient(colors: [cyan, violet], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
+private extension BackendCrewDetailView {
+    func caps(_ text: String) -> String {
+        text.uppercased(with: Locale(identifier: appLanguageIsEnglish() ? "en" : "tr"))
+    }
+
+    /// "—— AKTİF EKİP" — the mono eyebrow every Updo section opens with.
+    func eyebrow(_ text: String, tint: Color = UpdoTheme.cyan) -> some View {
+        HStack(spacing: 8) {
+            Rectangle()
+                .fill(CrewInk.blue)
+                .frame(width: 18, height: 1)
+            Text(caps(text))
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .tracking(2.2)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+    }
+
+    /// Heavy word + serif italic accent ("Ekip *ritmi*").
+    func accentTitle(_ title: String, _ accent: String, size: CGFloat = 24) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(title)
+                .font(.system(size: size, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+            Text(accent)
+                .font(.system(size: size - 1, weight: .regular, design: .serif))
+                .italic()
+                .foregroundStyle(CrewInk.brand)
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+    }
+
+    func sectionHeader<Trailing: View>(
+        eyebrow text: String,
+        title: String,
+        accent: String,
+        @ViewBuilder trailing: () -> Trailing
+    ) -> some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 5) {
+                eyebrow(text)
+                accentTitle(title, accent)
+            }
+            Spacer(minLength: 8)
+            trailing()
+        }
+    }
+
+    func mono(_ text: String, size: CGFloat = 11, weight: Font.Weight = .bold) -> Text {
+        Text(text).font(.system(size: size, weight: weight, design: .monospaced))
+    }
+
+    func arenaCard(tint: Color, radius: CGFloat = 26) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(UpdoTheme.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [tint.opacity(0.09), CrewInk.purple.opacity(0.04), .clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(tint.opacity(0.16), lineWidth: 1)
+            )
+            .shadow(color: UpdoTheme.cardShadow(0.2), radius: 16, y: 9)
+    }
+
+    func chromeButton(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 16, weight: .black))
+            .foregroundStyle(UpdoTheme.textPrimary)
+            .frame(width: 44, height: 44)
+            .liquidGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+// MARK: - Top bar
+
+private extension BackendCrewDetailView {
+    var topBar: some View {
+        HStack(spacing: 10) {
+            if socialSplitClose == nil {
+                Button(action: leave) {
+                    chromeButton(systemName: "chevron.left")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tr("a11y_back"))
+            }
+
+            Spacer(minLength: 0)
+
+            Text(crew.name)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .lineLimit(1)
+                .opacity(titleVisible ? 1 : 0)
+                .offset(y: titleVisible ? 0 : 6)
+
+            Spacer(minLength: 0)
+
+            Button(action: openChat) {
+                chromeButton(systemName: "bubble.left.and.bubble.right.fill")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(tr("cdx_chat"))
+
+            moreMenu
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(UpdoTheme.border).frame(height: 0.5)
+                }
+                .ignoresSafeArea(edges: .top)
+                .opacity(titleVisible ? 1 : 0)
+        }
+    }
+
+    var moreMenu: some View {
+        Menu {
+            Button {
+                Task { await openInviteSheet() }
+            } label: {
+                Label(tr("cdx_invite_code"), systemImage: "qrcode")
+            }
+
+            Button {
+                showAddMember = true
+            } label: {
+                Label(tr("cdx_add_by_username"), systemImage: "at")
+            }
+
+            goalMenu
+
+            if isOwner {
+                Divider()
+                Button(role: .destructive) {
+                    showDeleteCrewConfirm = true
+                } label: {
+                    Label(String(localized: "backend_crew_delete_action"), systemImage: "trash")
+                }
+            }
+        } label: {
+            if isDeletingCrew {
+                ProgressView()
+                    .frame(width: 44, height: 44)
+                    .liquidGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else {
-                VStack(spacing: 10) {
-                    ForEach(invitableFriends, id: \.id) { friend in
-                        inviteFriendRow(friend)
+                chromeButton(systemName: "ellipsis")
+            }
+        }
+        .disabled(isDeletingCrew)
+        .accessibilityLabel(tr("a11y_more"))
+    }
+
+    var goalMenu: some View {
+        Menu {
+            goalMenuItems
+        } label: {
+            Label(tr("crew_goal_title"), systemImage: "target")
+        }
+    }
+
+    @ViewBuilder
+    var goalMenuItems: some View {
+        ForEach(CrewWeeklyGoalStore.presetsMinutes, id: \.self) { minutes in
+            Button {
+                applyWeeklyGoal(minutes)
+            } label: {
+                if weeklyGoalMinutes == minutes {
+                    Label(tr("crew_goal_hours_n", minutes / 60), systemImage: "checkmark")
+                } else {
+                    Text(tr("crew_goal_hours_n", minutes / 60))
+                }
+            }
+        }
+        if weeklyGoalMinutes > 0 {
+            Divider()
+            Button(role: .destructive) {
+                applyWeeklyGoal(0)
+            } label: {
+                Text(tr("crew_goal_off"))
+            }
+        }
+    }
+}
+
+// MARK: - Stage (hero)
+
+private extension BackendCrewDetailView {
+    func stage(_ mates: [CrewMateStat]) -> some View {
+        let focusing = mates.filter(\.isFocusing).count
+
+        return VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .center, spacing: 14) {
+                crewPhoto
+
+                VStack(alignment: .leading, spacing: 6) {
+                    stageEyebrow(focusing: focusing)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(crew.name)
+                            .font(.system(size: 30, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                        Text("crew")
+                            .font(.system(size: 26, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(CrewInk.brand)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+
+                    mono(caps("\(membersText(mates.count)) · \(tr("cdx_level_short", crewLevel))"))
+                        .tracking(0.6)
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            matesStrip(mates)
+
+            primaryAction(focusingCount: focusing)
+
+            HStack(spacing: 10) {
+                secondaryButton(title: tr("cdx_chat"), icon: "bubble.left.fill", tint: CrewInk.cyan, action: openChat)
+                secondaryButton(title: tr("cdx_invite_btn"), icon: "person.badge.plus", tint: CrewInk.lime) {
+                    Task { await openInviteSheet() }
+                }
+            }
+        }
+        .padding(18)
+        .background(stageBackground)
+    }
+
+    func stageEyebrow(focusing: Int) -> some View {
+        HStack(spacing: 8) {
+            eyebrow(tr("bcd_active_crew_caps"))
+            if focusing > 0 {
+                HStack(spacing: 5) {
+                    Image(systemName: "circle.fill")
+                        .font(.system(size: 6))
+                        .symbolEffect(.pulse, options: .repeating)
+                    Text(caps(tr("cdx_live_n", focusing)))
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.4)
+                }
+                .foregroundStyle(UpdoTheme.lime)
+            }
+        }
+    }
+
+    var stageBackground: some View {
+        let accent = hexColor(crew.color_hex)
+
+        return RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(UpdoTheme.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [accent.opacity(0.16), CrewInk.purple.opacity(0.13), .clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [CrewInk.cyan.opacity(0.14), .clear],
+                            center: .bottomTrailing,
+                            startRadius: 10,
+                            endRadius: 220
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(accent.opacity(0.22), lineWidth: 1)
+            )
+            .shadow(color: UpdoTheme.cardShadow(0.26), radius: 20, y: 12)
+    }
+
+    var crewPhoto: some View {
+        PhotosPicker(selection: $crewPhotoItem, matching: .images) {
+            ZStack(alignment: .bottomTrailing) {
+                CrewAvatarView(
+                    crewID: crew.id,
+                    name: crew.name,
+                    colorHex: crew.color_hex,
+                    size: 72,
+                    corner: 22
+                )
+                .shadow(color: hexColor(crew.color_hex).opacity(0.4), radius: 16, y: 8)
+
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 9, weight: .black))
+                    .foregroundStyle(.black)
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(CrewInk.cyan))
+                    .overlay(Circle().stroke(UpdoTheme.surface, lineWidth: 2.5))
+                    .offset(x: 5, y: 5)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tr("cdx_change_photo"))
+    }
+
+    func membersText(_ count: Int) -> String {
+        tr(count == 1 ? "cdx_members_one" : "cdx_members_n", count)
+    }
+
+    func matesStrip(_ mates: [CrewMateStat]) -> some View {
+        // Scrolls edge to edge inside the card.
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(mates) { mate in
+                    mateBubble(mate)
+                }
+
+                Button {
+                    Task { await openInviteSheet() }
+                } label: {
+                    VStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 18, weight: .black))
+                            .foregroundStyle(UpdoTheme.lime)
+                            .frame(width: 54, height: 54)
+                            .background(
+                                Circle()
+                                    .strokeBorder(CrewInk.lime.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                            )
+                        mono(caps(tr("cdx_invite_btn")), size: 9, weight: .black)
+                            .foregroundStyle(UpdoTheme.lime)
+                    }
+                    .frame(width: 64)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 4)
+        }
+        .contentMargins(.horizontal, 14, for: .scrollContent)
+        .padding(.horizontal, -18)
+    }
+
+    func mateBubble(_ mate: CrewMateStat) -> some View {
+        VStack(spacing: 6) {
+            ZStack(alignment: .bottomTrailing) {
+                UserAvatarView(userID: mate.member.user_id, name: mate.name, tint: mate.color, size: 54)
+                    .padding(3)
+                    .overlay(
+                        Circle().stroke(mate.isFocusing ? CrewInk.lime : mate.color.opacity(0.35), lineWidth: mate.isFocusing ? 2.5 : 1)
+                    )
+
+                if mate.isFocusing {
+                    Image(systemName: "timer")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundStyle(.black)
+                        .frame(width: 20, height: 20)
+                        .background(Circle().fill(CrewInk.lime))
+                        .overlay(Circle().stroke(UpdoTheme.surface, lineWidth: 2))
+                } else if mate.isOnline {
+                    Circle()
+                        .fill(CrewInk.lime)
+                        .frame(width: 13, height: 13)
+                        .overlay(Circle().stroke(UpdoTheme.surface, lineWidth: 2.5))
+                        .offset(x: -2, y: -2)
+                }
+            }
+
+            Text(mate.isMe ? tr("cdx_you") : mate.firstName)
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .lineLimit(1)
+
+            mono(caps(mateCaption(mate)), size: 9, weight: .bold)
+                .foregroundStyle(mate.isFocusing ? UpdoTheme.lime : UpdoTheme.filmy(0.42))
+                .lineLimit(1)
+        }
+        .frame(width: 64)
+        .contentShape(Rectangle())
+        .contextMenu { mateMenu(mate) }
+        .accessibilityElement(children: .combine)
+    }
+
+    func mateCaption(_ mate: CrewMateStat) -> String {
+        if mate.isFocusing {
+            if let since = mate.focusingSince {
+                let minutes = max(1, Int(Date().timeIntervalSince(since) / 60))
+                return tr("cdx_focusing_min", minutes)
+            }
+            return tr("cdx_focusing")
+        }
+        if mate.todayMinutes > 0 { return focusTimeText(mate.todayMinutes) }
+        return mate.isOnline ? tr("cdx_online") : " "
+    }
+
+    @ViewBuilder
+    func mateMenu(_ mate: CrewMateStat) -> some View {
+        if !mate.isMe {
+            Button {
+                Task { await nudge(mate) }
+            } label: {
+                Label(tr("cdx_nudge_named", mate.firstName), systemImage: "hand.wave.fill")
+            }
+            .disabled(isNudgeCoolingDown(mate.id))
+        }
+
+        if isOwner && !mate.isOwner && !mate.isMe {
+            Button(role: .destructive) {
+                memberToRemove = mate.member
+                showRemoveMemberConfirm = true
+            } label: {
+                Label(String(localized: "backend_crew_remove_member_action"), systemImage: "person.crop.circle.badge.minus")
+            }
+        }
+    }
+
+    // MARK: Primary action
+
+    @ViewBuilder
+    func primaryAction(focusingCount: Int) -> some View {
+        if let live = liveSession {
+            let amIn = FocusSessionManager.shared.currentCrewID == crew.id
+                && FocusSessionManager.shared.isSessionActive
+
+            Button {
+                if amIn { returnToRoom() } else { joinLive(live) }
+            } label: {
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    primaryLabel(
+                        icon: amIn ? "arrow.up.forward.circle.fill" : "person.2.wave.2.fill",
+                        title: amIn ? tr("cdx_back_to_room") : tr("cdx_join_n", max(liveParticipants.count, 1)),
+                        trailing: remainingText(live),
+                        fill: CrewInk.lime
+                    )
+                }
+            }
+            .buttonStyle(PressableButtonStyle())
+        } else {
+            Button(action: startTogether) {
+                primaryLabel(icon: "bolt.fill", title: tr("cdx_focus_together"), trailing: nil, fill: CrewInk.blue)
+            }
+            .buttonStyle(PressableButtonStyle())
+        }
+    }
+
+    func primaryLabel(icon: String, title: String, trailing: String?, fill: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .black))
+            Text(title)
+                .font(.system(size: 16, weight: .black))
+            if let trailing {
+                mono(trailing, size: 13, weight: .black)
+                    .monospacedDigit()
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(.black.opacity(0.14)))
+            }
+        }
+        .foregroundStyle(.black)
+        .frame(maxWidth: .infinity)
+        .frame(height: 54)
+        .background(
+            Capsule()
+                .fill(fill)
+                .shadow(color: fill.opacity(0.42), radius: 14, y: 6)
+        )
+        .contentShape(Capsule())
+    }
+
+    func secondaryButton(title: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    Capsule()
+                        .fill(tint.opacity(0.12))
+                        .overlay(Capsule().stroke(tint.opacity(0.24), lineWidth: 1))
+                )
+        }
+        .buttonStyle(PressableButtonStyle())
+    }
+
+    func remainingText(_ live: CrewFocusSessionDTO) -> String {
+        let remaining: Int
+        if live.is_paused, let paused = live.paused_remaining_seconds {
+            remaining = paused
+        } else if let started = CrewDateParser.parse(live.started_at) {
+            remaining = max(0, Int(started.addingTimeInterval(TimeInterval(live.duration_minutes * 60)).timeIntervalSinceNow))
+        } else {
+            remaining = live.duration_minutes * 60
+        }
+        return String(format: "%02d:%02d", remaining / 60, remaining % 60)
+    }
+}
+
+// MARK: - This week
+
+private extension BackendCrewDetailView {
+    func weekCard(_ mates: [CrewMateStat]) -> some View {
+        let total = weekTotalMinutes
+        let goal = weeklyGoalMinutes
+        let reached = goal > 0 && total >= goal
+
+        return VStack(alignment: .leading, spacing: 18) {
+            sectionHeader(eyebrow: tr("cdx_this_week"), title: tr("cdx_week_title"), accent: tr("cdx_week_word")) {
+                Menu {
+                    goalMenuItems
+                } label: {
+                    HStack(spacing: 5) {
+                        mono(goal > 0 ? caps(focusTimeText(goal)) : caps(tr("crew_goal_set")), size: 12, weight: .black)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .black))
+                    }
+                    .foregroundStyle(CrewInk.gold)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule()
+                            .fill(CrewInk.gold.opacity(0.12))
+                            .overlay(Capsule().stroke(CrewInk.gold.opacity(0.3), lineWidth: 1))
+                    )
+                }
+            }
+
+            HStack(alignment: .center, spacing: 18) {
+                ZStack {
+                    CrewWeekRing(
+                        segments: ringSegments(mates: mates, total: total, goal: goal),
+                        track: UpdoTheme.filmy(0.07),
+                        lineWidth: 15,
+                        progress: ringProgress
+                    )
+                    .frame(width: 126, height: 126)
+
+                    VStack(spacing: 2) {
+                        if reached {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 16, weight: .black))
+                                .foregroundStyle(UpdoTheme.lime)
+                                .symbolEffect(.bounce, value: celebrate)
+                        }
+                        Text(focusTimeText(total))
+                            .font(.system(size: 19, weight: .black))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .contentTransition(.numericText())
+                        mono(goal > 0 ? "%\(min(100, total * 100 / max(goal, 1)))" : caps(tr("cdx_no_goal")), size: 10, weight: .black)
+                            .tracking(1)
+                            .foregroundStyle(UpdoTheme.filmy(0.45))
+                    }
+                    .frame(width: 76)
+                }
+
+                VStack(alignment: .leading, spacing: 14) {
+                    streakBlock
+                    weekDots
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Rectangle()
+                .fill(UpdoTheme.filmy(0.07))
+                .frame(height: 1)
+
+            levelRow
+        }
+        .padding(18)
+        .background(arenaCard(tint: CrewInk.gold))
+    }
+
+    var streakBlock: some View {
+        let days = streakDays
+
+        return HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "flame.fill")
+                .font(.system(size: 22, weight: .black))
+                .foregroundStyle(
+                    days > 0
+                    ? AnyShapeStyle(LinearGradient(colors: [CrewInk.gold, CrewInk.coral], startPoint: .top, endPoint: .bottom))
+                    : AnyShapeStyle(UpdoTheme.filmy(0.25))
+                )
+                .symbolEffect(.bounce, value: days)
+            Text("\(days)")
+                .font(.system(size: 32, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .contentTransition(.numericText())
+            Text(tr("cdx_day_streak"))
+                .font(.system(size: 18, weight: .regular, design: .serif))
+                .italic()
+                .foregroundStyle(UpdoTheme.filmy(0.6))
+        }
+    }
+
+    var weekDots: some View {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+
+        return HStack(spacing: 0) {
+            ForEach(weekDays, id: \.date) { day in
+                let index = (cal.component(.weekday, from: day.date) + 5) % 7
+                let isToday = day.date == today
+                let future = day.date > today
+
+                VStack(spacing: 5) {
+                    mono(String(localizedWeekdayShort(index).prefix(1)).uppercased(), size: 9, weight: .black)
+                        .foregroundStyle(isToday ? UpdoTheme.cyan : UpdoTheme.filmy(0.38))
+
+                    ZStack {
+                        Circle()
+                            .fill(day.active ? CrewInk.lime : UpdoTheme.filmy(future ? 0.04 : 0.08))
+                        if day.active {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 8, weight: .black))
+                                .foregroundStyle(.black)
+                        }
+                    }
+                    .frame(width: 18, height: 18)
+                    .overlay(
+                        Circle().stroke(isToday && !day.active ? CrewInk.cyan : .clear, lineWidth: 1.5)
+                    )
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    var levelRow: some View {
+        let minutes = allTimeMinutes
+        let next = CrewBadgeHelper.nextTarget(for: minutes)
+        let progress = CrewBadgeHelper.progress(for: minutes)
+
+        return HStack(spacing: 12) {
+            ZStack {
+                Image(systemName: "hexagon.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(CrewInk.brand)
+                Text("\(crewLevel)")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(tr("cdx_level_n", crewLevel))
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Spacer()
+                    mono(caps(next.map { tr("cdx_next_level_in", focusTimeText($0 - minutes)) } ?? tr("cdx_max_level")), size: 10)
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(UpdoTheme.filmy(0.08))
+                        Capsule()
+                            .fill(CrewInk.brand)
+                            .frame(width: max(6, geo.size.width * progress * ringProgress))
+                    }
+                }
+                .frame(height: 6)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    func ringSegments(mates: [CrewMateStat], total: Int, goal: Int) -> [CrewWeekRing.Segment] {
+        let scale = Double(max(goal > 0 ? goal : 300, total, 1))
+        var segments: [CrewWeekRing.Segment] = []
+        var cursor = 0.0
+        for mate in mates.sorted(by: { $0.weekMinutes > $1.weekMinutes }) where mate.weekMinutes > 0 {
+            let fraction = Double(mate.weekMinutes) / scale
+            segments.append(.init(id: mate.id, color: mate.color, start: cursor, end: cursor + fraction))
+            cursor += fraction
+        }
+        // Minutes we can't tie to a current member (e.g. someone who left).
+        let attributed = mates.reduce(0) { $0 + $1.weekMinutes }
+        if total > attributed {
+            let fraction = Double(total - attributed) / scale
+            segments.append(.init(id: UUID(), color: UpdoTheme.filmy(0.3), start: cursor, end: cursor + fraction))
+        }
+        return segments
+    }
+}
+
+// MARK: - Standings + nudge
+
+private extension BackendCrewDetailView {
+    func standingsCard(_ mates: [CrewMateStat]) -> some View {
+        let ranked = mates.sorted {
+            if $0.weekMinutes != $1.weekMinutes { return $0.weekMinutes > $1.weekMinutes }
+            return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+
+        return VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(eyebrow: tr("cdx_standings_caps"), title: tr("cdx_standings_title"), accent: tr("cdx_standings_word")) {
+                EmptyView()
+            }
+
+            if let callout = rivalryCallout(ranked) {
+                HStack(spacing: 9) {
+                    Image(systemName: callout.icon)
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(UpdoTheme.cyan)
+                    Text(callout.text)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                }
+                .padding(.horizontal, 13)
+                .padding(.vertical, 11)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(CrewInk.cyan.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(CrewInk.cyan.opacity(0.2), lineWidth: 1)
+                        )
+                )
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(ranked.enumerated()), id: \.element.id) { index, mate in
+                    standingRow(rank: index + 1, mate: mate, leaderMinutes: ranked.first?.weekMinutes ?? 0)
+                    if index < ranked.count - 1 {
+                        Rectangle()
+                            .fill(UpdoTheme.filmy(0.06))
+                            .frame(height: 1)
+                            .padding(.leading, 82)
                     }
                 }
             }
         }
-        .padding(.top, 4)
+        .padding(18)
+        .background(arenaCard(tint: CrewInk.cyan))
     }
 
-    private func inviteFriendRow(_ friend: Friend) -> some View {
+    func rivalryCallout(_ ranked: [CrewMateStat]) -> (icon: String, text: String)? {
+        guard ranked.count > 1, let myIndex = ranked.firstIndex(where: \.isMe) else { return nil }
+        let me = ranked[myIndex]
+
+        if ranked.allSatisfy({ $0.weekMinutes == 0 }) {
+            return ("sparkles", tr("cdx_rival_first"))
+        }
+        if myIndex == 0 {
+            let gap = me.weekMinutes - ranked[1].weekMinutes
+            return gap > 0
+                ? ("crown.fill", tr("cdx_rival_lead", focusTimeText(gap)))
+                : ("equal.circle.fill", tr("cdx_rival_tied", ranked[1].firstName))
+        }
+        let above = ranked[myIndex - 1]
+        let gap = above.weekMinutes - me.weekMinutes + 1
+        return ("arrow.up.right.circle.fill", tr("cdx_rival_pass", above.firstName, focusTimeText(gap)))
+    }
+
+    func standingRow(rank: Int, mate: CrewMateStat, leaderMinutes: Int) -> some View {
+        HStack(spacing: 12) {
+            Group {
+                if rank == 1 && mate.weekMinutes > 0 {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(CrewInk.gold)
+                } else {
+                    mono("#\(rank)", size: 12, weight: .black)
+                        .foregroundStyle(UpdoTheme.filmy(0.4))
+                }
+            }
+            .frame(width: 26)
+
+            UserAvatarView(userID: mate.member.user_id, name: mate.name, tint: mate.color, size: 40)
+                .overlay(Circle().stroke(mate.color, lineWidth: 2).padding(-3))
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(mate.name)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .lineLimit(1)
+                    if mate.isMe {
+                        mono(caps(tr("cdx_you")), size: 9, weight: .black)
+                            .tracking(1)
+                            .foregroundStyle(UpdoTheme.cyan)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(CrewInk.cyan.opacity(0.14)))
+                    }
+                }
+
+                GeometryReader { geo in
+                    Capsule()
+                        .fill(mate.color)
+                        .frame(
+                            width: leaderMinutes > 0
+                                ? max(4, geo.size.width * CGFloat(mate.weekMinutes) / CGFloat(leaderMinutes) * ringProgress)
+                                : 4,
+                            height: 4
+                        )
+                        .opacity(mate.weekMinutes > 0 ? 1 : 0.3)
+                }
+                .frame(height: 4)
+            }
+
+            mono(focusTimeText(mate.weekMinutes), size: 13, weight: .black)
+                .foregroundStyle(mate.weekMinutes > 0 ? UpdoTheme.textPrimary : UpdoTheme.filmy(0.35))
+                .monospacedDigit()
+                .fixedSize()
+
+            if mate.isMe {
+                Color.clear.frame(width: 36, height: 36)
+            } else {
+                nudgeButton(mate)
+            }
+        }
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .contextMenu { mateMenu(mate) }
+    }
+
+    @ViewBuilder
+    func nudgeButton(_ mate: CrewMateStat) -> some View {
+        let cooling = isNudgeCoolingDown(mate.id)
+
+        if mate.isFocusing {
+            Image(systemName: "timer")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(UpdoTheme.lime)
+                .frame(width: 36, height: 36)
+                .accessibilityLabel(tr("cdx_focusing"))
+        } else {
+            Button {
+                Task { await nudge(mate) }
+            } label: {
+                ZStack {
+                    if nudgingID == mate.id {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: cooling ? "checkmark" : "hand.wave.fill")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundStyle(cooling ? UpdoTheme.filmy(0.4) : CrewInk.coral)
+                            .symbolEffect(.bounce, value: cooling)
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(cooling ? UpdoTheme.filmy(0.06) : CrewInk.coral.opacity(0.14)))
+            }
+            .buttonStyle(.plain)
+            .disabled(cooling || nudgingID != nil)
+            .accessibilityLabel(cooling ? tr("cdx_nudged") : tr("cdx_nudge_named", mate.firstName))
+        }
+    }
+}
+
+// MARK: - Complete your crew
+
+private extension BackendCrewDetailView {
+    func completeCrewCard(_ mates: [CrewMateStat]) -> some View {
+        let friends = Array(invitableFriends.prefix(4))
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    eyebrow(tr("cdx_complete_caps"), tint: UpdoTheme.lime)
+                    accentTitle(tr("cdx_complete_t1"), tr("cdx_complete_word"))
+                    Text(tr("cdx_complete_sub"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                slotsView(filled: mates)
+            }
+
+            if !friends.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(friends, id: \.id) { friend in
+                        inviteFriendRow(friend)
+                    }
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    Task {
+                        if await ensureInviteCode() != nil { showShareSheet = true }
+                    }
+                } label: {
+                    Label(tr("cdx_share_link"), systemImage: "square.and.arrow.up")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Capsule().fill(CrewInk.blue))
+                }
+                .buttonStyle(PressableButtonStyle())
+
+                Button {
+                    showAddMember = true
+                } label: {
+                    Label(tr("cdx_username"), systemImage: "at")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(
+                            Capsule()
+                                .fill(UpdoTheme.filmy(0.07))
+                                .overlay(Capsule().stroke(UpdoTheme.filmy(0.1), lineWidth: 1))
+                        )
+                }
+                .buttonStyle(PressableButtonStyle())
+            }
+        }
+        .padding(18)
+        .background(arenaCard(tint: CrewInk.lime))
+    }
+
+    func slotsView(filled: [CrewMateStat]) -> some View {
+        HStack(spacing: -10) {
+            ForEach(0..<3, id: \.self) { slot in
+                if slot < filled.count {
+                    UserAvatarView(userID: filled[slot].member.user_id, name: filled[slot].name, tint: filled[slot].color, size: 34)
+                        .overlay(Circle().stroke(UpdoTheme.surface, lineWidth: 2))
+                } else {
+                    Circle()
+                        .strokeBorder(CrewInk.lime.opacity(0.55), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                        .background(Circle().fill(UpdoTheme.surface))
+                        .frame(width: 34, height: 34)
+                }
+            }
+        }
+        .accessibilityLabel(tr("cdx_slots", filled.count))
+    }
+
+    func inviteFriendRow(_ friend: Friend) -> some View {
         let sent = invitedFriendIDs.contains(friend.id)
         let sending = sendingInviteFriendID == friend.id
 
         return HStack(spacing: 12) {
-            UserAvatarView(
-                userID: friend.backendUserID,
-                name: friend.name,
-                tint: BackendCrewArenaPalette.green,
-                size: 40
-            )
+            UserAvatarView(userID: friend.backendUserID, name: friend.name, tint: CrewInk.lime, size: 40)
 
             Text(friend.name)
                 .font(.system(size: 15, weight: .black))
@@ -477,43 +1463,415 @@ extension BackendCrewDetailView {
             } label: {
                 Group {
                     if sending {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                            .tint(.black)
+                        ProgressView().controlSize(.small).tint(.black)
+                    } else if sent {
+                        Label(caps(tr("cdx_invite_sent")), systemImage: "checkmark")
                     } else {
-                        Text(sent ? tr("bcd_invite_sent") : tr("bcd_invite_send"))
-                            .font(.system(size: 12, weight: .black))
+                        Text(caps(tr("cdx_invite_btn")))
                     }
                 }
-                .foregroundStyle(sent ? BackendCrewArenaPalette.green : .black)
-                .padding(.horizontal, 14)
-                .frame(height: 34)
-                .background(
-                    Capsule().fill(
-                        sent
-                        ? BackendCrewArenaPalette.green.opacity(0.14)
-                        : BackendCrewArenaPalette.green
-                    )
-                )
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .foregroundStyle(sent ? UpdoTheme.lime : .black)
+                .padding(.horizontal, 13)
+                .frame(height: 32)
+                .background(Capsule().fill(sent ? CrewInk.lime.opacity(0.14) : CrewInk.lime))
             }
             .buttonStyle(.plain)
             .disabled(sent || sending)
         }
-        .padding(12)
+        .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(UpdoTheme.filmy(0.045))
+                .fill(UpdoTheme.filmy(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
                 )
         )
     }
+}
 
-    private func sendChatInvite(to friend: Friend) {
+// MARK: - Tasks
+
+private extension BackendCrewDetailView {
+    func tasksCard(_ mates: [CrewMateStat]) -> some View {
+        let tasks = sortedCrewTasks
+        let open = tasks.filter { !$0.is_done }
+        let done = tasks.filter(\.is_done)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(eyebrow: tr("bcd_shared_tasks_caps"), title: tr("bcd_shared"), accent: tr("tasks_lc")) {
+                if !tasks.isEmpty {
+                    HStack(spacing: 8) {
+                        mono("\(open.count)", size: 12, weight: .black)
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                            .padding(.horizontal, 10)
+                            .frame(height: 32)
+                            .background(Capsule().fill(UpdoTheme.filmy(0.075)))
+
+                        Button {
+                            showCreateTask = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .black))
+                                .foregroundStyle(.black)
+                                .frame(width: 32, height: 32)
+                                .background(Circle().fill(CrewInk.blue))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(tr("common_add"))
+                    }
+                }
+            }
+
+            if tasks.isEmpty {
+                emptyTasks
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(open) { task in
+                        taskRow(task, mates: mates)
+                    }
+                }
+
+                if !done.isEmpty {
+                    Button {
+                        withAnimation(.snappy) { showDoneTasks.toggle() }
+                    } label: {
+                        HStack {
+                            mono(caps(tr("cdx_completed_n", done.count)), size: 10, weight: .black)
+                                .tracking(1.2)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .black))
+                                .rotationEffect(.degrees(showDoneTasks ? 90 : 0))
+                        }
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if showDoneTasks {
+                        VStack(spacing: 8) {
+                            ForEach(done) { task in
+                                taskRow(task, mates: mates)
+                            }
+                        }
+                        .transition(.opacity)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(arenaCard(tint: CrewInk.blue))
+    }
+
+    var emptyTasks: some View {
+        Button {
+            showCreateTask = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "checklist")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(CrewInk.blue)
+                    .frame(width: 42, height: 42)
+                    .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(CrewInk.blue.opacity(0.13)))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(tr("cdx_tasks_empty_title"))
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text(tr("cdx_tasks_empty_sub"))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.filmy(0.48))
+                }
+                Spacer()
+                Image(systemName: "plus")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(.black)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(CrewInk.blue))
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(CrewInk.blue.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    func taskRow(_ task: CrewTaskDTO, mates: [CrewMateStat]) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Button {
+                Task { await crewStore.toggleTask(task) }
+            } label: {
+                Image(systemName: task.is_done ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 23, weight: .bold))
+                    .foregroundStyle(task.is_done ? UpdoTheme.lime : UpdoTheme.filmy(0.28))
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.plain)
+            .sensoryFeedback(.impact(weight: .light), trigger: task.is_done)
+            .accessibilityLabel(task.is_done ? String(localized: "backend_crew_reopen_task") : String(localized: "backend_crew_mark_done"))
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(task.title)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(task.is_done ? UpdoTheme.filmy(0.45) : UpdoTheme.textPrimary)
+                    .strikethrough(task.is_done, color: UpdoTheme.filmy(0.45))
+                    .lineLimit(2)
+
+                taskMeta(task, mates: mates)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(UpdoTheme.filmy(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(UpdoTheme.filmy(0.07), lineWidth: 1)
+                )
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .onTapGesture { selectedTask = task }
+        .contextMenu { taskMenu(task) }
+    }
+
+    @ViewBuilder
+    func taskMeta(_ task: CrewTaskDTO, mates: [CrewMateStat]) -> some View {
+        let assignee = task.assigned_to.flatMap { id in mates.first { $0.id == id } }
+        let urgent = task.priority == "high" || task.priority == "urgent"
+        let scheduled: String? = {
+            guard task.show_on_week, let weekday = task.scheduled_weekday, let start = task.scheduled_start_minute else { return nil }
+            return "\(localizedWeekdayShort(max(0, min(6, weekday)))) \(String(format: "%02d:%02d", start / 60, start % 60))"
+        }()
+
+        if assignee != nil || urgent || scheduled != nil {
+            HStack(spacing: 6) {
+                if let assignee {
+                    metaPill(assignee.isMe ? tr("cdx_you") : assignee.firstName, icon: "person.fill", tint: assignee.color)
+                }
+                if urgent {
+                    metaPill(priorityLabel(task.priority), icon: "flame.fill", tint: CrewInk.coral)
+                }
+                if let scheduled {
+                    metaPill(scheduled, icon: "calendar", tint: CrewInk.cyan)
+                }
+            }
+        }
+    }
+
+    func metaPill(_ text: String, icon: String, tint: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 8, weight: .black))
+            Text(caps(text))
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .lineLimit(1)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(tint.opacity(0.13)))
+    }
+
+    @ViewBuilder
+    func taskMenu(_ task: CrewTaskDTO) -> some View {
+        Button {
+            Task { await crewStore.toggleTask(task) }
+        } label: {
+            Label(
+                task.is_done ? String(localized: "backend_crew_reopen_task") : String(localized: "backend_crew_mark_done"),
+                systemImage: task.is_done ? "arrow.uturn.backward.circle" : "checkmark.circle"
+            )
+        }
+
+        Button(role: .destructive) {
+            Task {
+                do {
+                    try await crewStore.deleteTask(taskID: task.id, crewID: task.crew_id, title: task.title)
+                } catch {
+                    Log.debug("DELETE TASK ERROR:", error.localizedDescription)
+                }
+            }
+        } label: {
+            Label(String(localized: "backend_crew_delete_task"), systemImage: "trash")
+        }
+    }
+
+    func priorityLabel(_ raw: String) -> String {
+        switch raw {
+        case "urgent": return appLanguageIsEnglish() ? "Urgent" : "Acil"
+        case "high": return appLanguageIsEnglish() ? "High" : tr("prio_high")
+        default: return raw.capitalized
+        }
+    }
+}
+
+// MARK: - Activity
+
+private extension BackendCrewDetailView {
+    var activityCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(eyebrow: tr("bcd_live_activity_caps"), title: tr("bcd_activity"), accent: tr("tv_flow_word")) {
+                EmptyView()
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(recentActivities.enumerated()), id: \.element.id) { index, item in
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(spacing: 0) {
+                            UserAvatarView(userID: nil, name: item.member_name, tint: CrewInk.violet, size: 32)
+                            if index < recentActivities.count - 1 {
+                                Rectangle()
+                                    .fill(UpdoTheme.filmy(0.08))
+                                    .frame(width: 2)
+                                    .frame(maxHeight: .infinity)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("\(Text(item.member_name).font(.system(size: 14, weight: .black))) \(item.action_text)")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(UpdoTheme.filmy(0.72))
+                                .lineLimit(2)
+                            mono(caps(relativeTime(item.created_at)), size: 9, weight: .bold)
+                                .foregroundStyle(UpdoTheme.filmy(0.35))
+                        }
+                        .padding(.bottom, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(arenaCard(tint: CrewInk.purple))
+    }
+
+    func relativeTime(_ raw: String?) -> String {
+        guard let date = raw.flatMap({ CrewDateParser.parse($0) }) else { return String(localized: "common_now") }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        formatter.locale = Locale(identifier: appLanguageIsEnglish() ? "en" : "tr")
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// MARK: - Shared pieces
+
+private extension BackendCrewDetailView {
+    /// Updo's arena glows behind the page (soft, so light mode stays clean).
+    var ambientGlow: some View {
+        ZStack {
+            Circle()
+                .fill(CrewInk.cyan.opacity(0.10))
+                .frame(width: 280, height: 280)
+                .blur(radius: 100)
+                .offset(x: 160, y: -220)
+            Circle()
+                .fill(CrewInk.purple.opacity(0.14))
+                .frame(width: 320, height: 320)
+                .blur(radius: 110)
+                .offset(x: -170, y: 420)
+        }
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
+    }
+
+    @ViewBuilder
+    var toastView: some View {
+        if let toast {
+            Text(toast)
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
+                .liquidGlass(in: Capsule())
+                .padding(.top, 58)
+                .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    func showToast(_ text: String) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { toast = text }
+        Task {
+            try? await Task.sleep(for: .seconds(2.4))
+            withAnimation(.easeOut(duration: 0.25)) {
+                if toast == text { toast = nil }
+            }
+        }
+    }
+}
+
+// MARK: - Actions
+
+private extension BackendCrewDetailView {
+    func openChat() {
+        NotificationCenter.default.post(name: .openCrewChatFromNotification, object: crew.id.uuidString)
+    }
+
+    func startTogether() {
+        HapticManager.shared.success()
+        CrewDeepLink.pendingFocusCrewID = crew.id
+        NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
+    }
+
+    func returnToRoom() {
+        NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            FocusSessionManager.shared.isExpanded = true
+        }
+    }
+
+    /// Same payload the crew chat's focus pill sends: the app-level join sheet
+    /// (who's in + Katıl) takes it from there.
+    func joinLive(_ live: CrewFocusSessionDTO) {
+        let names = liveParticipants.map(\.member_name)
+        var userInfo: [AnyHashable: Any] = [
+            "crew_id": live.crew_id.uuidString,
+            "session_id": live.id.uuidString,
+            "host_name": live.host_name,
+            "crew_name": crew.name,
+            "duration_minutes": live.duration_minutes,
+            "started_at": live.started_at,
+            "total_participants": max(names.count, 1)
+        ]
+        if let taskTitle = live.task_title { userInfo["task_title"] = taskTitle }
+        if let hostID = live.host_user_id { userInfo["host_user_id"] = hostID.uuidString }
+        if !names.isEmpty { userInfo["participant_names"] = names }
+
+        NotificationCenter.default.post(name: .presentCrewFocusInviteSheet, object: userInfo)
+    }
+
+    func applyWeeklyGoal(_ minutes: Int) {
+        weeklyGoalMinutes = minutes
+        Task { await crewStore.setWeeklyGoal(crewID: crew.id, minutes: minutes) }
+    }
+
+    func ensureInviteCode() async -> String? {
+        if !inviteCode.isEmpty { return inviteCode }
+        guard let user = session.currentUser else { return nil }
+        do {
+            let code = try await crewStore.createInvite(for: crew.id, userID: user.id)
+            inviteCode = code
+            return code
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    func openInviteSheet() async {
+        if await ensureInviteCode() != nil { showInviteSheet = true }
+    }
+
+    func sendChatInvite(to friend: Friend) {
         guard let friendshipID = friend.backendFriendshipID,
-              let friendUserID = friend.backendUserID,
-              !inviteCode.isEmpty
+              let friendUserID = friend.backendUserID
         else { return }
 
         sendingInviteFriendID = friend.id
@@ -521,16 +1879,14 @@ extension BackendCrewDetailView {
         Task {
             defer { Task { @MainActor in sendingInviteFriendID = nil } }
 
-            guard let conversation = await ChatBackendClient.shared.syncFriendship(
-                friendshipID: friendshipID,
-                friendUserID: friendUserID
-            ) else { return }
+            guard let code = await ensureInviteCode(),
+                  let conversation = await ChatBackendClient.shared.syncFriendship(
+                    friendshipID: friendshipID,
+                    friendUserID: friendUserID
+                  ) else { return }
 
-            let text = CrewInviteMessage.encode(code: inviteCode, crewName: crew.name)
-            let sent = await ChatBackendClient.shared.sendMessage(
-                conversationID: conversation.id,
-                text: text
-            )
+            let text = CrewInviteMessage.encode(code: code, crewName: crew.name)
+            let sent = await ChatBackendClient.shared.sendMessage(conversationID: conversation.id, text: text)
 
             if sent != nil {
                 await MainActor.run {
@@ -541,1748 +1897,319 @@ extension BackendCrewDetailView {
         }
     }
 
-    var ambientBackground: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+    // MARK: Nudge
 
-            LinearGradient(
-                colors: [
-                    BackendCrewArenaPalette.backgroundTop,
-                    BackendCrewArenaPalette.backgroundMid,
-                    BackendCrewArenaPalette.backgroundBottom
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+    var nudgeStoreKey: String { "crew.nudges.\(crew.id.uuidString)" }
 
-            Circle()
-                .fill(BackendCrewArenaPalette.blue.opacity(0.10))
-                .frame(width: 260, height: 260)
-                .blur(radius: 96)
-                .offset(x: 165, y: -245)
+    func loadNudges() -> [UUID: Date] {
+        let raw = UserDefaults.standard.dictionary(forKey: nudgeStoreKey) as? [String: Double] ?? [:]
+        var result: [UUID: Date] = [:]
+        for (key, value) in raw {
+            let date = Date(timeIntervalSince1970: value)
+            if let id = UUID(uuidString: key), date > Date() { result[id] = date }
+        }
+        return result
+    }
 
-            Circle()
-                .fill(BackendCrewArenaPalette.purple.opacity(0.18))
-                .frame(width: 320, height: 320)
-                .blur(radius: 110)
-                .offset(x: -175, y: 500)
+    func isNudgeCoolingDown(_ userID: UUID) -> Bool {
+        (nudgedUntil[userID] ?? .distantPast) > Date()
+    }
 
-            Circle()
-                .fill(BackendCrewArenaPalette.coral.opacity(0.08))
-                .frame(width: 270, height: 270)
-                .blur(radius: 100)
-                .offset(x: 170, y: 280)
+    func nudge(_ mate: CrewMateStat) async {
+        guard nudgingID == nil, !isNudgeCoolingDown(mate.id) else { return }
+        nudgingID = mate.id
+        defer { nudgingID = nil }
 
-            LinearGradient(
-                colors: [
-                    UpdoTheme.overlayScrim(0.16),
-                    Color.clear,
-                    UpdoTheme.overlayScrim(0.42)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+        let myName = myUserID.map { memberName(from: memberProfilesByID[$0]) } ?? ""
+        let result = await CrewBackendClient.shared.nudgeMember(crewID: crew.id, toUserID: mate.id, fromName: myName)
+
+        let fallback = Date().addingTimeInterval(3 * 3600)
+        switch result {
+        case .sent(let next):
+            nudgedUntil[mate.id] = next ?? fallback
+            HapticManager.shared.success()
+            showToast(tr("cdx_nudge_sent", mate.firstName))
+        case .cooldown(let next):
+            nudgedUntil[mate.id] = next ?? fallback
+            showToast(tr("cdx_nudge_cooldown", mate.firstName))
+        case .failed:
+            showToast(tr("cdx_nudge_failed"))
+            return
+        }
+
+        let raw = nudgedUntil.reduce(into: [String: Double]()) { $0[$1.key.uuidString] = $1.value.timeIntervalSince1970 }
+        UserDefaults.standard.set(raw, forKey: nudgeStoreKey)
+    }
+
+    // MARK: Celebration
+
+    /// Once per crew per week, the first time the page sees the goal met.
+    func celebrateGoalIfNeeded() {
+        guard weeklyGoalMinutes > 0, weekTotalMinutes >= weeklyGoalMinutes else { return }
+        let key = "crew.goalCelebrated.\(crew.id.uuidString).\(Int(weekStart.timeIntervalSince1970))"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            celebrate = true
+            showToast(tr("cdx_goal_reached"))
         }
     }
+}
 
-    var crewMembers: [CrewMemberDTO] {
-        crewStore.crewMembers.filter { $0.crew_id == crew.id }
-    }
+// MARK: - Sheets & dialogs
 
-    private static let backendISOFormatter = ISO8601DateFormatter()
-
-    var sortedCrewTasks: [CrewTaskDTO] {
-        crewStore.crewTasks
-            .filter { $0.crew_id == crew.id }
-            .sorted {
-                if $0.is_done != $1.is_done {
-                    return !$0.is_done && $1.is_done
+extension BackendCrewDetailView {
+    fileprivate func attachSheets<Content: View>(to content: Content) -> some View {
+        content
+            .sheet(isPresented: $showAddMember) {
+                Group {
+                    AddCrewMemberView(crewID: crew.id)
+                        .environmentObject(crewStore)
                 }
-                return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+                .updoPadSheet()
             }
-    }
-    
-    var crewContextLine: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(BackendCrewArenaPalette.green)
-                .frame(width: 8, height: 8)
-
-            Text(tr("bcd_subtitle"))
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .tracking(1.1)
-                .foregroundStyle(UpdoTheme.filmy(0.42))
-
-            Spacer()
-        }
-        .padding(.horizontal, 4)
-    }
-    
-    /// Weekly focus goal for this crew: pick a target, the bar tracks the
-    /// crew's REAL focus minutes this week. Goal is stored on this device.
-    var weeklyGoalCard: some View {
-        let thisWeek = CrewHomeFormatters.weeklyFocusMinutes(
-            records: crewStore.crewFocusRecords,
-            crewID: crew.id
-        )
-        let progress = weeklyGoalMinutes > 0
-            ? min(max(Double(thisWeek) / Double(weeklyGoalMinutes), 0), 1)
-            : 0
-        let reached = weeklyGoalMinutes > 0 && progress >= 1
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                miniIcon(systemName: "target", tint: BackendCrewArenaPalette.gold)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(tr("crew_goal_title"))
-                        .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(UpdoTheme.textPrimary)
-
-                    Text(tr("crew_goal_desc"))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(UpdoTheme.filmy(0.42))
-                }
-
-                Spacer()
-
-                Menu {
-                    ForEach(CrewWeeklyGoalStore.presetsMinutes, id: \.self) { minutes in
-                        Button {
-                            applyWeeklyGoal(minutes)
-                        } label: {
-                            if weeklyGoalMinutes == minutes {
-                                Label(tr("crew_goal_hours_n", minutes / 60), systemImage: "checkmark")
-                            } else {
-                                Text(tr("crew_goal_hours_n", minutes / 60))
-                            }
-                        }
-                    }
-
-                    Divider()
-
-                    Button(role: .destructive) {
-                        applyWeeklyGoal(0)
-                    } label: {
-                        Text(tr("crew_goal_off"))
-                    }
-                } label: {
-                    HStack(spacing: 5) {
-                        Text(
-                            weeklyGoalMinutes > 0
-                            ? tr("crew_goal_hours_n", weeklyGoalMinutes / 60)
-                            : tr("crew_goal_set")
-                        )
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 9, weight: .black))
-                    }
-                    .foregroundStyle(BackendCrewArenaPalette.gold)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule()
-                            .fill(BackendCrewArenaPalette.gold.opacity(0.12))
-                            .overlay(
-                                Capsule()
-                                    .stroke(BackendCrewArenaPalette.gold.opacity(0.30), lineWidth: 1)
-                            )
+            .sheet(isPresented: $showCreateTask) {
+                Group {
+                    BackendCreateCrewTaskSheet(
+                        crew: crew,
+                        members: crewMembers,
+                        memberProfiles: crewStore.memberProfiles
                     )
+                    .environmentObject(crewStore)
+                    .environmentObject(session)
                 }
+                .updoPadSheet()
             }
-
-            if weeklyGoalMinutes > 0 {
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack {
-                        Text(
-                            reached
-                            ? tr("crew_goal_reached")
-                            : "\(focusTimeText(thisWeek)) / \(focusTimeText(weeklyGoalMinutes))"
-                        )
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .foregroundStyle(
-                            reached
-                            ? BackendCrewArenaPalette.green
-                            : UpdoTheme.filmy(0.52)
-                        )
-
-                        Spacer()
-
-                        Text("\(Int(progress * 100))%")
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .foregroundStyle(UpdoTheme.filmy(0.42))
-                    }
-
-                    ProgressView(value: progress)
-                        .tint(reached ? BackendCrewArenaPalette.green : BackendCrewArenaPalette.gold)
-                        .scaleEffect(y: 1.15)
+            .sheet(item: $selectedTask) { task in
+                Group {
+                    BackendCrewTaskDetailView(task: task, crew: crew)
+                        .environmentObject(crewStore)
+                        .environmentObject(session)
                 }
-
-                weeklyGoalContributions
+                .updoPadSheet()
             }
-        }
-        .padding(16)
-        .background(detailSurface(cornerRadius: 24, tint: BackendCrewArenaPalette.gold))
-        .onReceive(crewStore.$weeklyGoalMinutesByCrew) { byCrew in
-            if let shared = byCrew[crew.id], shared != weeklyGoalMinutes {
-                weeklyGoalMinutes = shared
-            }
-        }
-    }
-
-    /// Who put in what this calendar week — from the crew's real focus records.
-    private var weeklyContributions: [(name: String, minutes: Int)] {
-        let cal = Calendar.current
-        guard let weekStart = cal.dateInterval(of: .weekOfYear, for: Date())?.start else { return [] }
-
-        var byName: [String: Int] = [:]
-        for record in crewStore.crewFocusRecords where record.crew_id == crew.id {
-            guard let created = record.created_at.flatMap({ CrewDateParser.parse($0) }),
-                  created >= weekStart else { continue }
-            byName[record.member_name, default: 0] += record.minutes
-        }
-
-        return byName
-            .map { (name: $0.key, minutes: $0.value) }
-            .sorted { $0.minutes > $1.minutes }
-    }
-
-    @ViewBuilder
-    private var weeklyGoalContributions: some View {
-        let contributions = Array(weeklyContributions.prefix(4))
-        let maxMinutes = max(contributions.first?.minutes ?? 0, 1)
-
-        if !contributions.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(tr("crew_goal_contrib_caps"))
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .tracking(1.4)
-                    .foregroundStyle(UpdoTheme.filmy(0.38))
-
-                ForEach(contributions, id: \.name) { entry in
-                    HStack(spacing: 10) {
-                        Text(entry.name)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(UpdoTheme.filmy(0.82))
-                            .lineLimit(1)
-                            .frame(width: 92, alignment: .leading)
-
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(UpdoTheme.filmy(0.06))
-                                    .frame(height: 4)
-
-                                Capsule()
-                                    .fill(BackendCrewArenaPalette.gold.opacity(0.85))
-                                    .frame(
-                                        width: max(6, geo.size.width * CGFloat(entry.minutes) / CGFloat(maxMinutes)),
-                                        height: 4
-                                    )
-                            }
-                            .frame(maxHeight: .infinity)
-                        }
-
-                        Text(focusTimeText(entry.minutes))
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .foregroundStyle(UpdoTheme.filmy(0.55))
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
-                    .frame(height: 16)
+            .sheet(isPresented: $showShareSheet) {
+                Group {
+                    ShareSheet(items: [
+                        String(format: String(localized: "backend_crew_share_text"), inviteCode)
+                    ])
                 }
+                .updoPadSheet()
             }
-            .padding(.top, 4)
-        }
-    }
-
-    /// Optimistic local update + shared persistence through the backend.
-    private func applyWeeklyGoal(_ minutes: Int) {
-        weeklyGoalMinutes = minutes
-        Task {
-            await crewStore.setWeeklyGoal(crewID: crew.id, minutes: minutes)
-        }
-    }
-
-    var performanceCard: some View {
-        let minutes = totalFocusMinutes
-        let badgeTitle = CrewBadgeHelper.title(for: minutes)
-        let badgeColor = CrewBadgeHelper.color(for: minutes)
-        let nextTarget = CrewBadgeHelper.nextTarget(for: minutes)
-        let topMember = topThreeLeaderboard.first
-
-        return VStack(alignment: .leading, spacing: 16) {
-            sectionTitle(
-                eyebrow: tr("bcd_rhythm_caps"),
-                title: tr("bcd_performance"),
-                italic: tr("bcd_summary_word")
-            )
-
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 12) {
-                    miniIcon(systemName: "medal.fill", tint: badgeColor)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(badgeTitle)
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                            .lineLimit(1)
-
-                        Text(focusTimeText(minutes))
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundStyle(UpdoTheme.filmy(0.52))
-                    }
-
-                    if let nextTarget {
-                        VStack(alignment: .leading, spacing: 7) {
-                            HStack {
-                                Text(tr("bcd_next_badge_label"))
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .tracking(1.1)
-                                    .foregroundStyle(UpdoTheme.filmy(0.38))
-
-                                Spacer()
-
-                                Text(focusTimeText(max(0, nextTarget - minutes)))
-                                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                                    .foregroundStyle(UpdoTheme.filmy(0.52))
-                            }
-
-                            ProgressView(value: CrewBadgeHelper.progress(for: minutes))
-                                .tint(badgeColor)
-                                .scaleEffect(y: 1.15)
-                        }
-                    }
-
-                    HStack(spacing: 7) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 12, weight: .black))
-                            .foregroundStyle(BackendCrewArenaPalette.coral)
-
-                        Text(tr("bcd_streak", currentStreakText))
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .foregroundStyle(BackendCrewArenaPalette.coral)
-                    }
+            .sheet(isPresented: $showInviteSheet, onDismiss: { inviteCopied = false }) {
+                Group {
+                    inviteSheet
                 }
-                .frame(maxWidth: .infinity, minHeight: 164, alignment: .leading)
-                .padding(16)
-                .background(detailSurface(cornerRadius: 24, tint: badgeColor))
-
-                VStack(alignment: .leading, spacing: 12) {
-                    miniIcon(systemName: "crown.fill", tint: BackendCrewArenaPalette.gold)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(tr("bcd_todays_leader"))
-                            .font(.system(size: 17, weight: .black))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-
-                        if let topMember {
-                            Text(topMember.name)
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(UpdoTheme.filmy(0.78))
-                                .lineLimit(1)
-
-                            Text(tr("bcd_min_focus", topMember.minutes))
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundStyle(BackendCrewArenaPalette.gold)
-                        } else {
-                            Text(tr("bcd_no_focus"))
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(UpdoTheme.filmy(0.52))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-
-                    if !topThreeLeaderboard.isEmpty {
-                        HStack(spacing: 7) {
-                            ForEach(Array(topThreeLeaderboard.prefix(3).enumerated()), id: \.offset) { index, entry in
-                                VStack(spacing: 4) {
-                                    Text("#\(index + 1)")
-                                        .font(.system(size: 9, weight: .black, design: .monospaced))
-                                        .foregroundStyle(index == 0 ? BackendCrewArenaPalette.gold : UpdoTheme.filmy(0.42))
-
-                                    Text("\(entry.minutes)")
-                                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                                        .foregroundStyle(UpdoTheme.textPrimary)
-                                        .monospacedDigit()
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                        .fill(UpdoTheme.filmy(0.055))
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, minHeight: 164, alignment: .leading)
-                .padding(16)
-                .background(detailSurface(cornerRadius: 24, tint: BackendCrewArenaPalette.gold))
-            }
-        }
-        .padding(18)
-        .background(cardBackground)
-    }
-    
-    var filteredCrewTasks: [CrewTaskDTO] {
-            switch taskFilter {
-            case .open:
-                return sortedCrewTasks.filter { !$0.is_done }
-            case .done:
-                return sortedCrewTasks.filter(\.is_done)
-            case .all:
-                return sortedCrewTasks
-            }
-        }
-
-    var completedTasksCount: Int {
-        sortedCrewTasks.filter(\.is_done).count
-    }
-
-    var pendingTasksCount: Int {
-        max(0, sortedCrewTasks.count - completedTasksCount)
-    }
-
-    var crewProgressValue: Double {
-        sortedCrewTasks.isEmpty ? 0 : Double(completedTasksCount) / Double(sortedCrewTasks.count)
-    }
-
-    var totalFocusMinutes: Int {
-        crewStore.crewFocusRecords
-            .filter { $0.crew_id == crew.id }
-            .reduce(0) { $0 + $1.minutes }
-    }
-
-    var currentStreakText: String {
-        let calendar = Calendar.current
-
-        let uniqueDays = Set(
-            crewStore.crewFocusRecords
-                .filter { $0.crew_id == crew.id }
-                .compactMap { record -> Date? in
-                    guard let raw = record.created_at else { return nil }
-                    return Self.backendISOFormatter.date(from: raw)
-                }
-                .map { calendar.startOfDay(for: $0) }
-        )
-
-        guard !uniqueDays.isEmpty else { return "0" }
-
-        let sortedDays = uniqueDays.sorted(by: >)
-
-        var streak = 0
-        var cursor = calendar.startOfDay(for: Date())
-
-        for day in sortedDays {
-            if calendar.isDate(day, inSameDayAs: cursor) {
-                streak += 1
-                guard let previousDay = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
-                cursor = previousDay
-            } else if day < cursor {
-                break
-            }
-        }
-
-        return "\(streak)"
-    }
-
-    var todayLeaderboard: [(name: String, minutes: Int)] {
-        let todayPrefix = Self.backendISOFormatter.string(from: Date()).prefix(10)
-
-        let todayRecords = crewStore.crewFocusRecords.filter {
-            $0.crew_id == crew.id &&
-            ($0.created_at ?? "").hasPrefix(String(todayPrefix))
-        }
-
-        let grouped = Dictionary(grouping: todayRecords, by: { $0.member_name })
-
-        return grouped
-            .map { name, records in
-                (name: name, minutes: records.reduce(0) { $0 + $1.minutes })
-            }
-            .sorted { lhs, rhs in
-                if lhs.minutes == rhs.minutes {
-                    return lhs.name < rhs.name
-                }
-                return lhs.minutes > rhs.minutes
+                .updoPadSheet()
             }
     }
 
-    var topThreeLeaderboard: [(name: String, minutes: Int)] {
-        Array(todayLeaderboard.prefix(3))
-    }
-
-    var leaderboardCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(tr("backend_crew_leaderboard"))
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
-
-                Spacer()
-
-                Text(tr("common_today"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(palette.secondaryText)
-            }
-
-            if topThreeLeaderboard.isEmpty {
-                Text(tr("backend_crew_no_focus_today"))
-                    .font(.subheadline)
-                    .foregroundStyle(palette.secondaryText)
-            } else {
-                ForEach(Array(topThreeLeaderboard.enumerated()), id: \.offset) { index, entry in
-                    CrewLeaderboardRow(
-                        rank: index + 1,
-                        name: entry.name,
-                        minutes: entry.minutes,
-                        palette: palette
-                    )
-                }
-            }
-        }
-        .padding(18)
-        .background(cardBackground)
-    }
-
-    var backendBadgeCard: some View {
-        let minutes = totalFocusMinutes
-        let badgeTitle = CrewBadgeHelper.title(for: minutes)
-        let badgeColor = CrewBadgeHelper.color(for: minutes)
-        let nextTarget = CrewBadgeHelper.nextTarget(for: minutes)
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(tr("backend_crew_badge"))
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
-
-                    Text(tr("backend_crew_badge_subtitle"))
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                Spacer()
-
-                Image(systemName: "sparkles")
-                    .font(.title3)
-                    .foregroundStyle(badgeColor)
-            }
-
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(badgeColor.opacity(0.16))
-                        .frame(width: 56, height: 56)
-
-                    Image(systemName: "medal.fill")
-                        .font(.title3)
-                        .foregroundStyle(badgeColor)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(badgeTitle)
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
-
-                    Text(focusTimeText(minutes))
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                Spacer()
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(badgeColor.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(badgeColor.opacity(0.24), lineWidth: 1)
-                    )
-            )
-
-            if let nextTarget {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(tr("backend_crew_next_badge"))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(palette.secondaryText)
-
-                        Spacer()
-
-                        Text(String(format: String(localized: "backend_crew_time_left"), focusTimeText(max(0, nextTarget - minutes))))
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(palette.secondaryText)
-                    }
-
-                    ProgressView(value: CrewBadgeHelper.progress(for: minutes))
-                        .tint(badgeColor)
-                        .scaleEffect(y: 1.5)
-                }
-            }
-
-            HStack(spacing: 8) {
-                Image(systemName: "flame.fill")
-                    .foregroundStyle(.orange)
-
-                Text(String(format: String(localized: "backend_crew_streak"), currentStreakText))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
-            }
-        }
-        .padding(18)
-        .background(cardBackground)
-    }
-
-    func focusTimeText(_ minutes: Int) -> String {
-        let isTurkish = !appLanguageIsEnglish()
-        let hours = minutes / 60
-        let mins = minutes % 60
-
-        if hours > 0 {
-            return isTurkish ? "\(hours) sa \(mins) dk" : "\(hours)h \(mins)m"
-        } else {
-            return isTurkish ? "\(mins) dk" : "\(mins)m"
-        }
-    }
-
-    func activityIcon(for text: String) -> String {
-        let lower = text.lowercased()
-
-        if lower.contains("comment") {
-            return "text.bubble.fill"
-        } else if lower.contains("vote") {
-            return "hand.thumbsup.fill"
-        } else if lower.contains("complete") || lower.contains("done") {
-            return "checkmark.circle.fill"
-        } else if lower.contains("status") {
-            return "arrow.triangle.2.circlepath.circle.fill"
-        } else if lower.contains("create") {
-            return "plus.circle.fill"
-        } else if lower.contains("reaction") {
-            return "face.smiling.fill"
-        } else {
-            return "bolt.fill"
-        }
-    }
-
-    var backendActivitySection: some View {
-        let items = Array(crewStore.crewActivities.filter { $0.crew_id == crew.id }.prefix(4))
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center) {
-                sectionTitle(
-                    eyebrow: tr("bcd_live_activity_caps"),
-                    title: tr("bcd_activity"),
-                    italic: tr("tv_flow_word")
+    fileprivate func attachDialogs<Content: View>(to content: Content) -> some View {
+        content
+            .alert(
+                String(localized: "common_error"),
+                isPresented: Binding(
+                    get: { errorMessage != nil },
+                    set: { if !$0 { errorMessage = nil } }
                 )
-
-                Spacer()
-
-                Text("\(items.count)")
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-                    .padding(.horizontal, 10)
-                    .frame(height: 34)
-                    .background(Capsule().fill(UpdoTheme.filmy(0.075)))
+            ) {
+                Button(String(localized: "common_ok"), role: .cancel) {
+                    errorMessage = nil
+                }
+            } message: {
+                Text(errorMessage ?? String(localized: "common_unknown_error"))
             }
-
-            if items.isEmpty {
-                emptyMiniState(text: String(localized: "backend_crew_no_activity"))
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        backendActivityRow(
-                            title: item.member_name,
-                            subtitle: item.action_text,
-                            time: activityTimeText(item.created_at),
-                            isLast: index == items.count - 1
-                        )
+            .confirmationDialog(
+                String(localized: "backend_crew_remove_member_title"),
+                isPresented: $showRemoveMemberConfirm,
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "backend_crew_remove_member_action"), role: .destructive) {
+                    guard let member = memberToRemove else { return }
+                    guard member.role.lowercased() != "owner" else {
+                        errorMessage = String(localized: "backend_crew_owner_cannot_be_removed")
+                        return
                     }
-                }
-                .padding(16)
-                .background(detailSurface(cornerRadius: 24, tint: BackendCrewArenaPalette.purple))
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
-
-    func backendActivityRow(title: String, subtitle: String, time: String, isLast: Bool) -> some View {
-        HStack(alignment: .top, spacing: 13) {
-            VStack(spacing: 0) {
-                Image(systemName: activityIcon(for: subtitle))
-                    .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(BackendCrewArenaPalette.cyan)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle()
-                            .fill(BackendCrewArenaPalette.cyan.opacity(0.13))
-                    )
-
-                if !isLast {
-                    Rectangle()
-                        .fill(UpdoTheme.filmy(0.08))
-                        .frame(width: 2, height: 32)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-                    .lineLimit(1)
-
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(UpdoTheme.filmy(0.48))
-                    .lineLimit(2)
-
-                Text(time)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UpdoTheme.filmy(0.32))
-            }
-
-            Spacer()
-        }
-        .padding(.vertical, 4)
-    }
-
-    func activityTimeText(_ raw: String?) -> String {
-        guard let raw else { return String(localized: "common_now") }
-
-        if let date = Self.backendISOFormatter.date(from: raw) {
-            let out = DateFormatter()
-            out.dateFormat = "HH:mm"
-            return out.string(from: date)
-        }
-
-        return String(localized: "common_now")
-    }
-
-    var customHeader: some View {
-        HStack {
-            if socialSplitClose == nil {
-                Button {
-                    leave()
-                } label: {
-                    Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
-                        .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(UpdoTheme.textPrimary)
-                        .frame(width: 46, height: 46)
-                        .background(
-                            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .fill(UpdoTheme.filmy(0.075))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                        .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
-                                )
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-
-            Spacer()
-
-            Text(crew.name)
-                .font(.system(size: 20, weight: .black))
-                .foregroundStyle(UpdoTheme.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            Spacer()
-
-            Menu {
-                Button(role: .destructive) {
-                    showDeleteCrewConfirm = true
-                } label: {
-                    Label(String(localized: "backend_crew_delete_action"), systemImage: "trash")
-                }
-            } label: {
-                ZStack {
-                    if isDeletingCrew {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
-                            .font(.system(size: 19, weight: .black))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                    }
-                }
-                .frame(width: 46, height: 46)
-                .background(
-                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(UpdoTheme.filmy(0.075))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .stroke(UpdoTheme.filmy(0.10), lineWidth: 1)
-                        )
-                )
-            }
-            .disabled(isDeletingCrew)
-        }
-    }
-
-    func heroCard(memberCount: Int, totalTasks: Int, progress: Double) -> some View {
-        let accent = hexColor(crew.color_hex)
-        let percent = Int(progress * 100)
-
-        return VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
-                PhotosPicker(selection: $crewPhotoItem, matching: .images) {
-                    ZStack(alignment: .bottomTrailing) {
-                        CrewAvatarView(
-                            crewID: crew.id,
-                            name: crew.name,
-                            colorHex: crew.color_hex,
-                            size: 62,
-                            corner: 20
-                        )
-
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                            .frame(width: 22, height: 22)
-                            .background(
-                                Circle().fill(accent)
-                                    .overlay(Circle().stroke(BackendCrewArenaPalette.surface, lineWidth: 2))
-                            )
-                            .offset(x: 3, y: 3)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(tr("bcd_active_crew_caps"))
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .tracking(2)
-                        .foregroundStyle(BackendCrewArenaPalette.cyan)
-
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(crew.name)
-                            .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.65)
-
-                        Text("crew")
-                            .font(.system(size: 25, weight: .regular, design: .serif))
-                            .italic()
-                            .foregroundStyle(BackendCrewArenaPalette.cyan)
-                    }
-
-                    Text(heroSubtitle(memberCount: memberCount, totalTasks: totalTasks))
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(UpdoTheme.filmy(0.48))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.70)
-                }
-
-                Spacer()
-            }
-
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(tr("ha_progress"))
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .tracking(1.1)
-                        .foregroundStyle(UpdoTheme.filmy(0.42))
-
-                    Text(totalTasks == 0 ? tr("bcd_crew_ready") : tr("rel_done_of", completedTasksCount, totalTasks))
-                        .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(UpdoTheme.textPrimary)
-                }
-
-                Spacer()
-
-                Text("%\(percent)")
-                    .font(.system(size: 40, weight: .black))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-                    .monospacedDigit()
-            }
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(UpdoTheme.filmy(0.09))
-                        .frame(height: 7)
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    BackendCrewArenaPalette.cyan,
-                                    BackendCrewArenaPalette.purple,
-                                    BackendCrewArenaPalette.coral
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(32, geo.size.width * max(progress, 0.10)), height: 7)
-                }
-            }
-            .frame(height: 7)
-
-            HStack(spacing: 10) {
-                Button {
                     Task {
-                        guard let user = session.currentUser else { return }
-
                         do {
-                            let code = try await crewStore.createInvite(
-                                for: crew.id,
-                                userID: user.id
-                            )
-                            inviteCode = code
-                            showInviteSheet = true
+                            try await crewStore.removeMember(member, from: crew.id)
+                            memberToRemove = nil
                         } catch {
                             errorMessage = error.localizedDescription
                         }
                     }
-                } label: {
-                    Label(tr("bcd_invite"), systemImage: "person.badge.plus")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(BackendCrewArenaPalette.green)
-                        .padding(.horizontal, 14)
-                        .frame(height: 42)
-                        .background(
-                            Capsule()
-                                .fill(BackendCrewArenaPalette.green.opacity(0.13))
-                                .overlay(
-                                    Capsule()
-                                        .stroke(BackendCrewArenaPalette.green.opacity(0.22), lineWidth: 1)
-                                )
-                        )
                 }
-                .buttonStyle(.plain)
-
-                Button {
-                    showCreateTask = true
-                } label: {
-                    Label(tr("at_kind_task"), systemImage: "plus")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 14)
-                        .frame(height: 42)
-                        .background(
-                            Capsule()
-                                .fill(BackendCrewArenaPalette.blue)
-                        )
+                Button(String(localized: "common_cancel"), role: .cancel) {
+                    memberToRemove = nil
                 }
-                .buttonStyle(.plain)
-
-                Spacer()
+            } message: {
+                Text(tr("backend_crew_remove_member_message"))
             }
-        }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            accent.opacity(0.14),
-                            BackendCrewArenaPalette.purple.opacity(0.12),
-                            BackendCrewArenaPalette.surface.opacity(0.98)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(accent.opacity(0.18), lineWidth: 1)
-                )
-                .shadow(color: UpdoTheme.cardShadow(0.24), radius: 20, y: 12)
-        )
-    }
-    func heroSubtitle(memberCount: Int, totalTasks: Int) -> String {
-            if totalTasks == 0 {
-                return tr("bcd_crew_ready_sub")
-            }
-
-            if pendingTasksCount == 0 {
-                return tr("bcd_all_done")
-            }
-
-            return tr("bcd_flow_continues", pendingTasksCount, memberCount)
-        }
-    
-    func quickStatsRow(completed: Int, pending: Int, memberCount: Int) -> some View {
-        HStack(spacing: 10) {
-            detailMiniStatCard(
-                title: tr("tasks_summary_done"),
-                value: "\(completed)",
-                icon: "checkmark.circle.fill",
-                tint: BackendCrewArenaPalette.green
-            )
-
-            detailMiniStatCard(
-                title: tr("tv_open"),
-                value: "\(pending)",
-                icon: "clock.fill",
-                tint: BackendCrewArenaPalette.coral
-            )
-
-            detailMiniStatCard(
-                title: tr("bcd_member"),
-                value: "\(memberCount)",
-                icon: "person.3.fill",
-                tint: BackendCrewArenaPalette.cyan
-            )
-        }
-    }
-
-    func detailMiniStatCard(title: String, value: String, icon: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .black))
-                .foregroundStyle(tint)
-
-            Text(value)
-                .font(.system(size: 24, weight: .black))
-                .foregroundStyle(UpdoTheme.textPrimary)
-                .monospacedDigit()
-
-            Text(title)
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .tracking(1)
-                .foregroundStyle(UpdoTheme.filmy(0.42))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 96)
-        .padding(.horizontal, 14)
-        .background(detailSurface(cornerRadius: 22, tint: tint))
-    }
-    var memberProfilesByID: [UUID: ProfileDTO] {
-        Dictionary(uniqueKeysWithValues: crewStore.memberProfiles.map { ($0.id, $0) })
-    }
-    
-    func detailSurface(cornerRadius: CGFloat, tint: Color) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        tint.opacity(0.055),
-                        BackendCrewArenaPalette.purple.opacity(0.040),
-                        UpdoTheme.filmy(0.038)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(tint.opacity(0.13), lineWidth: 1)
-            )
-            .shadow(color: UpdoTheme.cardShadow(0.22), radius: 14, y: 8)
-    }
-
-    func membersSection(_ crewMembers: [CrewMemberDTO]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center) {
-                sectionTitle(
-                    eyebrow: tr("bcd_members_caps"),
-                    title: tr("bcd_members"),
-                    italic: tr("bcd_team_word")
-                )
-
-                Spacer()
-
-                HStack(spacing: 8) {
-                    Button {
-                        Task {
-                            guard let user = session.currentUser else { return }
-
-                            do {
-                                let code = try await crewStore.createInvite(
-                                    for: crew.id,
-                                    userID: user.id
-                                )
-                                inviteCode = code
-                                showInviteSheet = true
-                            } catch {
-                                errorMessage = error.localizedDescription
-                            }
+            .confirmationDialog(
+                String(localized: "backend_crew_delete_title"),
+                isPresented: $showDeleteCrewConfirm,
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "backend_crew_delete_action"), role: .destructive) {
+                    Task {
+                        guard let currentUserID = session.currentUser?.id else { return }
+                        isDeletingCrew = true
+                        do {
+                            try await crewStore.deleteCrew(crewID: crew.id, currentUserID: currentUserID)
+                            leave()
+                        } catch {
+                            errorMessage = error.localizedDescription
                         }
-                    } label: {
-                        Image(systemName: "person.badge.plus")
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(BackendCrewArenaPalette.green)
-                            .frame(width: 36, height: 36)
-                            .background(
-                                Circle()
-                                    .fill(BackendCrewArenaPalette.green.opacity(0.13))
-                            )
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        showAddMember = true
-                    } label: {
-                        Image(systemName: "plus").accessibilityLabel(tr("common_add"))
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(BackendCrewArenaPalette.blue)
-                            .frame(width: 36, height: 36)
-                            .background(
-                                Circle()
-                                    .fill(BackendCrewArenaPalette.blue.opacity(0.13))
-                            )
-                    }
-                    .buttonStyle(.plain)
-
-                    Text("\(crewMembers.count)")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundStyle(UpdoTheme.textPrimary)
-                        .padding(.horizontal, 10)
-                        .frame(height: 36)
-                        .background(Capsule().fill(UpdoTheme.filmy(0.075)))
-                }
-            }
-
-            if crewMembers.isEmpty {
-                emptyMiniState(text: String(localized: "backend_crew_no_members"))
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(crewMembers) { member in
-                        let profile = memberProfilesByID[member.user_id]
-                        memberRow(member: member, profile: profile)
+                        isDeletingCrew = false
                     }
                 }
+                Button(String(localized: "common_cancel"), role: .cancel) { }
+            } message: {
+                Text(tr("backend_crew_delete_message"))
             }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
     }
-    
-    func memberRow(member: CrewMemberDTO, profile: ProfileDTO?) -> some View {
-        let isOwner = member.role.lowercased() == "owner"
-        let tint = isOwner ? BackendCrewArenaPalette.gold : BackendCrewArenaPalette.cyan
 
-        return HStack(spacing: 13) {
-            UserAvatarView(
-                userID: member.user_id,
-                name: memberName(from: profile),
-                tint: tint,
-                size: 52
-            )
+    // MARK: Invite sheet
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(memberName(from: profile))
-                    .font(.system(size: 16, weight: .black))
+    fileprivate var inviteSheet: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack(spacing: 14) {
+                    CrewAvatarView(crewID: crew.id, name: crew.name, colorHex: crew.color_hex, size: 60, corner: 19)
+                    VStack(alignment: .leading, spacing: 5) {
+                        eyebrow(tr("cdx_invite_caps"))
+                        accentTitle(crew.name, "crew", size: 26)
+                    }
+                }
+                .padding(.top, 8)
+
+                Text(tr("bcd_share_code"))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.52))
+
+                Text(inviteCode)
+                    .font(.system(size: 38, weight: .black, design: .monospaced))
+                    .tracking(6)
                     .foregroundStyle(UpdoTheme.textPrimary)
-                    .lineLimit(1)
-
-                Text("@\(memberUsername(from: profile))")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UpdoTheme.filmy(0.40))
-                    .lineLimit(1)
-
-                memberStatLine(for: member)
-            }
-
-            Spacer()
-
-            Text(localizedRole(member.role))
-                .font(.system(size: 11, weight: .black, design: .monospaced))
-                .foregroundStyle(isOwner ? BackendCrewArenaPalette.gold : UpdoTheme.filmy(0.70))
-                .padding(.horizontal, 12)
-                .frame(height: 34)
-                .background(
-                    Capsule()
-                        .fill(isOwner ? BackendCrewArenaPalette.gold.opacity(0.12) : UpdoTheme.filmy(0.075))
-                )
-        }
-        .padding(14)
-        .background(detailSurface(cornerRadius: 22, tint: tint))
-        .contextMenu {
-            if !isOwner {
-                Button(role: .destructive) {
-                    memberToRemove = member
-                    showRemoveMemberConfirm = true
-                } label: {
-                    Label(String(localized: "backend_crew_remove_member_action"), systemImage: "person.crop.circle.badge.minus")
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    func memberStatLine(for member: CrewMemberDTO) -> some View {
-        if SubscriptionManager.shared.isPro,
-           let stat = socialStats.stat(for: member.user_id) {
-            HStack(spacing: 8) {
-                if stat.isFocusing {
-                    HStack(spacing: 3) {
-                        Circle()
-                            .fill(BackendCrewArenaPalette.green)
-                            .frame(width: 6, height: 6)
-                        Text(tr("bcd_focusing_caps"))
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                    }
-                    .foregroundStyle(BackendCrewArenaPalette.green)
-                }
-
-                if stat.currentStreak > 0 {
-                    HStack(spacing: 2) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 9, weight: .black))
-                        Text("\(stat.currentStreak)")
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                    }
-                    .foregroundStyle(BackendCrewArenaPalette.gold)
-                }
-
-                Text("LV\(stat.level)")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(UpdoTheme.filmy(0.5))
-            }
-        }
-    }
-
-    func tasksSection(_ crewTasks: [CrewTaskDTO]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center) {
-                sectionTitle(
-                    eyebrow: tr("bcd_shared_tasks_caps"),
-                    title: tr("bcd_shared"),
-                    italic: tr("tasks_lc")
-                )
-
-                Spacer()
-
-                Button {
-                    showCreateTask = true
-                } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: "plus").accessibilityLabel(tr("common_add"))
-                        Text(tr("bcd_new"))
-                    }
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 13)
-                    .frame(height: 36)
-                    .background(Capsule().fill(BackendCrewArenaPalette.blue))
-                }
-                .buttonStyle(.plain)
-            }
-
-            HStack(spacing: 7) {
-                ForEach(CrewTaskFilter.allCases) { filter in
-                    let isSelected = taskFilter == filter
-
-                    Button {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                            taskFilter = filter
-                        }
-                    } label: {
-                        Text(filter.title)
-                            .font(.system(size: 12, weight: .black))
-                            .foregroundStyle(isSelected ? .black : UpdoTheme.filmy(0.46))
-                            .padding(.horizontal, 14)
-                            .frame(height: 36)
-                            .background(
-                                Capsule()
-                                    .fill(isSelected ? BackendCrewArenaPalette.blue : UpdoTheme.filmy(0.070))
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(UpdoTheme.filmy(isSelected ? 0 : 0.08), lineWidth: 1)
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            if crewTasks.isEmpty {
-                emptyMiniState(text: String(localized: "backend_crew_no_shared_tasks"))
-            } else {
-                LazyVStack(spacing: 10) {
-                    ForEach(crewTasks) { task in
-                        taskCardView(task)
-                            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                            .onTapGesture {
-                                selectedTask = task
-                            }
-                            .contextMenu {
-                                Button {
-                                    Task {
-                                        await crewStore.toggleTask(task)
-                                    }
-                                } label: {
-                                    Label(
-                                        task.is_done
-                                        ? String(localized: "backend_crew_reopen_task")
-                                        : String(localized: "backend_crew_mark_done"),
-                                        systemImage: task.is_done
-                                        ? "arrow.uturn.backward.circle"
-                                        : "checkmark.circle"
-                                    )
-                                }
-
-                                Button(role: .destructive) {
-                                    Task {
-                                        do {
-                                            try await crewStore.deleteTask(
-                                                taskID: task.id,
-                                                crewID: task.crew_id,
-                                                title: task.title
-                                            )
-                                        } catch {
-                                            Log.debug("DELETE TASK ERROR:", error.localizedDescription)
-                                        }
-                                    }
-                                } label: {
-                                    Label(String(localized: "backend_crew_delete_task"), systemImage: "trash")
-                                }
-                            }
-                    }
-                }
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
-
-    func taskCardView(_ task: CrewTaskDTO) -> some View {
-        let priorityTint = priorityColor(task.priority)
-        let stateTint = task.is_done ? BackendCrewArenaPalette.green : BackendCrewArenaPalette.coral
-
-        return HStack(alignment: .top, spacing: 13) {
-            Button {
-                Task {
-                    await crewStore.toggleTask(task)
-                }
-            } label: {
-                Image(systemName: task.is_done ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 25, weight: .black))
-                    .foregroundStyle(task.is_done ? BackendCrewArenaPalette.green : UpdoTheme.filmy(0.28))
-                    .frame(width: 44, height: 44)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
                     .background(
-                        Circle()
-                            .fill(stateTint.opacity(0.10))
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(UpdoTheme.filmy(0.06))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .strokeBorder(CrewInk.cyan.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [6, 5]))
+                            )
                     )
-            }
-            .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(task.title)
-                    .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-                    .strikethrough(task.is_done, color: UpdoTheme.filmy(0.45))
-                    .opacity(task.is_done ? 0.62 : 1.0)
-                    .lineLimit(2)
+                HStack(spacing: 10) {
+                    Button {
+                        UIPasteboard.general.string = inviteCode
+                        HapticManager.shared.success()
+                        withAnimation { inviteCopied = true }
+                    } label: {
+                        Label(
+                            inviteCopied ? String(localized: "common_copied") : String(localized: "common_copy"),
+                            systemImage: inviteCopied ? "checkmark" : "doc.on.doc"
+                        )
+                        .contentTransition(.symbolEffect(.replace))
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Capsule().fill(CrewInk.lime))
+                    }
+                    .buttonStyle(PressableButtonStyle())
 
-                if let details = task.details,
-                   !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text(details)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(UpdoTheme.filmy(0.45))
-                        .lineLimit(2)
+                    ShareLink(item: String(format: String(localized: "backend_crew_share_text"), inviteCode)) {
+                        Label(tr("cdx_share"), systemImage: "square.and.arrow.up")
+                            .font(.system(size: 15, weight: .black))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Capsule().fill(CrewInk.blue))
+                    }
+                    .buttonStyle(PressableButtonStyle())
                 }
 
-                HStack(spacing: 7) {
-                    miniMeta(icon: "person.fill", text: assigneeName(for: task) ?? String(localized: "backend_crew_unassigned"))
+                VStack(alignment: .leading, spacing: 10) {
+                    eyebrow(tr("bcd_invite_friends_caps"))
 
-                    taskPill(
-                        text: priorityLabel(task.priority),
-                        tint: priorityTint
-                    )
-
-                    taskPill(
-                        text: statusTitle(task.status),
-                        tint: statusColor(task.status)
-                    )
-                }
-
-                if task.show_on_week,
-                   let weekday = task.scheduled_weekday,
-                   let start = task.scheduled_start_minute {
-                    miniMeta(
-                        icon: "calendar",
-                        text: "\(weekdayShort(weekday)) \(hm(start))"
-                    )
+                    if invitableFriends.isEmpty {
+                        Text(tr("bcd_invite_no_friends"))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.45))
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(invitableFriends, id: \.id) { friend in
+                                inviteFriendRow(friend)
+                            }
+                        }
+                    }
                 }
             }
-
-            Spacer(minLength: 8)
+            .padding(24)
         }
-        .padding(15)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(detailSurface(cornerRadius: 22, tint: priorityTint))
+        .background(UpdoTheme.background.ignoresSafeArea())
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Components
+
+/// Weekly ring split into each crewmate's share, Apple Fitness style.
+struct CrewWeekRing: View {
+    struct Segment: Identifiable {
+        let id: UUID
+        let color: Color
+        let start: Double
+        let end: Double
     }
 
-    func priorityColor(_ value: String) -> Color {
-        switch value {
-        case "low": return .gray
-        case "medium": return .blue
-        case "high": return .orange
-        case "urgent": return .red
-        default: return .secondary
-        }
-    }
+    let segments: [Segment]
+    let track: Color
+    let lineWidth: CGFloat
+    var progress: Double = 1
 
-    func statusColor(_ value: String) -> Color {
-        switch value {
-        case "todo": return .gray
-        case "inProgress": return .blue
-        case "review": return .orange
-        case "done": return .green
-        default: return .secondary
-        }
-    }
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(track, lineWidth: lineWidth)
 
-    func priorityLabel(_ raw: String) -> String {
-        let isTurkish = !appLanguageIsEnglish()
-        switch raw {
-        case "low": return isTurkish ? tr("prio_low") : "Low"
-        case "medium": return isTurkish ? "Orta" : "Medium"
-        case "high": return isTurkish ? tr("prio_high") : "High"
-        case "urgent": return isTurkish ? "Acil" : "Urgent"
-        default: return raw.capitalized
-        }
-    }
+            ForEach(segments) { segment in
+                let gap = segments.count > 1 ? 0.006 : 0
+                let start = min(segment.start, 1) * progress
+                let end = max(start, (min(segment.end, 1) - gap) * progress)
 
-    func statusTitle(_ raw: String) -> String {
-        let isTurkish = !appLanguageIsEnglish()
-        switch raw {
-        case "todo": return isTurkish ? tr("status_todo") : "Todo"
-        case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
-        case "review": return isTurkish ? tr("status_review") : "Review"
-        case "done": return isTurkish ? tr("common_completed") : "Done"
-        default: return raw.capitalized
-        }
-    }
-
-    func localizedRole(_ role: String) -> String {
-        let isTurkish = !appLanguageIsEnglish()
-        switch role.lowercased() {
-        case "owner": return isTurkish ? "Sahip" : "Owner"
-        case "admin": return isTurkish ? tr("bcd_admin") : "Admin"
-        case "member": return isTurkish ? tr("bcd_member") : "Member"
-        default: return role.capitalized
-        }
-    }
-
-    func weekdayShort(_ weekday: Int) -> String {
-        let isTurkish = !appLanguageIsEnglish()
-        let titles = isTurkish
-        ? ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
-        : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        return titles[max(0, min(6, weekday))]
-    }
-
-    func hm(_ minute: Int) -> String {
-        let h = max(0, min(23, minute / 60))
-        let m = max(0, min(59, minute % 60))
-        return String(format: "%02d:%02d", h, m)
-    }
-
-    func focusComingSoonStrip(memberCount: Int) -> some View {
-        HStack(spacing: 14) {
-            miniIcon(systemName: "timer", tint: BackendCrewArenaPalette.green)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(tr("bcd_focus_together"))
-                    .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-
-                Text(tr("bcd_focus_ready", memberCount))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(UpdoTheme.filmy(0.48))
-                    .lineLimit(2)
-            }
-
-            Spacer()
-
-            Text(tr("bcd_soon"))
-                .font(.system(size: 11, weight: .black, design: .monospaced))
-                .foregroundStyle(BackendCrewArenaPalette.green)
-                .padding(.horizontal, 12)
-                .frame(height: 34)
-                .background(
-                    Capsule()
-                        .fill(BackendCrewArenaPalette.green.opacity(0.13))
-                )
-        }
-        .padding(16)
-        .background(detailSurface(cornerRadius: 24, tint: BackendCrewArenaPalette.green))
-    }
-    func taskPill(text: String, tint: Color) -> some View {
-        Text(text)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill(tint.opacity(0.12))
-            )
-            .foregroundStyle(tint)
-    }
-
-    func miniMeta(icon: String, text: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-            Text(text)
-        }
-        .font(.caption2)
-        .foregroundStyle(palette.secondaryText)
-    }
-
-    func assigneeName(for task: CrewTaskDTO) -> String? {
-        guard let assignedID = task.assigned_to else { return nil }
-        let profile = memberProfilesByID[assignedID]
-        return memberName(from: profile)
-    }
-
-    func infoPill(text: String, tint: Color) -> some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(tint.opacity(0.12))
-            )
-            .foregroundStyle(tint)
-    }
-
-    func emptyMiniState(text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 18, weight: .black))
-                .foregroundStyle(BackendCrewArenaPalette.cyan)
-
-            Text(text)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(UpdoTheme.filmy(0.50))
-                .lineLimit(2)
-
-            Spacer()
-        }
-        .padding(16)
-        .background(detailSurface(cornerRadius: 22, tint: BackendCrewArenaPalette.cyan))
-    }
-    
-    func sectionTitle(eyebrow: String, title: String, italic: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("— \(eyebrow) —")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .tracking(2.4)
-                .foregroundStyle(UpdoTheme.filmy(0.34))
-                .lineLimit(1)
-                .minimumScaleFactor(0.60)
-
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(title)
-                    .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(UpdoTheme.textPrimary)
-
-                Text(italic)
-                    .font(.system(size: 23, weight: .regular, design: .serif))
-                    .italic()
-                    .foregroundStyle(UpdoTheme.textPrimary)
+                Circle()
+                    .trim(from: start, to: end)
+                    .stroke(segment.color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
             }
         }
+        .rotationEffect(.degrees(-90))
+        .padding(lineWidth / 2)
     }
+}
 
-    func miniIcon(systemName: String, tint: Color) -> some View {
-        Image(systemName: systemName)
-            .font(.system(size: 17, weight: .black))
-            .foregroundStyle(tint)
-            .frame(width: 42, height: 42)
-            .background(
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(tint.opacity(0.13))
-            )
+/// Soft press: scales down a touch, like system buttons.
+private struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.8), value: configuration.isPressed)
     }
+}
 
-    var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        palette.cardFill,
-                        palette.cardFill.opacity(0.97)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                UpdoTheme.filmy(0.035),
-                                Color.clear,
-                                Color.black.opacity(0.05)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(UpdoTheme.filmy(0.06), lineWidth: 1)
-            )
-    }
-
-    func memberName(from profile: ProfileDTO?) -> String {
-        guard let profile else { return String(localized: "backend_crew_unknown_user") }
-
-        if let fullName = profile.full_name,
-           !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return fullName
-        }
-
-        if let username = profile.username,
-           !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return username
-        }
-
-        return profile.email ?? String(localized: "backend_crew_unknown_user")
-    }
-
-    func memberUsername(from profile: ProfileDTO?) -> String {
-        guard let profile else { return String(localized: "backend_crew_unknown") }
-        if let username = profile.username, !username.isEmpty {
-            return username
-        }
-        return profile.email ?? String(localized: "backend_crew_unknown")
-    }
-
-    func memberInitial(from profile: ProfileDTO?) -> String {
-        let name = memberName(from: profile)
-        return String(name.prefix(1)).uppercased()
-    }
-
-    func playEntranceAnimations() {
-        showHeroCard = false
-        showStatsRow = false
-        showMembersSection = false
-        showTasksSection = false
-        showFocusSection = false
-        showActivitySection = false
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                showHeroCard = true
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
-            withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                showStatsRow = true
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                showMembersSection = true
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
-            withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
-                showTasksSection = true
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.34) {
-            withAnimation(.spring(response: 0.50, dampingFraction: 0.86)) {
-                showFocusSection = true
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
-            withAnimation(.spring(response: 0.52, dampingFraction: 0.86)) {
-                showActivitySection = true
-            }
-        }
-    }
-    func premiumCrewHeroBackground(accent: Color) -> some View {
-        RoundedRectangle(cornerRadius: 30, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.98, green: 0.52, blue: 0.34).opacity(0.18),
-                        accent.opacity(0.14),
-                        Color(red: 0.46, green: 0.22, blue: 0.88).opacity(0.20),
-                        Color(red: 0.11, green: 0.04, blue: 0.12)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                UpdoTheme.filmy(0.10),
-                                Color.clear,
-                                Color.clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .center
-                        )
-                    )
-                    .blendMode(.screen)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                accent.opacity(0.16),
-                                Color.clear
-                            ],
-                            center: .topLeading,
-                            startRadius: 10,
-                            endRadius: 140
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color(red: 0.46, green: 0.22, blue: 0.88).opacity(0.18),
-                                Color.clear
-                            ],
-                            center: .bottomTrailing,
-                            startRadius: 12,
-                            endRadius: 170
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(0.00),
-                                Color.black.opacity(0.07),
-                                Color.black.opacity(0.16)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            )
+private extension View {
+    /// Rises in once on first appearance.
+    func crewReveal(_ shown: Bool, delay: Double) -> some View {
+        self
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 14)
+            .animation(.spring(response: 0.5, dampingFraction: 0.88).delay(delay), value: shown)
     }
 }

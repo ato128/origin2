@@ -80,6 +80,19 @@ struct CrewView: View {
             }
             .updoPadSheet()
         }
+        // A crew nudge push (or another tab) asked for a crew's page.
+        .onAppear {
+            if let crewID = CrewDeepLink.takeDetailCrew() {
+                selectedFriendIDForDetail = nil
+                selectedCrewIDForDetail = crewID
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openCrewDetail)) { output in
+            guard let raw = output.object as? String, let crewID = UUID(uuidString: raw) else { return }
+            CrewDeepLink.pendingDetailCrewID = nil
+            selectedFriendIDForDetail = nil
+            selectedCrewIDForDetail = crewID
+        }
         .task {
             guard !didLoad else { return }
             guard let userID = session.currentUser?.id else { return }
@@ -127,6 +140,14 @@ struct CrewView: View {
             if let raw = UserDefaults.standard.string(forKey: "debugSocialFriend"),
                let index = Int(raw), backendFriends.indices.contains(index) {
                 selectedFriendIDForDetail = backendFriends[index].id
+            }
+            // `-debugSocialCrew 0` opens that crew's detail.
+            if UserDefaults.standard.string(forKey: "debugSocialCrew") != nil, crewStore.crews.isEmpty {
+                await crewStore.loadCrews(force: true)
+            }
+            if let raw = UserDefaults.standard.string(forKey: "debugSocialCrew"),
+               let index = Int(raw), crewStore.crews.indices.contains(index) {
+                selectedCrewIDForDetail = crewStore.crews[index].id
             }
             #endif
         }

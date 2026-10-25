@@ -260,6 +260,9 @@ struct MainTabView: View {
             // kullanıcının fotoğrafını erkenden yükle (lokal cache anında, backend sync arka planda).
             ProfileAvatarStore.shared.load(for: session.currentUser?.id.uuidString)
 
+            // Cold start from a crew nudge: the Social tab takes the crew.
+            if CrewDeepLink.pendingDetailCrewID != nil { tab = .crew }
+
             runProgressionEvaluate()
         }
         .onChange(of: scenePhase) { _, phase in

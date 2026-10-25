@@ -236,6 +236,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 )
             }
 
+        case "crew_nudge":
+            // A crewmate asked you to come focus → open that crew's page
+            // (parked for cold start, where the Social tab isn't built yet).
+            if let crewIDString = userInfo["crew_id"] as? String,
+               let crewID = UUID(uuidString: crewIDString) {
+                CrewDeepLink.pendingDetailCrewID = crewID
+                NotificationCenter.default.post(name: .openCrewTab, object: nil)
+                NotificationCenter.default.post(name: .openCrewDetail, object: crewIDString)
+            }
+
         case "focus_room":
             if let crewID = userInfo["crew_id"] as? String {
                 Task { @MainActor in
