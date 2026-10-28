@@ -29,22 +29,28 @@ struct AIOnboardingFlowView: View {
     @State private var tourStart = 9 * 60
     @State private var tourDuration = 60
 
+    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
+
     var body: some View {
         ZStack {
             background
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 16)
+            if isPad {
+                padConversation
+            } else {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 16)
 
-                speechBubble
-                    .padding(.horizontal, 24)
+                    speechBubble
+                        .padding(.horizontal, 24)
 
-                UpdoMascotView(isSpeaking: store.isSpeaking, flyTrigger: flyTrigger)
-                    .padding(.top, 20)
+                    UpdoMascotView(isSpeaking: store.isSpeaking, flyTrigger: flyTrigger)
+                        .padding(.top, 20)
 
-                Spacer(minLength: 16)
+                    Spacer(minLength: 16)
 
-                composer
+                    composer
+                }
             }
 
             // Sol-üst geri tuşu: yanlış dokunulursa önceki adıma dönülebilir.
@@ -97,6 +103,28 @@ struct AIOnboardingFlowView: View {
         }
     }
 
+    /// iPad: the whole conversation (bubble → mascot → answer) sits together
+    /// in one centered, narrower column — pinning the composer to the bottom
+    /// left a screen-tall gap between the question and its answer.
+    private var padConversation: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 24)
+
+            speechBubble
+                .padding(.horizontal, 24)
+
+            UpdoMascotView(isSpeaking: store.isSpeaking, flyTrigger: flyTrigger, size: 196)
+                .padding(.top, 26)
+                .padding(.bottom, 22)
+
+            composer
+
+            Spacer(minLength: 24)
+        }
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
+    }
+
     // MARK: - Background
 
     private var background: some View {
@@ -115,7 +143,7 @@ struct AIOnboardingFlowView: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Text(store.currentLine)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: isPad ? 23 : 19, weight: .semibold))
                     .foregroundStyle(UpdoTheme.textPrimary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)

@@ -29,6 +29,8 @@ struct OnboardingShowcaseView: View {
     @State private var appeared = false
 
     private let pages = ShowcasePageModel.all
+    /// iPad shows real iPad captures in an iPad frame; iPhone keeps the gold iPhone.
+    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
 
     private var page: ShowcasePageModel { pages[index] }
     private var isLast: Bool { index == pages.count - 1 }
@@ -53,6 +55,7 @@ struct OnboardingShowcaseView: View {
                 // cloud sits *behind* the phones so it never clips at the edges.
                 ZStack {
                     ShowcaseColorCloud(accent: page.accent, soft: page.accentSoft)
+                        .scaleEffect(isPad ? 1.9 : 1)
                         .animation(.easeInOut(duration: 0.55), value: index)
 
                     phonePager
@@ -101,7 +104,7 @@ struct OnboardingShowcaseView: View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: 0) {
                 ForEach(Array(pages.enumerated()), id: \.offset) { i, model in
-                    framedPhone(model)
+                    framedDevice(model)
                         .containerRelativeFrame(.horizontal)
                         .scrollTransition(.interactive(timingCurve: .easeInOut)) { content, phase in
                             content
@@ -124,9 +127,26 @@ struct OnboardingShowcaseView: View {
         // Let the phone's glow/shadow spill past the scroll bounds instead of
         // being hard-clipped at the top/bottom edge.
         .scrollClipDisabled()
+        // iPad: the readable column's side insets made each page narrower than
+        // the paging stride, so pages drifted off-center. Page full-width there.
+        .ignoresSafeArea(.container, edges: isPad ? .horizontal : [])
         .onChange(of: scrolledID) { _, new in
             guard let new, new != index else { return }
             withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { index = new }
+        }
+    }
+
+    @ViewBuilder
+    private func framedDevice(_ model: ShowcasePageModel) -> some View {
+        if isPad {
+            ShowcasePadFrame(imageName: showcaseImageName(model.shotKey, pad: true))
+                .frame(maxWidth: 660)
+                .padding(.horizontal, 40)
+                .padding(.vertical, 6)
+                .shadow(color: .black.opacity(0.5), radius: 34, y: 22)
+                .shadow(color: model.accent.opacity(0.26), radius: 44)
+        } else {
+            framedPhone(model)
         }
     }
 
@@ -275,11 +295,57 @@ struct ShowcasePageModel {
 
 /// Language-aware asset name: prefers the current language's capture, always
 /// falls back to English (the guaranteed set) when a localized one is missing.
-func showcaseImageName(_ key: String) -> String {
-    let en = "ob_screen_\(key)_en"
+/// `pad` picks the iPad captures (`ob_pad_screen_<key>_<lang>`).
+func showcaseImageName(_ key: String, pad: Bool = false) -> String {
+    let base = pad ? "ob_pad_screen_\(key)" : "ob_screen_\(key)"
+    let en = "\(base)_en"
     guard !appLanguageIsEnglish() else { return en }
-    let tr = "ob_screen_\(key)_tr"
+    let tr = "\(base)_tr"
     return UIImage(named: tr) != nil ? tr : en
+}
+
+// MARK: - iPad frame
+
+/// An iPad Pro (portrait) drawn around a real iPad capture — slim even bezel,
+/// continuous corners and a brushed space-black rim. Drawn rather than a PNG
+/// so it stays sharp at any size the pager gives it.
+private struct ShowcasePadFrame: View {
+    let imageName: String
+
+    /// Screen is 3:4 (2064×2752); the bezel is ~4% of the screen width.
+    private static let bezelRatio: CGFloat = 0.04
+    private static let aspect: CGFloat = (3 + 2 * 3 * bezelRatio) / (4 + 2 * 3 * bezelRatio)
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let bezel = w * Self.bezelRatio / (1 + 2 * Self.bezelRatio)
+            let outer = w * 0.068
+            let inner = max(outer - bezel, 4)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: outer, style: .continuous)
+                    .fill(Color(white: 0.035))
+
+                Image(imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: w - bezel * 2, height: geo.size.height - bezel * 2)
+                    .clipShape(RoundedRectangle(cornerRadius: inner, style: .continuous))
+
+                // Aluminium rim: a lit top-left edge falling off to graphite.
+                RoundedRectangle(cornerRadius: outer, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color(white: 0.58), Color(white: 0.22), Color(white: 0.16), Color(white: 0.40)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        ),
+                        lineWidth: max(1.5, w * 0.0045)
+                    )
+            }
+        }
+        .aspectRatio(Self.aspect, contentMode: .fit)
+    }
 }
 
 // MARK: - Button style

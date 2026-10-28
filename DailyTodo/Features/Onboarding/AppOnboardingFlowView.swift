@@ -117,6 +117,10 @@ struct AppOnboardingFlowView: View {
     @State private var finishError: String?
     @State private var welcomeAppeared = false
 
+    /// iPad gets a centered, poster-scale welcome (CTA under the copy, not
+    /// pinned to a far-away bottom edge).
+    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
+
     private var stage: AppOnboardingStage {
         AppOnboardingStage(rawValue: stageRawValue) ?? .welcome
     }
@@ -287,7 +291,7 @@ private extension AppOnboardingFlowView {
                 Spacer()
 
                 // App mark — the living Updo orb, same identity as the AI.
-                UpdoAIOrb(mode: .idle, size: 108)
+                UpdoAIOrb(mode: .idle, size: isPad ? 150 : 108)
                     .scaleEffect(welcomeAppeared ? 1 : 0.82)
                     .opacity(welcomeAppeared ? 1 : 0)
 
@@ -295,7 +299,7 @@ private extension AppOnboardingFlowView {
                 HStack(spacing: 8) {
                     Rectangle().fill(Color(arenaHex: AppArenaPalette.cyan)).frame(width: 18, height: 1)
                     Text(tr("ob_sc_welcome_eyebrow"))
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .font(.system(size: isPad ? 12 : 10, weight: .semibold, design: .monospaced))
                         .tracking(2.4)
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
                         .lineLimit(1).minimumScaleFactor(0.7)
@@ -307,17 +311,17 @@ private extension AppOnboardingFlowView {
                 // Wordmark — "Up" black + "do" italic serif blue (brand identity).
                 HStack(alignment: .firstTextBaseline, spacing: 1) {
                     Text("Up")
-                        .font(.system(size: 64, weight: .black))
+                        .font(.system(size: isPad ? 92 : 64, weight: .black))
                         .foregroundStyle(UpdoTheme.textPrimary)
                     Text("do")
-                        .font(.system(size: 60, weight: .regular, design: .serif)).italic()
+                        .font(.system(size: isPad ? 86 : 60, weight: .regular, design: .serif)).italic()
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.blue))
                 }
                 .padding(.top, 12)
                 .opacity(welcomeAppeared ? 1 : 0)
 
                 Text(tr("ob_sc_welcome_sub"))
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: isPad ? 19 : 15, weight: .semibold))
                     .foregroundStyle(UpdoTheme.filmy(0.56))
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
@@ -325,7 +329,11 @@ private extension AppOnboardingFlowView {
                     .padding(.top, 12)
                     .opacity(welcomeAppeared ? 1 : 0)
 
-                Spacer()
+                if isPad {
+                    Spacer().frame(height: 56)
+                } else {
+                    Spacer()
+                }
 
                 Button {
                     HapticManager.shared.action()
@@ -350,8 +358,12 @@ private extension AppOnboardingFlowView {
                     )
                 }
                 .buttonStyle(OnboardingScaleButtonStyle())
+                .frame(maxWidth: isPad ? 420 : .infinity)
                 .padding(.horizontal, 24)
-                .padding(.bottom, 44)
+                .padding(.bottom, isPad ? 0 : 44)
+                .opacity(isPad && !welcomeAppeared ? 0 : 1)
+
+                if isPad { Spacer() }
             }
         }
         .onAppear {

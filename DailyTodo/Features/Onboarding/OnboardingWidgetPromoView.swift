@@ -155,21 +155,12 @@ private struct WidgetWall: View {
 
     var body: some View {
         GeometryReader { geo in
-            let side: CGFloat = 14
-            let gap: CGFloat = 12
-            let content = geo.size.width - side * 2
-            let col = (content - gap) / 2
-
-            // Ekranı dolduran (F1 tarzı) zengin grid — orta boy + iki küçük satırları.
-            VStack(spacing: gap) {
-                medium(.arena, width: content)
-                HStack(spacing: gap) { small(.gold, width: col); small(.neon, width: col) }
-                medium(.terminal, width: content)
-                HStack(spacing: gap) { small(.aura, width: col); small(.zen, width: col) }
-                medium(.poster, width: content)
-                HStack(spacing: gap) { small(.classic, width: col); small(.minimal, width: col) }
-                medium(.gold, width: content)
-                HStack(spacing: gap) { small(.arena, width: col); small(.neon, width: col) }
+            Group {
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    padGrid(width: geo.size.width)
+                } else {
+                    phoneGrid(width: geo.size.width)
+                }
             }
             .frame(width: geo.size.width)
             .offset(y: drift ? -70 : 6)
@@ -180,5 +171,44 @@ private struct WidgetWall: View {
                 }
             }
         }
+    }
+
+    /// Ekranı dolduran (F1 tarzı) zengin grid — orta boy + iki küçük satırları.
+    private func phoneGrid(width: CGFloat) -> some View {
+        let side: CGFloat = 14
+        let gap: CGFloat = 12
+        let content = width - side * 2
+        let col = (content - gap) / 2
+
+        return VStack(spacing: gap) {
+            medium(.arena, width: content)
+            HStack(spacing: gap) { small(.gold, width: col); small(.neon, width: col) }
+            medium(.terminal, width: content)
+            HStack(spacing: gap) { small(.aura, width: col); small(.zen, width: col) }
+            medium(.poster, width: content)
+            HStack(spacing: gap) { small(.classic, width: col); small(.minimal, width: col) }
+            medium(.gold, width: content)
+            HStack(spacing: gap) { small(.arena, width: col); small(.neon, width: col) }
+        }
+    }
+
+    /// iPad: iPad ana ekranı gibi 4 sütunlu ızgara — her satırda bir orta boy
+    /// + iki küçük, orta boy satır satır yer değiştirir (telefondaki tam
+    /// genişlik orta boylar iPad'de devasa oluyordu).
+    private func padGrid(width: CGFloat) -> some View {
+        let side: CGFloat = 20
+        let gap: CGFloat = 16
+        let unit = (width - side * 2 - gap * 3) / 4
+        let wide = unit * 2 + gap
+
+        return VStack(spacing: gap) {
+            HStack(spacing: gap) { medium(.arena, width: wide); small(.gold, width: unit); small(.neon, width: unit) }
+            HStack(spacing: gap) { small(.aura, width: unit); small(.zen, width: unit); medium(.terminal, width: wide) }
+            HStack(spacing: gap) { medium(.poster, width: wide); small(.classic, width: unit); small(.minimal, width: unit) }
+            HStack(spacing: gap) { small(.arena, width: unit); small(.neon, width: unit); medium(.gold, width: wide) }
+            HStack(spacing: gap) { medium(.aura, width: wide); small(.terminal, width: unit); small(.zen, width: unit) }
+            HStack(spacing: gap) { small(.poster, width: unit); small(.gold, width: unit); medium(.neon, width: wide) }
+        }
+        .padding(.top, 64)
     }
 }
