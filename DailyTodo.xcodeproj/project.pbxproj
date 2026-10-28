@@ -13,7 +13,6 @@
 		4B5641EA5AD74CD28D97AB50 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C9959585CDA4F6091BAFD7E /* AIService.swift */; };
 		550B7C9143A542ABA7577C03 /* CreditManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5BE0D180E4B65A9906EA6 /* CreditManager.swift */; };
 		6374030C3A314EE5A3B8EB6E /* UpdoAIChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB219E8E9A15445994A4EE17 /* UpdoAIChatStore.swift */; };
-		CC000005CC000005CC000005 /* AIRichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000004CC000004CC000004 /* AIRichText.swift */; };
 		64B1EAE52BFA4709BF7A513C /* DailyCreditsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554557AFE9EB4CB9ADA26234 /* DailyCreditsManager.swift */; };
 		6D02C9D12F5B4718008193F3 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D02C9CF2F5B4402008193F3 /* InsightsView.swift */; };
 		6D1028712FBBC97A008D5AA9 /* ChatCachedMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1028702FBBC97A008D5AA9 /* ChatCachedMessage.swift */; };
@@ -79,7 +78,6 @@
 		6D4F2BDF2FA148630056E067 /* FriendChatThreadSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BDE2FA148630056E067 /* FriendChatThreadSummary.swift */; };
 		6D4F2BE32FA15FF40056E067 /* FriendPresenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BE22FA15FF40056E067 /* FriendPresenceEngine.swift */; };
 		6D4F2BF52FA88BA40056E067 /* ChatFeedbackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BF42FA88BA40056E067 /* ChatFeedbackManager.swift */; };
-		6DA1B0C12FC0000100A1B0C1 /* updo_notify.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6DA1B0C02FC0000100A1B0C1 /* updo_notify.caf */; };
 		6D4F2C172FA8989D0056E067 /* chat_incoming.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6D4F2C162FA8989D0056E067 /* chat_incoming.caf */; };
 		6D4F2C192FA898A10056E067 /* chat_sent.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6D4F2C182FA898A10056E067 /* chat_sent.caf */; };
 		6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CB2F66CE68007C124D /* MessagesView.swift */; };
@@ -143,6 +141,7 @@
 		6D9E213C2F7FFEE500946892 /* DailyFlowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213B2F7FFEE500946892 /* DailyFlowEngine.swift */; };
 		6D9E213E2F80010700946892 /* SuggestedNextActionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213D2F80010700946892 /* SuggestedNextActionCard.swift */; };
 		6D9E21402F803D9C00946892 /* ExamItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213F2F803D9C00946892 /* ExamItem.swift */; };
+		6DA1B0C12FC0000100A1B0C1 /* updo_notify.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6DA1B0C02FC0000100A1B0C1 /* updo_notify.caf */; };
 		6DB004132F92F9EE009F2F3B /* InsightsGlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004122F92F9EE009F2F3B /* InsightsGlassCard.swift */; };
 		6DB004232F92FFFB009F2F3B /* InsightsAchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004222F92FFFB009F2F3B /* InsightsAchievementsView.swift */; };
 		6DB004252F9308C1009F2F3B /* DeepInsightsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004242F9308C1009F2F3B /* DeepInsightsModels.swift */; };
@@ -295,6 +294,7 @@
 		AC735DB7876D4C6C8991F932 /* UpdoAIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB70EC277DD4C2493233DB3 /* UpdoAIView.swift */; };
 		BB000003BB000003BB000003 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = BB000002BB000002BB000002 /* PostHog */; };
 		CC000003CC000003CC000003 /* SwiftMath in Frameworks */ = {isa = PBXBuildFile; productRef = CC000002CC000002CC000002 /* SwiftMath */; };
+		CC000005CC000005CC000005 /* AIRichText.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000004CC000004CC000004 /* AIRichText.swift */; };
 		CC100002CC100002CC100002 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC100001CC100001CC100001 /* SubscriptionManager.swift */; };
 		CC100004CC100004CC100004 /* Analytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC100003CC100003CC100003 /* Analytics.swift */; };
 		CC100006CC100006CC100006 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC100005CC100005CC100005 /* PaywallView.swift */; };
@@ -408,7 +408,6 @@
 		6D4F2BDE2FA148630056E067 /* FriendChatThreadSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendChatThreadSummary.swift; sourceTree = "<group>"; };
 		6D4F2BE22FA15FF40056E067 /* FriendPresenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendPresenceEngine.swift; sourceTree = "<group>"; };
 		6D4F2BF42FA88BA40056E067 /* ChatFeedbackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatFeedbackManager.swift; sourceTree = "<group>"; };
-		6DA1B0C02FC0000100A1B0C1 /* updo_notify.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = updo_notify.caf; sourceTree = "<group>"; };
 		6D4F2C162FA8989D0056E067 /* chat_incoming.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = chat_incoming.caf; sourceTree = "<group>"; };
 		6D4F2C182FA898A10056E067 /* chat_sent.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = chat_sent.caf; sourceTree = "<group>"; };
 		6D5FE3CB2F66CE68007C124D /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
@@ -447,6 +446,7 @@
 		6D9E213B2F7FFEE500946892 /* DailyFlowEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyFlowEngine.swift; sourceTree = "<group>"; };
 		6D9E213D2F80010700946892 /* SuggestedNextActionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestedNextActionCard.swift; sourceTree = "<group>"; };
 		6D9E213F2F803D9C00946892 /* ExamItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamItem.swift; sourceTree = "<group>"; };
+		6DA1B0C02FC0000100A1B0C1 /* updo_notify.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = updo_notify.caf; sourceTree = "<group>"; };
 		6DB004122F92F9EE009F2F3B /* InsightsGlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsGlassCard.swift; sourceTree = "<group>"; };
 		6DB004222F92FFFB009F2F3B /* InsightsAchievementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsAchievementsView.swift; sourceTree = "<group>"; };
 		6DB004242F9308C1009F2F3B /* DeepInsightsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepInsightsModels.swift; sourceTree = "<group>"; };
@@ -591,13 +591,13 @@
 		AC110004000000000000C0DE /* UpdoAIPlanParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIPlanParser.swift; sourceTree = "<group>"; };
 		AC110012000000000000C0DE /* UpdoAIOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIOrb.swift; sourceTree = "<group>"; };
 		AC120001000000000000F0CE /* FriendFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendFocusInviteSheet.swift; sourceTree = "<group>"; };
+		CC000004CC000004CC000004 /* AIRichText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRichText.swift; sourceTree = "<group>"; };
 		CC100001CC100001CC100001 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
 		CC100003CC100003CC100003 /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
 		CC100005CC100005CC100005 /* PaywallView.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		DD200001DD200001DD200001 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		E4F5BE0D180E4B65A9906EA6 /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
 		EB219E8E9A15445994A4EE17 /* UpdoAIChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIChatStore.swift; sourceTree = "<group>"; };
-		CC000004CC000004CC000004 /* AIRichText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRichText.swift; sourceTree = "<group>"; };
 		EE300001EE300001EE300001 /* UpdoTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoTheme.swift; sourceTree = "<group>"; };
 		EE310001EE310001EE310001 /* EdgeGlowBorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeGlowBorder.swift; sourceTree = "<group>"; };
 		EE320001EE320001EE320001 /* UpdoMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoMascotView.swift; sourceTree = "<group>"; };
@@ -624,11 +624,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		6D7A0B0C2FB0000100ABCDEF /* Notebook */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Notebook;
-			sourceTree = "<group>";
-		};
 		6D10286B2FAAA556008D5AA9 /* Network */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Network;
@@ -645,6 +640,11 @@
 		6D4F2C1A2FA8F7D10056E067 /* CrewRedesign */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CrewRedesign;
+			sourceTree = "<group>";
+		};
+		6D7A0B0C2FB0000100ABCDEF /* Notebook */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Notebook;
 			sourceTree = "<group>";
 		};
 		6DEE50D5302959D900FCEB48 /* NotificationService */ = {
@@ -2112,14 +2112,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		CC000001CC000001CC000001 /* XCRemoteSwiftPackageReference "SwiftMath" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/mgriebling/SwiftMath.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.7.3;
-			};
-		};
 		6D605CF72F7743330052C76B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -2152,14 +2144,17 @@
 				minimumVersion = 3.17.0;
 			};
 		};
+		CC000001CC000001CC000001 /* XCRemoteSwiftPackageReference "SwiftMath" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mgriebling/SwiftMath.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.7.3;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		CC000002CC000002CC000002 /* SwiftMath */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = CC000001CC000001CC000001 /* XCRemoteSwiftPackageReference "SwiftMath" */;
-			productName = SwiftMath;
-		};
 		6D605CF82F7743330052C76B /* FirebaseAI */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 6D605CF72F7743330052C76B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -2319,6 +2314,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = BB000001BB000001BB000001 /* XCRemoteSwiftPackageReference "posthog-ios" */;
 			productName = PostHog;
+		};
+		CC000002CC000002CC000002 /* SwiftMath */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CC000001CC000001CC000001 /* XCRemoteSwiftPackageReference "SwiftMath" */;
+			productName = SwiftMath;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

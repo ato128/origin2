@@ -217,6 +217,8 @@ struct CrewView: View {
     /// iPad: below this the list + detail split gets too tight → phone stack.
     static let splitMinWidth: CGFloat = 900
     static let listWidth: CGFloat = 420
+    /// iPad split sidebar (compact Messages-style rows, not the phone cards).
+    static let padSidebarWidth: CGFloat = 340
 
     var crewHome: some View {
         CrewHomeView(
@@ -320,13 +322,12 @@ struct CrewView: View {
     var padSplit: some View {
         HStack(spacing: 0) {
             NavigationStack {
-                crewHome
-                    // The list's background runs under the rail; its cards don't.
+                padSidebar
+                    // The list's background runs under the rail; its rows don't.
                     .safeAreaPadding(.leading, padRailInset)
                     .navigationBarHidden(true)
             }
-            .frame(width: Self.listWidth + padRailInset)
-            .environment(\.crewHomeSelectedID, selectedCrewIDForDetail ?? selectedFriendIDForDetail)
+            .frame(width: Self.padSidebarWidth + padRailInset)
 
             Rectangle()
                 .fill(UpdoTheme.border)
@@ -338,24 +339,66 @@ struct CrewView: View {
             }
             // A new selection is a fresh detail stack (no stale pushes).
             .id(selectedCrewIDForDetail ?? selectedFriendIDForDetail)
-            .environment(\.socialSplitClose, {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    selectedCrewIDForDetail = nil
-                    selectedFriendIDForDetail = nil
-                }
-            })
+            .environment(\.socialSplitClose, { closeSplitDetail() })
             .frame(maxWidth: .infinity)
         }
+    }
+
+    var padSidebar: some View {
+        PadSocialSidebar(
+            summary: crewHomeSummary,
+            crews: crewHomeCrewCards,
+            friends: crewHomeFriendCards,
+            incomingRequests: crewHomeIncomingRequestCards,
+            sentRequests: crewHomeSentRequestCards,
+            selectedCrewID: selectedCrewIDForDetail,
+            selectedFriendID: selectedFriendIDForDetail,
+            onOpenBoard: { closeSplitDetail() },
+            onCreateCrew: { showCreateCrewBackend = true },
+            onJoinCrew: {
+                pendingInviteCode = ""
+                showJoinCrewSheet = true
+            },
+            onAddFriend: { showAddFriendSheet = true },
+            onOpenCrew: { crewID in
+                selectedFriendIDForDetail = nil
+                selectedCrewIDForDetail = crewID
+            },
+            onOpenFriend: { friendID in
+                selectedCrewIDForDetail = nil
+                selectedFriendIDForDetail = friendID
+            },
+            onAcceptRequest: acceptRequestCard,
+            onRemoveRequest: removeRequestCard,
+            onRefresh: { await reloadBackendFriends(force: true) }
+        )
+    }
+
+    func closeSplitDetail() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedCrewIDForDetail = nil
+            selectedFriendIDForDetail = nil
+        }
+    }
+
+    func acceptRequestCard(_ friendshipID: UUID) {
+        guard let request = incomingRequests.first(where: { $0.id == friendshipID }) else { return }
+        Task { await acceptRequest(request) }
+    }
+
+    func removeRequestCard(_ friendshipID: UUID) {
+        guard let request = (incomingRequests + sentRequests).first(where: { $0.id == friendshipID }) else { return }
+        Task { await removePendingRequest(request) }
     }
 
     @ViewBuilder
     var padDetail: some View {
         if selectedCrewIDForDetail != nil {
             if let crew = selectedCrewForDetail {
+                // Sizes itself: stage + two columns when the column is wide.
                 BackendCrewDetailView(crew: crew)
                     .environmentObject(crewStore)
                     .environmentObject(session)
-                    .updoReadableColumn()
             } else {
                 CrewRedesignLoadingView(text: tr("cv_crew_preparing"))
             }
@@ -369,95 +412,28 @@ struct CrewView: View {
                 CrewRedesignLoadingView(text: tr("cv_friend_preparing"))
             }
         } else {
-            SocialSplitPlaceholder(
+            PadSocialBoard(
+                crews: crewHomeCrewCards,
+                friends: crewHomeFriendCards,
+                incomingRequests: crewHomeIncomingRequestCards,
+                onOpenCrew: { crewID in
+                    selectedFriendIDForDetail = nil
+                    selectedCrewIDForDetail = crewID
+                },
+                onOpenFriend: { friendID in
+                    selectedCrewIDForDetail = nil
+                    selectedFriendIDForDetail = friendID
+                },
+                onAcceptRequest: acceptRequestCard,
+                onRemoveRequest: removeRequestCard,
                 onAddFriend: { showAddFriendSheet = true },
-                onCreateCrew: { showCreateCrewBackend = true }
+                onCreateCrew: { showCreateCrewBackend = true },
+                onJoinCrew: {
+                    pendingInviteCode = ""
+                    showJoinCrewSheet = true
+                }
             )
         }
-    }
-}
-
-/// iPad Social detail column before anything is picked: never a blank pane.
-private struct SocialSplitPlaceholder: View {
-    let onAddFriend: () -> Void
-    let onCreateCrew: () -> Void
-
-    private var blue: Color { Color(arenaHex: "#1593FF") }
-    private var violet: Color { Color(arenaHex: "#7C3AED") }
-
-    var body: some View {
-        ZStack {
-            ArenaBackground(
-                primaryGlow: violet,
-                secondaryGlow: Color(arenaHex: "#2DD4FF"),
-                warmGlow: Color(arenaHex: "#FF5A44"),
-                intensity: 0.7
-            )
-            .ignoresSafeArea()
-
-            VStack(spacing: 22) {
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(colors: [blue.opacity(0.22), violet.opacity(0.18)],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 104, height: 104)
-                        .overlay(Circle().strokeBorder(UpdoTheme.filmy(0.12), lineWidth: 1))
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 38, weight: .semibold))
-                        .foregroundStyle(LinearGradient(colors: [Color(arenaHex: "#2DD4FF"), violet],
-                                                        startPoint: .topLeading, endPoint: .bottomTrailing))
-                }
-
-                VStack(spacing: 8) {
-                    HStack(alignment: .firstTextBaseline, spacing: 7) {
-                        Text(tr("ipad_social_empty_title"))
-                            .font(.system(size: 30, weight: .black))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                        Text(tr("ipad_social_empty_accent"))
-                            .font(.system(size: 28, weight: .regular, design: .serif))
-                            .italic()
-                            .foregroundStyle(LinearGradient(colors: [Color(arenaHex: "#2DD4FF"), violet],
-                                                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                    }
-                    Text(tr("ipad_social_empty_sub"))
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 420)
-                }
-
-                HStack(spacing: 12) {
-                    Button(action: onAddFriend) {
-                        Label(tr("ch_add_friend"), systemImage: "person.badge.plus")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(UpdoTheme.onAccent)
-                            .padding(.horizontal, 20)
-                            .frame(height: 46)
-                            .background(Capsule().fill(LinearGradient(colors: [blue, violet],
-                                                                      startPoint: .leading, endPoint: .trailing)))
-                            .contentShape(.hoverEffect, Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .hoverEffect(.lift)
-
-                    Button(action: onCreateCrew) {
-                        Label(tr("ch_create_crew"), systemImage: "person.3.fill")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(UpdoTheme.textPrimary)
-                            .padding(.horizontal, 20)
-                            .frame(height: 46)
-                            .liquidGlass(in: Capsule())
-                            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
-                            .contentShape(.hoverEffect, Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .hoverEffect(.lift)
-                }
-                .padding(.top, 6)
-            }
-            .padding(40)
-        }
-        .toolbar(.hidden, for: .navigationBar)
     }
 }
 

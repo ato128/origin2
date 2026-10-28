@@ -96,6 +96,14 @@ struct BackendCrewDetailView: View {
     @State private var nudgingID: UUID?
     @State private var toast: String?
     @State private var celebrate = false
+    /// iPad: the detail column's width decides stage + two columns vs. the phone stack.
+    @State private var pageWidth: CGFloat = 0
+
+    /// iPad only (never iPhone, even a wide Pro Max in landscape).
+    private var usesPadLayout: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad && pageWidth >= 700
+    }
+    private var pageGutter: CGFloat { usesPadLayout ? 28 : 16 }
 
     var body: some View {
         attachDialogs(to: attachSheets(to: page))
@@ -110,6 +118,7 @@ struct BackendCrewDetailView: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) { topBar }
         .overlay(alignment: .top) { toastView }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .task {
@@ -144,40 +153,18 @@ struct BackendCrewDetailView: View {
     private func content(_ mates: [CrewMateStat]) -> some View {
         ScrollViewReader { proxy in
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 18) {
-                stage(mates)
-                    .padding(.top, 4)
-
-                weekCard(mates)
-                    .crewReveal(appeared, delay: 0.05)
-                    .id("week")
-
-                if mates.count < 3 {
-                    completeCrewCard(mates)
-                        .crewReveal(appeared, delay: 0.1)
+            Group {
+                if usesPadLayout {
+                    padSections(mates)
+                } else {
+                    phoneSections(mates)
                 }
-
-                if mates.count > 1 {
-                    standingsCard(mates)
-                        .crewReveal(appeared, delay: 0.12)
-                        .id("standings")
-                }
-
-                tasksCard(mates)
-                    .crewReveal(appeared, delay: 0.16)
-                    .id("tasks")
-
-                if !recentActivities.isEmpty {
-                    activityCard
-                        .crewReveal(appeared, delay: 0.2)
-                }
-
-                Color.clear.frame(height: 90)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, pageGutter)
         }
         .onScrollGeometryChange(for: Bool.self) { geo in
-            geo.contentOffset.y + geo.contentInsets.top > 190
+            // iPad's stage sits higher on screen — chrome turns solid sooner.
+            geo.contentOffset.y + geo.contentInsets.top > (usesPadLayout ? 110 : 190)
         } action: { _, past in
             withAnimation(.easeInOut(duration: 0.2)) { titleVisible = past }
         }
@@ -194,6 +181,93 @@ struct BackendCrewDetailView: View {
         }
         #endif
         }
+    }
+
+    private func phoneSections(_ mates: [CrewMateStat]) -> some View {
+        VStack(spacing: 18) {
+            stage(mates)
+                .padding(.top, 4)
+
+            weekCard(mates)
+                .crewReveal(appeared, delay: 0.05)
+                .id("week")
+
+            if mates.count < 3 {
+                completeCrewCard(mates)
+                    .crewReveal(appeared, delay: 0.1)
+            }
+
+            if mates.count > 1 {
+                standingsCard(mates)
+                    .crewReveal(appeared, delay: 0.12)
+                    .id("standings")
+            }
+
+            tasksCard(mates)
+                .crewReveal(appeared, delay: 0.16)
+                .id("tasks")
+
+            if !recentActivities.isEmpty {
+                activityCard
+                    .crewReveal(appeared, delay: 0.2)
+            }
+
+            Color.clear.frame(height: 90)
+        }
+    }
+
+    /// iPad: the live stage across the top, then two columns — the crew's
+    /// rhythm (week ring, standings) left, shared work (tasks, activity) right.
+    private func padSections(_ mates: [CrewMateStat]) -> some View {
+        VStack(spacing: 20) {
+            padStage(mates)
+                .padding(.top, 6)
+
+            HStack(alignment: .top, spacing: 20) {
+                VStack(spacing: 20) {
+                    weekCard(mates)
+                        .crewReveal(appeared, delay: 0.05)
+                        .id("week")
+
+                    if mates.count > 1 {
+                        standingsCard(mates)
+                            .crewReveal(appeared, delay: 0.12)
+                            .id("standings")
+                    } else {
+                        completeCrewCard(mates)
+                            .crewReveal(appeared, delay: 0.1)
+                    }
+                }
+                // Ideal height: the timeline's flexible rail must not stretch
+                // a column to match the other one.
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .top)
+
+                VStack(spacing: 20) {
+                    tasksCard(mates)
+                        .crewReveal(appeared, delay: 0.08)
+                        .id("tasks")
+
+                    if mates.count == 2 {
+                        completeCrewCard(mates)
+                            .crewReveal(appeared, delay: 0.14)
+                    }
+
+                    if !recentActivities.isEmpty {
+                        activityCard
+                            .crewReveal(appeared, delay: 0.18)
+                    }
+                }
+                // Ideal height: the timeline's flexible rail must not stretch
+                // a column to match the other one.
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+
+            Color.clear.frame(height: 60)
+        }
+        .frame(maxWidth: 1180)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Loading
@@ -606,7 +680,7 @@ private extension BackendCrewDetailView {
 
             moreMenu
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, pageGutter)
         .padding(.top, 4)
         .padding(.bottom, 8)
         .background {
@@ -697,7 +771,7 @@ private extension BackendCrewDetailView {
 
         return VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center, spacing: 14) {
-                crewPhoto
+                crewPhoto()
 
                 VStack(alignment: .leading, spacing: 6) {
                     stageEyebrow(focusing: focusing)
@@ -735,6 +809,92 @@ private extension BackendCrewDetailView {
         }
         .padding(18)
         .background(stageBackground)
+    }
+
+    /// iPad stage: identity + crewmates on the left, today's numbers and the
+    /// call to action docked on the right.
+    func padStage(_ mates: [CrewMateStat]) -> some View {
+        let focusing = mates.filter(\.isFocusing).count
+        let todayTotal = mates.reduce(0) { $0 + $1.todayMinutes }
+
+        return HStack(alignment: .center, spacing: 28) {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .center, spacing: 18) {
+                    crewPhoto(size: 92, corner: 28)
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        stageEyebrow(focusing: focusing)
+
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(crew.name)
+                                .font(.system(size: 40, weight: .black))
+                                .foregroundStyle(UpdoTheme.textPrimary)
+                            Text("crew")
+                                .font(.system(size: 35, weight: .regular, design: .serif))
+                                .italic()
+                                .foregroundStyle(CrewInk.brand)
+                        }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+
+                        mono(caps("\(membersText(mates.count)) · \(tr("cdx_level_short", crewLevel))"), size: 12)
+                            .tracking(0.6)
+                            .foregroundStyle(UpdoTheme.filmy(0.5))
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                matesStrip(mates, inset: 26)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    padStageStat(label: tr("cdp_today"), value: focusTimeText(todayTotal), tint: CrewInk.cyan)
+                    padStageStat(label: tr("cdp_week"), value: focusTimeText(weekTotalMinutes), tint: CrewInk.violet)
+                    padStageStat(label: tr("cdp_streak"), value: "\(streakDays)", tint: CrewInk.gold)
+                }
+
+                primaryAction(focusingCount: focusing)
+
+                HStack(spacing: 10) {
+                    secondaryButton(title: tr("cdx_chat"), icon: "bubble.left.fill", tint: CrewInk.cyan, action: openChat)
+                    secondaryButton(title: tr("cdx_invite_btn"), icon: "person.badge.plus", tint: CrewInk.lime) {
+                        Task { await openInviteSheet() }
+                    }
+                }
+            }
+            .frame(width: 320)
+        }
+        .padding(26)
+        .background(stageBackground)
+    }
+
+    func padStageStat(label: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            mono(caps(label), size: 9, weight: .black)
+                .tracking(1.2)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+            Text(value)
+                .font(.system(size: 19, weight: .black, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(UpdoTheme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.18), lineWidth: 1)
+                )
+        )
     }
 
     func stageEyebrow(focusing: Int) -> some View {
@@ -787,15 +947,15 @@ private extension BackendCrewDetailView {
             .shadow(color: UpdoTheme.cardShadow(0.26), radius: 20, y: 12)
     }
 
-    var crewPhoto: some View {
+    func crewPhoto(size: CGFloat = 72, corner: CGFloat = 22) -> some View {
         PhotosPicker(selection: $crewPhotoItem, matching: .images) {
             ZStack(alignment: .bottomTrailing) {
                 CrewAvatarView(
                     crewID: crew.id,
                     name: crew.name,
                     colorHex: crew.color_hex,
-                    size: 72,
-                    corner: 22
+                    size: size,
+                    corner: corner
                 )
                 .shadow(color: hexColor(crew.color_hex).opacity(0.4), radius: 16, y: 8)
 
@@ -816,7 +976,8 @@ private extension BackendCrewDetailView {
         tr(count == 1 ? "cdx_members_one" : "cdx_members_n", count)
     }
 
-    func matesStrip(_ mates: [CrewMateStat]) -> some View {
+    /// `inset` is the stage card's padding — the strip runs edge to edge in it.
+    func matesStrip(_ mates: [CrewMateStat], inset: CGFloat = 18) -> some View {
         // Scrolls edge to edge inside the card.
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: 10) {
@@ -845,8 +1006,8 @@ private extension BackendCrewDetailView {
             }
             .padding(.vertical, 4)
         }
-        .contentMargins(.horizontal, 14, for: .scrollContent)
-        .padding(.horizontal, -18)
+        .contentMargins(.horizontal, inset - 4, for: .scrollContent)
+        .padding(.horizontal, -inset)
     }
 
     func mateBubble(_ mate: CrewMateStat) -> some View {

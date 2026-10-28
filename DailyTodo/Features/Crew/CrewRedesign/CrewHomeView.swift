@@ -1698,7 +1698,7 @@ private struct CrewFriendRow: View {
         }
     }
 }
-private struct CrewRequestsSheet: View {
+struct CrewRequestsSheet: View {
     let incomingRequests: [CrewSocialRequestCardData]
     let sentRequests: [CrewSocialRequestCardData]
     let onAcceptRequest: (UUID) -> Void
