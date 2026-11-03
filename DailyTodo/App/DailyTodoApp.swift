@@ -384,6 +384,10 @@ struct DailyTodoApp: App {
         studentStore.setCurrentUserID(currentUserID)
         LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
 
+        // Tasks / week / exams / focus / Updo AI chats ↔ backend (web app).
+        PersonalSyncEngine.shared.configure(container: container)
+        PersonalSyncEngine.shared.setUser(currentUserID)
+
         syncCurrentUserIDToDefaults(session.currentUser?.id)
 
         if let userID = session.currentUser?.id {
@@ -674,6 +678,7 @@ struct DailyTodoApp: App {
         todoStore.setCurrentUserID(userIDString)
         studentStore.setCurrentUserID(userIDString)
         LiveActivityScheduler.shared.setCurrentUserID(userIDString)
+        PersonalSyncEngine.shared.setUser(userIDString)
 
         syncCurrentUserIDToDefaults(newID)
 
@@ -783,6 +788,7 @@ struct DailyTodoApp: App {
             }
 
             focusSession.reconcileExpiredSessionIfNeeded(reason: "scene active")
+            PersonalSyncEngine.shared.appBecameActive()
             
             let context = ModelContext(container)
             WidgetAppSync.refreshFromSwiftData(context: context)
@@ -818,6 +824,7 @@ struct DailyTodoApp: App {
 
             LiveActivityScheduler.shared.stopForegroundLoop()
             LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
+            PersonalSyncEngine.shared.appEnteredBackground()
 
             // Last look before the app sleeps: cancels pending nudges whose
             // condition the user just satisfied (e.g. streak saved via a task).

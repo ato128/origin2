@@ -638,6 +638,7 @@ final class UpdoAIChatStore: ObservableObject {
             return
         }
         messages.filter { $0.threadID == nil }.compactMap(\.imageFile).forEach(AIChatImageStore.delete)
+        recordSyncDeletes(messages: messages.filter { $0.threadID == nil }.map(\.id), threads: [])
         sessionIDs.removeAll()
         messages.removeAll { $0.threadID == nil }
         stream.reset()
@@ -646,11 +647,96 @@ final class UpdoAIChatStore: ObservableObject {
 
     func deleteThread(_ id: UUID) {
         messages.filter { $0.threadID == id }.compactMap(\.imageFile).forEach(AIChatImageStore.delete)
+        recordSyncDeletes(messages: messages.filter { $0.threadID == id }.map(\.id), threads: [id])
         threads.removeAll { $0.id == id }
         if activeThreadID == id { activeThreadID = nil }
         if sessionThreadID == id { sessionThreadID = nil }
         messages.removeAll { $0.threadID == id }
         stream.reset()
+        persist()
+        persistThreads()
+    }
+}
+
+// MARK: - Cross-device sync (PersonalSyncEngine)
+//
+// The chats are mirrored to /v1/sync so the web app sees them. Only explicit
+// deletes (clear chat / delete subject chat) become server tombstones — the
+// per-chat storage cap trims old messages locally without erasing them for
+// other devices. The chats are tied to the account that owns them: a different
+// account signing in on this device starts with an empty chat.
+
+extension UpdoAIChatStore {
+    private static let ownerKey = "updo_ai_owner_v1"
+    private static let syncDeletesKey = "updo_ai_sync_deletes_v1"
+
+    /// Sync keys ("ai_message:<id>" / "ai_thread:<id>") deleted here, not yet pushed.
+    var pendingSyncDeletes: Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: Self.syncDeletesKey) ?? [])
+    }
+
+    func clearPendingSyncDeletes(_ keys: Set<String>) {
+        let rest = pendingSyncDeletes.subtracting(keys)
+        UserDefaults.standard.set(Array(rest), forKey: Self.syncDeletesKey)
+    }
+
+    fileprivate func recordSyncDeletes(messages ids: [UUID], threads threadIDs: [UUID]) {
+        let keys = ids.map { "ai_message:\($0.uuidString)" } + threadIDs.map { "ai_thread:\($0.uuidString)" }
+        guard !keys.isEmpty else { return }
+        UserDefaults.standard.set(Array(pendingSyncDeletes.union(keys)), forKey: Self.syncDeletesKey)
+    }
+
+    /// Claims the local chats for `userID`. Returns false (after emptying them)
+    /// when they belonged to another account.
+    @discardableResult
+    func claimForSync(userID: String) -> Bool {
+        let owner = UserDefaults.standard.string(forKey: Self.ownerKey)
+        UserDefaults.standard.set(userID, forKey: Self.ownerKey)
+        guard let owner, owner != userID else { return true }
+        guard !isSending else { return false }
+        messages.compactMap(\.imageFile).forEach(AIChatImageStore.delete)
+        sessionIDs.removeAll()
+        activeThreadID = nil
+        sessionThreadID = nil
+        threads = []
+        messages = []
+        UserDefaults.standard.removeObject(forKey: Self.syncDeletesKey)
+        UserDefaults.standard.removeObject(forKey: previewKey)
+        lastPreviewText = ""
+        persist()
+        persistThreads()
+        return false
+    }
+
+    /// Finished messages only — a reply still streaming syncs once it's done.
+    var syncableMessages: [AIMessage] { messages.filter { !$0.isStreaming } }
+    var syncableThreads: [AIChatThread] { threads }
+
+    /// Applies records pulled from another device (upserts + deletes), then saves.
+    func applyRemoteSync(threads upThreads: [AIChatThread], deletedThreads: Set<UUID>,
+                         messages upMessages: [AIMessage], deletedMessages: Set<UUID>) {
+        guard !isSending else { return }
+        var t = threads
+        t.removeAll { deletedThreads.contains($0.id) }
+        for thread in upThreads {
+            if let i = t.firstIndex(where: { $0.id == thread.id }) { t[i] = thread } else { t.append(thread) }
+        }
+        var m = messages
+        m.filter { deletedMessages.contains($0.id) }.compactMap(\.imageFile).forEach(AIChatImageStore.delete)
+        m.removeAll { deletedMessages.contains($0.id) }
+        for message in upMessages {
+            if let i = m.firstIndex(where: { $0.id == message.id }) {
+                var merged = message
+                merged.imageFile = m[i].imageFile   // photos stay on the device that took them
+                m[i] = merged
+            } else {
+                m.append(message)
+            }
+        }
+        m.sort { $0.timestamp < $1.timestamp }
+        if activeThreadID.map(deletedThreads.contains) == true { activeThreadID = nil }
+        threads = t
+        messages = m
         persist()
         persistThreads()
     }
