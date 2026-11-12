@@ -189,17 +189,20 @@ struct PaywallView: View {
                 .font(.system(size: 13, weight: .black)).tracking(5)
                 .foregroundStyle(tierGradient)
 
+            // Each tier makes its own promise: Premium AI sells the coach,
+            // Premium sells the tools.
             (
-                Text(tr("pw_line1") + "\n")
+                Text(tr(isAI ? "pw_ai_line1" : "pw_line1") + "\n")
                     .font(.system(size: 30, weight: .bold)).foregroundStyle(UpdoTheme.textPrimary)
-                + Text(tr("pw_unlimited_w"))
+                + Text(tr(isAI ? "pw_ai_line2" : "pw_unlimited_w"))
                     .font(.system(size: 30, weight: .bold)).foregroundStyle(UpdoTheme.textPrimary)
-                + Text(tr("pw_grow_w"))
+                + Text(tr(isAI ? "pw_ai_line2_accent" : "pw_grow_w"))
                     .font(.system(size: 30, weight: .bold, design: .serif)).italic().foregroundStyle(accent)
             )
             .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
 
-            Text(tr("pw_subtitle"))
+            Text(tr(isAI ? "pw_ai_subtitle" : "pw_subtitle"))
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(UpdoTheme.filmy(0.5))
                 .multilineTextAlignment(.center)
@@ -330,17 +333,23 @@ struct PaywallView: View {
             )
     }
 
-    // MARK: – Benefits checklist (tier-aware)
+    // MARK: – Benefits (each tier tells its own story)
 
-    private var benefits: [String] {
-        var list: [String] = []
-        // Headline AI feature differs by tier.
-        if selectedTier == .premiumAI {
-            list.append(tr("pw_feat_ai_expanded"))     // Updo AI included
-        } else {
-            list.append(tr("pw_feat_byo_chatgpt"))     // Connect your own ChatGPT
-        }
-        list.append(contentsOf: [
+    private var isAI: Bool { selectedTier == .premiumAI }
+
+    /// What Updo AI does for you — the reason to pick Premium AI.
+    private var aiBenefits: [(icon: String, title: String, detail: String)] {
+        [
+            ("camera.viewfinder", tr("pw_ai_b1_t"), tr("pw_ai_b1_s")),
+            ("person.crop.circle.badge.checkmark", tr("pw_ai_b2_t"), tr("pw_ai_b2_s")),
+            ("function", tr("pw_ai_b3_t"), tr("pw_ai_b3_s")),
+            ("calendar.badge.plus", tr("pw_ai_b4_t"), tr("pw_ai_b4_s")),
+        ]
+    }
+
+    /// The app tools both tiers unlock.
+    private var premiumBenefits: [String] {
+        [
             tr("pw_feat_crew"),
             tr("pw_feat_analytics"),
             tr("pw_b_future_weeks"),
@@ -349,62 +358,170 @@ struct PaywallView: View {
             tr("pw_feat_widget_style"),
             tr("pw_feat_support"),
             tr("pw_b_all_future")
-        ])
-        return list
+        ]
     }
 
+    @ViewBuilder
     private var benefitsCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(tr("pw_whats_included"))
-                    .font(.system(size: 12, weight: .black, design: .monospaced)).tracking(1.4)
-                    .foregroundStyle(accent)
-                Spacer()
-            }
-            .padding(.bottom, 14)
+        if isAI { aiBenefitsCard } else { premiumBenefitsCard }
+    }
 
-            ForEach(Array(benefits.enumerated()), id: \.element) { idx, b in
-                benefitRow(index: idx, text: b)
-                if idx < benefits.count - 1 {
-                    Rectangle().fill(UpdoTheme.filmy(0.05)).frame(height: 1)
+    private func benefitsShell<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0, content: content)
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous).fill(card)
+                    .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(accent.opacity(0.15), lineWidth: 1))
+            )
+    }
+
+    private func sectionLabel(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: .black, design: .monospaced)).tracking(1.4)
+            .foregroundStyle(color)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var hairline: some View {
+        Rectangle().fill(UpdoTheme.filmy(0.05)).frame(height: 1)
+    }
+
+    /// Premium AI: what the coach does comes first, in full; the Premium tools
+    /// follow as a compact "plus everything" list.
+    private var aiBenefitsCard: some View {
+        benefitsShell {
+            HStack(spacing: 8) {
+                UpdoAIOrb(size: 18)
+                sectionLabel(tr("pw_ai_section"), color: cyan)
+            }
+            .padding(.bottom, 10)
+
+            ForEach(Array(aiBenefits.enumerated()), id: \.element.title) { idx, b in
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: b.icon)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(aiGradient)
+                        .frame(width: 34, height: 34)
+                        .background(cyan.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(b.title)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(UpdoTheme.textPrimary)
+                        Text(b.detail)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(UpdoTheme.filmy(0.55))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
                 }
+                .padding(.vertical, 10)
+                .modifier(BenefitEntrance(appeared: appeared, index: idx))
+                if idx < aiBenefits.count - 1 { hairline }
+            }
+
+            sectionLabel(tr("pw_plus_premium"), color: gold)
+                .padding(.top, 16).padding(.bottom, 8)
+
+            ForEach(Array(premiumBenefits.enumerated()), id: \.element) { idx, b in
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(goldGradient)
+                        .frame(width: 18)
+                    Text(b)
+                        .font(.system(size: 13.5, weight: .medium))
+                        .foregroundStyle(UpdoTheme.filmy(0.72))
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 5)
+                .modifier(BenefitEntrance(appeared: appeared, index: aiBenefits.count + idx))
             }
         }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous).fill(card)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(accent.opacity(0.15), lineWidth: 1))
-        )
     }
 
-    @ViewBuilder
-    private func benefitRow(index idx: Int, text b: String) -> some View {
-        HStack(spacing: 12) {
-            benefitIcon(index: idx)
-            Text(b)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(UpdoTheme.textPrimary)
-            Spacer(minLength: 0)
+    /// Premium: the tools in full, the honest AI line (your own key), then one
+    /// tap up to the tier where Updo AI is built in.
+    private var premiumBenefitsCard: some View {
+        benefitsShell {
+            sectionLabel(tr("pw_whats_included"), color: gold)
+                .padding(.bottom, 14)
+
+            ForEach(Array(premiumBenefits.enumerated()), id: \.element) { idx, b in
+                HStack(spacing: 12) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(goldGradient)
+                    Text(b)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 9)
+                .modifier(BenefitEntrance(appeared: appeared, index: idx))
+                hairline
+            }
+
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "key.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(goldGradient)
+                    .frame(width: 18)
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(tr("pw_byo_t"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text(tr("pw_byo_s"))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 10)
+
+            aiUpsell.padding(.top, 8)
         }
-        .padding(.vertical, 9)
-        .opacity(appeared ? 1 : 0)
-        .offset(x: appeared ? 0 : -10)
-        .animation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.05 * Double(idx)), value: appeared)
     }
 
-    @ViewBuilder
-    private func benefitIcon(index idx: Int) -> some View {
-        if idx == 0 && selectedTier == .premiumAI {
-            UpdoAIOrb(size: 18)
-        } else if idx == 0 {
-            Image(systemName: "key.fill")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(goldGradient)
-                .frame(width: 18)
-        } else {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(goldGradient)
+    private var aiUpsell: some View {
+        Button {
+            HapticManager.shared.selection()
+            Analytics.shared.track("paywall_ai_upsell_tapped", properties: ["context": context])
+            withAnimation(.easeInOut(duration: 0.2)) { selectedTier = .premiumAI }
+        } label: {
+            HStack(spacing: 12) {
+                UpdoAIOrb(size: 30)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(tr("pw_upsell_t"))
+                        .font(.system(size: 14.5, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                    Text(tr("pw_upsell_s"))
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(UpdoTheme.filmy(0.6))
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(cyan)
+            }
+            .padding(14)
+            .background(cyan.opacity(0.07), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(aiGradient, lineWidth: 1).opacity(0.55))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private struct BenefitEntrance: ViewModifier {
+        let appeared: Bool
+        let index: Int
+        func body(content: Content) -> some View {
+            content
+                .opacity(appeared ? 1 : 0)
+                .offset(x: appeared ? 0 : -10)
+                .animation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.05 * Double(index)), value: appeared)
         }
     }
 
