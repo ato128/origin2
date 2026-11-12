@@ -10,8 +10,9 @@ import SwiftData
 import StoreKit
 
 struct ProfileHubView: View {
-    static let termsURL = "https://ato128.github.io/updo-support/terms.html"
-    static let privacyURL = "https://ato128.github.io/updo-support/privacy.html"
+    // The legal texts live on updo.me; `lang` opens them in the app's language.
+    static var termsURL: String { "https://updo.me/terms/?lang=\(appLanguageIsEnglish() ? "en" : "tr")" }
+    static var privacyURL: String { "https://updo.me/privacy/?lang=\(appLanguageIsEnglish() ? "en" : "tr")" }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL

@@ -588,9 +588,9 @@ struct PaywallView: View {
             Text(tr("pw_legal")).font(.system(size: 10))
                 .foregroundStyle(UpdoTheme.filmy(0.25)).multilineTextAlignment(.center)
             HStack(spacing: 4) {
-                Link(tr("pw_privacy"), destination: URL(string: "https://ato128.github.io/updo-support/privacy.html")!)
+                Link(tr("pw_privacy"), destination: URL(string: ProfileHubView.privacyURL)!)
                 Text("·")
-                Link(tr("pw_terms"), destination: URL(string: "https://ato128.github.io/updo-support/terms.html")!)
+                Link(tr("pw_terms"), destination: URL(string: ProfileHubView.termsURL)!)
             }
             .font(.system(size: 11, weight: .medium)).foregroundStyle(UpdoTheme.filmy(0.30))
         }
