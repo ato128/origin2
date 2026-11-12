@@ -2,14 +2,17 @@
 //  AIOnboardingStore.swift
 //  DailyTodo
 //
-//  Drives the mascot-led onboarding conversation. The dialogue is SCRIPTED
-//  (0 tokens) and USER-PACED — the mascot says one line at a time and waits
-//  for the user to tap "Devam" before the next line.
+//  Drives the onboarding conversation with Updo AI. The dialogue is SCRIPTED
+//  (0 tokens) and reads like the real chat: Updo AI's lines are written out
+//  one after another, the step's controls appear once it has finished
+//  speaking, and each answer lands in the transcript as the user's message.
 //
-//  Flow: education → university (single global search, no country split) →
-//  grade → (track for HS / free-text major for uni) → courses (type or paste,
-//  parsed by OnboardingCourseParser) → schedule fill for courses missing a
-//  day/time → daily goal → save (profile + courses + weekly EventItems).
+//  Flow — value first, questions after:
+//  week (timetable photo scan, or a manual day-by-day tour) → "here is your
+//  week" reveal → reminders primer (only once there are classes to remind
+//  about) → education → university (single global search) → grade → (track
+//  for HS / free-text major for uni) → daily goal → save (profile + courses +
+//  weekly EventItems).
 //
 
 import SwiftUI
@@ -29,10 +32,13 @@ struct OnboardingCourseDraft: Identifiable, Hashable {
 final class AIOnboardingStore: ObservableObject {
 
     enum Phase: Equatable {
-        case greeting, education, university, grade, track, major
-        case courseMethod   // "kendim eklerim" vs "fotoğraf atarım"
+        case greeting
+        case courseMethod   // first step: "fotoğraf atarım" vs "kendim eklerim"
         case coursePhotos   // 1-4 fotoğraf + tarama
+        case weekReveal     // the scanned week, shown whole: accept or fix
         case weekTour       // Pzt→Paz gün gün kontrol/düzenleme
+        case notify         // reminders primer, asked in context
+        case education, university, grade, track, major
         case goal, saving, finished
     }
 
@@ -47,9 +53,25 @@ final class AIOnboardingStore: ObservableObject {
         var room: String = ""
     }
 
-    // MARK: - Conversation (user-paced)
+    // MARK: - Conversation
 
-    /// The single line the mascot is currently saying.
+    /// One message in the conversation.
+    struct ChatLine: Identifiable, Equatable {
+        let id = UUID()
+        let isUser: Bool
+        var text: String
+    }
+
+    /// Everything said so far, oldest first.
+    @Published private(set) var transcript: [ChatLine] = []
+    /// The Updo AI line being written out right now (the view reports back
+    /// through `lineFinished` when it is fully on screen).
+    @Published private(set) var streamingLineID: UUID?
+    /// How long the transcript was when the current step's controls appeared —
+    /// stepping back cuts the conversation to here.
+    private var phaseMark = 0
+
+    /// The line Updo AI said last.
     @Published private(set) var currentLine: String = ""
     /// Lines still queued before this step's input is revealed.
     @Published private(set) var pendingLines: [String] = []
@@ -64,11 +86,10 @@ final class AIOnboardingStore: ObservableObject {
     @Published var errorText: String?
 
     // Geri (back) için ziyaret edilen adımların anlık görüntüleri.
-    struct BackSnapshot { let phase: Phase; let line: String }
+    struct BackSnapshot { let phase: Phase; let line: String; let mark: Int }
     @Published private(set) var backStack: [BackSnapshot] = []
     var canGoBack: Bool { !backStack.isEmpty }
 
-    var hasMoreLines: Bool { !pendingLines.isEmpty }
 
     // MARK: - Collected answers (canonical values)
 
@@ -101,6 +122,14 @@ final class AIOnboardingStore: ObservableObject {
     @Published private(set) var tourDay: Int = 0
     @Published var isScanningPhotos = false
 
+    // MARK: - Reminders primer
+
+    /// True while iOS has never been asked — the only state in which our own
+    /// question (and then the system prompt) makes sense.
+    @Published private(set) var canAskNotifications = false
+    private var didAskNotifications = false
+    private var afterNotify: (() -> Void)?
+
     private weak var studentStore: StudentStore?
     private var didStart = false
 
@@ -122,7 +151,10 @@ final class AIOnboardingStore: ObservableObject {
     func startIfNeeded() {
         guard !didStart else { return }
         didStart = true
-        present([tr("aio_greet_1"), tr("aio_greet_2"), tr("aio_q_education")], phase: .education)
+        Analytics.shared.track("onboarding_setup_started")
+        Task { canAskNotifications = await NotificationManager.shared.isUndetermined() }
+        // The week comes first: it is the one step that hands something back.
+        present([tr("aio_greet_1"), tr("aio_q_week_first")], phase: .courseMethod)
     }
 
     // MARK: - Dialogue engine (user-paced)
@@ -131,20 +163,70 @@ final class AIOnboardingStore: ObservableObject {
     private func present(_ lines: [String], phase newPhase: Phase) {
         // İleri her geçişte mevcut (cevaplanabilir) adımı geri yığınına kaydet.
         switch phase {
-        case .greeting, .saving, .finished: break
-        default: backStack.append(BackSnapshot(phase: phase, line: currentLine))
+        // `.notify` is answered once (iOS shows its prompt once), so it is
+        // never a step to come back to.
+        case .greeting, .saving, .finished, .notify: break
+        default: backStack.append(BackSnapshot(phase: phase, line: currentLine, mark: phaseMark))
         }
 
         var l = lines
-        let first = l.isEmpty ? "" : l.removeFirst()
+        let first = l.isEmpty ? nil : l.removeFirst()
         withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
             phase = newPhase
-            currentLine = first
             pendingLines = l
-            inputVisible = l.isEmpty
+            inputVisible = false
             isWorking = false
         }
+        if let first { say(first) } else { revealInput() }
+    }
+
+    /// Updo AI says a line: it joins the transcript and is written out.
+    private func say(_ text: String) {
+        let line = ChatLine(isUser: false, text: text)
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+            currentLine = text
+            transcript.append(line)
+            streamingLineID = line.id
+        }
         speak()
+    }
+
+    /// Same step, new wording (the day-by-day tour): the last Updo AI line is
+    /// rewritten instead of piling up a line per day.
+    private func sayInPlace(_ text: String) {
+        if let last = transcript.last, !last.isUser {
+            transcript.removeLast()
+        }
+        say(text)
+    }
+
+    /// The user's answer, as their message in the conversation.
+    private func userSaid(_ text: String) {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+            transcript.append(ChatLine(isUser: true, text: clean))
+        }
+    }
+
+    /// The view finished writing a line out: say the next queued one, or show
+    /// this step's controls.
+    func lineFinished(_ id: UUID) {
+        guard streamingLineID == id else { return }
+        streamingLineID = nil
+
+        guard !pendingLines.isEmpty else { revealInput(); return }
+        let next = pendingLines.removeFirst()
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 260_000_000)
+            say(next)
+        }
+    }
+
+    private func revealInput() {
+        phaseMark = transcript.count
+        guard phase != .saving, phase != .finished else { return }
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) { inputVisible = true }
     }
 
     /// Sol-üst geri tuşu: bir önceki adıma dön, o adımın sorusunu yeniden göster.
@@ -156,23 +238,15 @@ final class AIOnboardingStore: ObservableObject {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
             phase = snap.phase
             currentLine = snap.line
+            // Back to where that step's question had just been asked.
+            transcript = Array(transcript.prefix(snap.mark))
+            phaseMark = snap.mark
+            streamingLineID = nil
             pendingLines = []
             inputVisible = true
             isWorking = false
             isSpeaking = false
         }
-    }
-
-    /// Called by the "Devam" button.
-    func tapContinue() {
-        guard !pendingLines.isEmpty else { return }
-        HapticManager.shared.selection()
-        let next = pendingLines.removeFirst()
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-            currentLine = next
-            if pendingLines.isEmpty { inputVisible = true }
-        }
-        speak()
     }
 
     private func speak() {
@@ -186,6 +260,7 @@ final class AIOnboardingStore: ObservableObject {
     // MARK: - Education
 
     func chooseEducation(_ level: String) {
+        userSaid(tr(level == "university" ? "aio_a_university" : "aio_a_highschool"))
         educationLevel = level
         gradeLevel = level == "university" ? "1" : "9"
         if level == "university" {
@@ -232,6 +307,7 @@ final class AIOnboardingStore: ObservableObject {
         universityQuery = university.name
         universityMatches = []
         HapticManager.shared.success()
+        userSaid(university.name)
 
         present([trArg("aio_uni_confirm", institutionName), tr("aio_q_year")], phase: .grade)
     }
@@ -239,6 +315,7 @@ final class AIOnboardingStore: ObservableObject {
     // MARK: - Grade & track
 
     func chooseGrade(_ value: String) {
+        userSaid(gradeDisplay(value))
         gradeLevel = value
         if isUniversity {
             present([tr("aio_q_major_free")], phase: .major)
@@ -248,31 +325,47 @@ final class AIOnboardingStore: ObservableObject {
     }
 
     func chooseTrack(_ value: String) {
+        userSaid(trackDisplay(value))
         highSchoolTrack = value
-        beginCoursesPhase()
+        beginGoalPhase()
     }
 
     // MARK: - Major (free text)
 
     func confirmMajor(_ text: String) {
         majorName = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        userSaid(majorName.isEmpty ? tr("aio_skip") : majorName)
         HapticManager.shared.selection()
-        beginCoursesPhase()
+        beginGoalPhase()
+    }
+
+    private func beginGoalPhase() {
+        present([tr("aio_q_goal")], phase: .goal)
+    }
+
+    // MARK: - Profile questions (after the week is in place)
+
+    private func beginProfilePhase() {
+        present([tr(parsedCourses.isEmpty ? "aio_q_education" : "aio_q_education_after_week")], phase: .education)
     }
 
     // MARK: - Course method (fotoğraf mı, elle mi?)
 
     private func beginCoursesPhase() {
-        present([tr("aio_q_course_method")], phase: .courseMethod)
+        present([tr("aio_q_week_first")], phase: .courseMethod)
     }
 
     func chooseCourseMethodPhoto() {
         HapticManager.shared.selection()
+        userSaid(tr("aio_m_photo"))
+        Analytics.shared.track("onboarding_week_method", properties: ["method": "photo"])
         present([tr("aio_photos_prompt")], phase: .coursePhotos)
     }
 
     func chooseCourseMethodManual() {
         HapticManager.shared.selection()
+        userSaid(tr("aio_m_manual"))
+        Analytics.shared.track("onboarding_week_method", properties: ["method": "manual"])
         tourEntries = []
         timelessCourseDrafts = []
         startWeekTour(lines: [tr("aio_tour_intro_manual")])
@@ -286,10 +379,12 @@ final class AIOnboardingStore: ObservableObject {
     }
 
     func skipCourses() {
+        userSaid(tr("aio_skip"))
+        Analytics.shared.track("onboarding_week_method", properties: ["method": "skip"])
         parsedCourses = []
         tourEntries = []
         timelessCourseDrafts = []
-        present([tr("aio_q_goal")], phase: .goal)
+        beginProfilePhase()
     }
 
     // MARK: - Photo scan results
@@ -324,16 +419,63 @@ final class AIOnboardingStore: ObservableObject {
         tourEntries = entries
         timelessCourseDrafts = timeless
         HapticManager.shared.success()
-        startWeekTour(lines: [trArg("aio_scan_done", scanned.count)])
+        Analytics.shared.track("onboarding_week_scanned", properties: ["courses": scanned.count, "slots": entries.count])
+
+        // Nothing readable on the grid (no times) → there is no week to show
+        // yet; go straight to the day-by-day tour to place them.
+        guard !entries.isEmpty else {
+            startWeekTour(lines: [trArg("aio_scan_done", scanned.count)])
+            return
+        }
+        present([trArg2("aio_reveal_line", OnboardingCount.courses(scanned.count), OnboardingCount.days(Set(entries.map(\.weekday)).count))], phase: .weekReveal)
+    }
+
+    // MARK: - Week reveal (the whole scanned week at once)
+
+    /// The scanned classes as grid blocks. Colours follow the order courses
+    /// first appear in — the same order `createScheduleEvents` colours the
+    /// real events in, so the preview matches the Week tab afterwards.
+    var weekBlocks: [OnboardingWeekBlock] {
+        var colorByCourse: [String: Int] = [:]
+        return tourEntries.map { entry in
+            let key = entry.name.lowercased()
+            let index = colorByCourse[key] ?? colorByCourse.count
+            colorByCourse[key] = index
+            return OnboardingWeekBlock(
+                id: entry.id,
+                weekday: entry.weekday,
+                startMinute: entry.startMinute,
+                durationMinute: entry.durationMinute,
+                title: entry.name,
+                colorHex: OnboardingWeekBlock.palette[index % OnboardingWeekBlock.palette.count]
+            )
+        }
+    }
+
+    /// "Looks right" — keep the week as scanned.
+    func acceptWeek() {
+        userSaid(tr("aio_reveal_ok"))
+        HapticManager.shared.success()
+        finishWeekTour()
+    }
+
+    /// "Fix something" — walk the week day by day.
+    func editWeek() {
+        userSaid(tr("aio_reveal_fix"))
+        HapticManager.shared.selection()
+        startWeekTour(lines: [])
+    }
+
+    /// The photos were handed over — shown as the user's message while the
+    /// scan runs.
+    func photosSent(_ count: Int) {
+        userSaid(tr(count == 1 ? "aio_user_photo_one" : "aio_user_photo_other", count))
     }
 
     func scanFailed(_ message: String) {
         isScanningPhotos = false
         HapticManager.shared.error()
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-            currentLine = message
-        }
-        speak()
+        say(message)
     }
 
     // MARK: - Week tour (Pzt → Paz, gün gün kontrol)
@@ -374,11 +516,8 @@ final class AIOnboardingStore: ObservableObject {
     func nextTourDay() {
         HapticManager.shared.selection()
         if tourDay < 6 {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                tourDay += 1
-                currentLine = tourDayLine(tourDay)
-            }
-            speak()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) { tourDay += 1 }
+            sayInPlace(tourDayLine(tourDay))
         } else {
             finishWeekTour()
         }
@@ -387,11 +526,8 @@ final class AIOnboardingStore: ObservableObject {
     func goBackInTour() {
         HapticManager.shared.selection()
         if tourDay > 0 {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                tourDay -= 1
-                currentLine = tourDayLine(tourDay)
-            }
-            speak()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) { tourDay -= 1 }
+            sayInPlace(tourDayLine(tourDay))
         } else {
             backToCourseMethod()
         }
@@ -424,24 +560,71 @@ final class AIOnboardingStore: ObservableObject {
         }
 
         parsedCourses = result
-        present([tr("aio_q_goal")], phase: .goal)
+
+        // Reminders are asked for here, where they mean something: right after
+        // the classes they would announce are on screen.
+        if result.contains(where: \.hasSchedule) {
+            askNotifications(line: tr("aio_q_notify_class")) { [weak self] in self?.beginProfilePhase() }
+        } else {
+            beginProfilePhase()
+        }
+    }
+
+    // MARK: - Reminders primer
+
+    /// Asks our own question first; the system prompt only follows a "yes".
+    /// Runs `next` straight away when iOS has already been asked, or we have.
+    private func askNotifications(line: String, then next: @escaping () -> Void) {
+        guard canAskNotifications, !didAskNotifications else { next(); return }
+        afterNotify = next
+        present([line], phase: .notify)
+    }
+
+    func answerNotifications(allow: Bool) {
+        guard phase == .notify, !isWorking else { return }
+        HapticManager.shared.selection()
+        userSaid(tr(allow ? "aio_notify_yes" : "aio_notify_later"))
+        Analytics.shared.track("onboarding_notify_primer", properties: ["answer": allow ? "yes" : "later"])
+        // Marked on the answer, not on the question: stepping back and forward
+        // again must still ask.
+        didAskNotifications = true
+        let next = afterNotify
+        afterNotify = nil
+
+        guard allow else {
+            NotificationManager.shared.recordPrimerDeclined()
+            next?()
+            return
+        }
+
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) { isWorking = true; inputVisible = false }
+        Task {
+            let granted = await NotificationManager.shared.requestPermissionFromPrimer()
+            Analytics.shared.track("onboarding_notify_system", properties: ["granted": granted])
+            canAskNotifications = false
+            next?()
+        }
     }
 
     // MARK: - Goal & save
 
     func confirmGoal() {
-        Task { await finish() }
+        userSaid(tr("aio_goal_value", Int(dailyStudyGoalMinutes)))
+        // No classes yet → the reminders question comes here instead, tied to
+        // the goal just set.
+        askNotifications(line: tr("aio_q_notify_goal")) { [weak self] in
+            Task { await self?.finish() }
+        }
     }
 
     private func finish() async {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
             phase = .saving
-            currentLine = tr("aio_saving")
             pendingLines = []
             inputVisible = false
             isWorking = true
         }
-        speak()
+        say(tr("aio_saving"))
 
         guard let studentStore else { isWorking = false; errorText = tr("aio_save_error"); return }
         do {
@@ -463,13 +646,21 @@ final class AIOnboardingStore: ObservableObject {
             // Weekly schedule: every parsed/picked slot becomes a real event.
             studentStore.createScheduleEvents(from: parsedCourses)
 
+            // The classes exist now — put their "10 minutes before" reminders
+            // in place (a no-op unless notifications were just allowed).
+            await studentStore.refreshClassReminders()
+            Analytics.shared.track("onboarding_setup_finished", properties: [
+                "courses": parsedCourses.count,
+                "has_week": parsedCourses.contains(where: \.hasSchedule)
+            ])
+
             // Kurulum artık YEREL + anlık (remote arkada senkronlanıyor). "setting
             // up…" mesajı flash gibi geçmesin diye kısa, kasıtlı bir beat — akıcı
             // ve premium hissettirir.
             try? await Task.sleep(nanoseconds: 650_000_000)
 
-            withAnimation { isWorking = false; phase = .finished; currentLine = tr("aio_done") }
-            speak()
+            withAnimation { isWorking = false; phase = .finished }
+            say(tr("aio_done"))
             HapticManager.shared.success()
         } catch {
             withAnimation { isWorking = false }

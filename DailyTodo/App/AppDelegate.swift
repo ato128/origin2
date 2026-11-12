@@ -39,20 +39,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 }
 
             case .notDetermined:
-                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-                    if let error {
-                        Log.debug("🔴 NOTIFICATION PERMISSION ERROR:", error.localizedDescription)
-                    }
-
-                    Log.debug("🔔 NOTIFICATION PERMISSION GRANTED:", granted)
-
-                    guard granted else { return }
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        Log.debug("📡 REGISTERING FOR REMOTE NOTIFICATIONS...")
-                        application.registerForRemoteNotifications()
-                    }
-                }
+                // Never ask cold at launch. New users are asked in context by
+                // the onboarding; everyone else by NotificationManager once
+                // the app is open (see `requestPermissionIfNeeded`).
+                Log.debug("🔔 NOTIFICATION PERMISSION NOT ASKED YET")
 
             case .denied:
                 Log.debug("⛔️ NOTIFICATION PERMISSION DENIED")

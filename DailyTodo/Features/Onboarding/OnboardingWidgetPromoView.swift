@@ -2,37 +2,43 @@
 //  OnboardingWidgetPromoView.swift
 //  DailyTodo
 //
-//  Onboarding'de showcase ekranlarından sonra gelen widget tanıtımı: arkada
-//  GERÇEK Updo widget'ları (UpdoWidgetStylePreview) yavaşça gezer; önde
-//  "Gelişimini widget'lardan takip et" + "Updo Pro'yu Keşfet" (→ paywall).
-//  Paywall X ile kapansa da, satın alınsa da doğrudan uygulamaya girilir
-//  (onboarding'e geri dönülmez). Sağ üstteki X de doğrudan uygulamaya geçer.
-//
 
 import SwiftUI
 
+/// Onboarding, after the showcase: what Updo looks like OUTSIDE the app. A
+/// composed tableau of the real thing — the Live Activity as it sits on the
+/// lock screen, and the Focus Card widgets as they sit on the home screen
+/// (the exact views the extension draws) — then one line on how to add them.
+/// The sample numbers are shown against the student's own daily goal.
 struct OnboardingWidgetPromoView: View {
-    /// Uygulamaya geçiş (X ya da paywall sonrası).
+    /// Next step. The paywall no longer lives here — it follows the user's
+    /// first action (see `OnboardingHandoff`).
     var onFinish: () -> Void
 
-    @State private var showPaywall = false
+    @EnvironmentObject private var studentStore: StudentStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+    @State private var floating = false
 
-    private var gold: Color { Color(arenaHex: AppArenaPalette.gold) }
-    private var coral: Color { Color(arenaHex: AppArenaPalette.coral) }
+    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
+    private var cyan: Color { Color(arenaHex: AppArenaPalette.cyan) }
+    private var blue: Color { Color(arenaHex: AppArenaPalette.blue) }
 
-    /// Widget'lar canlı görünsün diye örnek (dolu) kullanıcı durumu.
+    private var goalMinutes: Int { studentStore.profile?.dailyStudyGoalMinutes ?? 120 }
+
+    /// A lived-in sample so the widgets read as they will after a week.
     private var sampleState: WidgetUserState {
         var s = WidgetUserState(
             iconName: nil,
             isPro: true,
             streak: 12,
             level: 6,
-            todayFocusMinutes: 85,
+            todayFocusMinutes: Int(Double(goalMinutes) * 0.7),
             statsShared: true,
             longestStreak: 21
         )
         s.levelProgress = 0.62
-        s.weekFocusMinutes = [40, 70, 30, 90, 55, 80, 85]
+        s.weekFocusMinutes = [40, 70, 30, 90, 55, 80, Int(Double(goalMinutes) * 0.7)]
         s.prevWeekFocusMinutes = 300
         s.todayFocusDone = true
         s.todayTaskDone = true
@@ -40,23 +46,28 @@ struct OnboardingWidgetPromoView: View {
         return s
     }
 
+    private var liveState: FocusAttributes.ContentState {
+        FocusAttributes.ContentState(
+            title: tr("las_preview_title"),
+            subtitle: tr("las_preview_sub"),
+            startDate: Date().addingTimeInterval(-11 * 60),
+            endDate: Date().addingTimeInterval(14 * 60),
+            modeRaw: "personal",
+            isPaused: false,
+            isResting: false,
+            pausedRemainingSeconds: nil,
+            pausedProgress: nil
+        )
+    }
+
     var body: some View {
         ZStack {
-            Color(arenaHex: "#05070E").ignoresSafeArea()
-
-            WidgetWall(state: sampleState)
-                .ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.12),
-                    Color.black.opacity(0.42),
-                    Color.black.opacity(0.94)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
+            ArenaBackground(
+                primaryGlow: cyan,
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: blue,
+                intensity: 0.9
             )
-            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack {
@@ -65,150 +76,174 @@ struct OnboardingWidgetPromoView: View {
                         HapticManager.shared.navigation()
                         onFinish()
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(UpdoTheme.filmy(0.92))
-                            .frame(width: 34, height: 34)
-                            .background(Circle().fill(UpdoTheme.filmy(0.14)))
+                        Text(tr("common_skip"))
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .tracking(0.5)
+                            .foregroundStyle(UpdoTheme.filmy(0.42))
+                            .frame(height: 34)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
 
-                Spacer()
+                GeometryReader { geo in
+                    // Laid out at its natural size, then scaled as one piece to
+                    // whatever height the screen leaves — never cropped, never
+                    // running under the words below.
+                    let width = min(geo.size.width - 44, isPad ? 460 : 400)
+                    let natural = Self.tableauHeight(width: width)
+                    let scale = min(1, max(0.5, geo.size.height / natural))
 
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(tr("ob_widget_title"))
-                        .font(.system(size: 36, weight: .black))
-                        .foregroundStyle(UpdoTheme.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    tableau(width: width)
+                        .scaleEffect(scale, anchor: .center)
+                        .frame(width: width * scale, height: natural * scale)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .padding(.top, 6)
+                .padding(.bottom, 14)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    ArenaLargeTitle(
+                        eyebrow: tr("ob_widget_eyebrow"),
+                        title: tr("ob_widget_title_a"),
+                        accent: tr("ob_widget_title_b"),
+                        accentColor: cyan
+                    )
 
                     Text(tr("ob_widget_sub"))
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(UpdoTheme.filmy(0.6))
+                        .foregroundStyle(UpdoTheme.filmy(0.56))
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
 
+                    // How to get them — the one thing people don't know.
+                    HStack(spacing: 9) {
+                        Image(systemName: "plus.app")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(cyan)
+                        Text(tr("ob_widget_hint"))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.72))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(UpdoTheme.filmy(0.05))
+                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(UpdoTheme.filmy(0.09), lineWidth: 1))
+                    )
+
                     Button {
                         HapticManager.shared.action()
-                        showPaywall = true
+                        onFinish()
                     } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 15, weight: .black))
-                            Text(tr("ob_widget_cta"))
+                            Text(tr("common_continue"))
                                 .font(.system(size: 17, weight: .black))
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 15, weight: .black))
                         }
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(
-                            Capsule().fill(
-                                LinearGradient(
-                                    colors: [gold, coral],
-                                    startPoint: .leading, endPoint: .trailing
-                                )
-                            )
-                            .shadow(color: gold.opacity(0.4), radius: 16, y: 8)
+                            Capsule().fill(LinearGradient(colors: [cyan, blue], startPoint: .leading, endPoint: .trailing))
+                                .shadow(color: cyan.opacity(0.36), radius: 16, y: 8)
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(OnboardingScaleButtonStyle())
                     .padding(.top, 6)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: isPad ? 560 : .infinity, alignment: .leading)
                 .padding(.horizontal, 24)
-                .padding(.bottom, 44)
+                .padding(.bottom, 36)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 12)
             }
         }
         .preferredColorScheme(.dark)
-        // Paywall widget ekranının üstünde açılır; kapanınca (X veya satın alma)
-        // doğrudan uygulamaya geçilir — showcase'e/onboarding'e geri dönülmez.
-        .fullScreenCover(isPresented: $showPaywall, onDismiss: { onFinish() }) {
-            PaywallView(context: "onboarding")
-                .updoReadableColumn()
-        }
-    }
-}
-
-// MARK: - Arkada gezen GERÇEK widget duvarı
-
-private struct WidgetWall: View {
-    let state: WidgetUserState
-
-    @State private var drift = false
-
-    /// Orta boy (2:1) gerçek widget'ı verilen genişliğe ölçekler.
-    private func medium(_ style: FocusLiveStyle, width: CGFloat) -> some View {
-        let scale = width / 338
-        return UpdoWidgetStylePreview(style: style, state: state, isSmall: false)
-            .scaleEffect(scale)
-            .frame(width: width, height: 158 * scale)
-    }
-
-    /// Küçük (kare) gerçek widget'ı verilen genişliğe ölçekler.
-    private func small(_ style: FocusLiveStyle, width: CGFloat) -> some View {
-        let scale = width / 158
-        return UpdoWidgetStylePreview(style: style, state: state, isSmall: true)
-            .scaleEffect(scale)
-            .frame(width: width, height: 158 * scale)
-    }
-
-    var body: some View {
-        GeometryReader { geo in
-            Group {
-                if UIDevice.current.userInterfaceIdiom == .pad {
-                    padGrid(width: geo.size.width)
-                } else {
-                    phoneGrid(width: geo.size.width)
-                }
-            }
-            .frame(width: geo.size.width)
-            .offset(y: drift ? -70 : 6)
-            .opacity(0.92)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 14).repeatForever(autoreverses: true)) {
-                    drift = true
-                }
-            }
+        .onAppear {
+            withAnimation(reduceMotion ? nil : .spring(response: 0.7, dampingFraction: 0.84)) { appeared = true }
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) { floating = true }
         }
     }
 
-    /// Ekranı dolduran (F1 tarzı) zengin grid — orta boy + iki küçük satırları.
-    private func phoneGrid(width: CGFloat) -> some View {
-        let side: CGFloat = 14
+    // MARK: - Tableau (lock screen card, then the home-screen widgets)
+
+    /// Height of the tableau at `width`: the lock-screen card, the medium
+    /// widget, the row of small ones, two place labels and the gaps.
+    private static func tableauHeight(width: CGFloat) -> CGFloat {
+        let liveCard: CGFloat = 142
+        let medium = 158 * width / 338
+        let smallRow = (width - 12) / 2
+        return liveCard + medium + smallRow + 58
+    }
+
+    private func tableau(width: CGFloat) -> some View {
         let gap: CGFloat = 12
-        let content = width - side * 2
-        let col = (content - gap) / 2
+        let half = (width - gap) / 2
 
-        return VStack(spacing: gap) {
-            medium(.arena, width: content)
-            HStack(spacing: gap) { small(.gold, width: col); small(.neon, width: col) }
-            medium(.terminal, width: content)
-            HStack(spacing: gap) { small(.aura, width: col); small(.zen, width: col) }
-            medium(.poster, width: content)
-            HStack(spacing: gap) { small(.classic, width: col); small(.minimal, width: col) }
-            medium(.gold, width: content)
-            HStack(spacing: gap) { small(.arena, width: col); small(.neon, width: col) }
+        return VStack(alignment: .leading, spacing: 10) {
+            piece(0, label: tr("ob_widget_lock")) {
+                FocusLiveStyleCard(
+                    style: .classic,
+                    state: liveState,
+                    userState: sampleState,
+                    totalMinutes: 25,
+                    themeAccent: cyan
+                )
+                .frame(width: width)
+            }
+
+            piece(1, label: tr("ob_widget_home")) {
+                widget(.classic, small: false, width: width)
+            }
+
+            piece(2, label: nil) {
+                HStack(spacing: gap) {
+                    widget(.aura, small: true, width: half)
+                    widget(.gold, small: true, width: half)
+                }
+            }
         }
+        .frame(width: width)
+        // The whole composition breathes a little; nothing drifts or loops fast.
+        .offset(y: floating ? -5 : 5)
     }
 
-    /// iPad: iPad ana ekranı gibi 4 sütunlu ızgara — her satırda bir orta boy
-    /// + iki küçük, orta boy satır satır yer değiştirir (telefondaki tam
-    /// genişlik orta boylar iPad'de devasa oluyordu).
-    private func padGrid(width: CGFloat) -> some View {
-        let side: CGFloat = 20
-        let gap: CGFloat = 16
-        let unit = (width - side * 2 - gap * 3) / 4
-        let wide = unit * 2 + gap
-
-        return VStack(spacing: gap) {
-            HStack(spacing: gap) { medium(.arena, width: wide); small(.gold, width: unit); small(.neon, width: unit) }
-            HStack(spacing: gap) { small(.aura, width: unit); small(.zen, width: unit); medium(.terminal, width: wide) }
-            HStack(spacing: gap) { medium(.poster, width: wide); small(.classic, width: unit); small(.minimal, width: unit) }
-            HStack(spacing: gap) { small(.arena, width: unit); small(.neon, width: unit); medium(.gold, width: wide) }
-            HStack(spacing: gap) { medium(.aura, width: wide); small(.terminal, width: unit); small(.zen, width: unit) }
-            HStack(spacing: gap) { small(.poster, width: unit); small(.gold, width: unit); medium(.neon, width: wide) }
+    /// One row of the tableau, with its place label and staggered entrance.
+    private func piece<Content: View>(_ index: Int, label: String?, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let label {
+                Text(label)
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(UpdoTheme.filmy(0.4))
+                    .padding(.leading, 4)
+            }
+            content()
+                .shadow(color: .black.opacity(0.45), radius: 18, y: 10)
         }
-        .padding(.top, 64)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 22)
+        .scaleEffect(appeared ? 1 : 0.96)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.7, dampingFraction: 0.82).delay(0.08 + Double(index) * 0.11),
+            value: appeared
+        )
+    }
+
+    /// The real widget view, scaled from its native size to `width`.
+    private func widget(_ style: FocusLiveStyle, small: Bool, width: CGFloat) -> some View {
+        let native: CGFloat = small ? 158 : 338
+        let scale = width / native
+        return UpdoWidgetStylePreview(style: style, state: sampleState, isSmall: small, dailyGoalMinutes: goalMinutes)
+            .scaleEffect(scale)
+            .frame(width: width, height: 158 * scale)
     }
 }

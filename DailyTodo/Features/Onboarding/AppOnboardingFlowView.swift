@@ -13,6 +13,8 @@ enum AppOnboardingStage: String, CaseIterable {
     case welcome
     case student
     case focus
+    /// After the showcase: the user picks a first thing to actually do.
+    case firstAction
     case crew
     case community
     case ready
@@ -143,8 +145,17 @@ struct AppOnboardingFlowView: View {
             case .focus:
                 // "Sell the app" — premium Arena showcase of all five pillars,
                 // ending in the paywall, then enters the app.
-                OnboardingShowcaseView(onFinish: { enterApp() })
+                // Ends on a first action instead of a paywall — the paywall
+                // follows that action, inside the app (see `OnboardingHandoff`).
+                OnboardingShowcaseView(onFinish: { setStage(.firstAction, haptic: true) })
                     .transition(screenTransition)
+
+            case .firstAction:
+                OnboardingFirstActionView(isBusy: isFinishing, onChoose: { action in
+                    OnboardingHandoff.begin(action)
+                    enterApp()
+                })
+                .transition(screenTransition)
 
             case .crew:
                 crewScreen
@@ -191,7 +202,7 @@ struct AppOnboardingFlowView: View {
             stageRawValue = AppOnboardingStage.focus.rawValue
         }
 
-        if (stage == .focus || stage == .crew || stage == .community || stage == .ready),
+        if (stage == .focus || stage == .firstAction || stage == .crew || stage == .community || stage == .ready),
            !studentStore.hasCompletedStudentProfile {
             stageRawValue = AppOnboardingStage.student.rawValue
         }
@@ -1470,5 +1481,408 @@ private enum OnboardingHaptics {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.warning)
+    }
+}
+
+// MARK: - First action hand-off (onboarding → app)
+
+/// What the user chose to do first.
+enum OnboardingFirstAction: Equatable {
+    /// Send this question to Updo AI.
+    case askAI(String)
+    /// Start a short focus session.
+    case focus
+    /// Just look around (the paywall was already shown before entering).
+    case explore
+}
+
+/// Carries the first action across the onboarding → app boundary, and decides
+/// when the first paywall is shown. The onboarding writes; Home / Focus /
+/// MainTabView each consume their part exactly once. Survives a relaunch.
+///
+/// Paywall timing — it is shown once, at the first moment it is earned:
+///   • the free Updo AI messages run out (the user has felt what AI does), or
+///   • a focus session has just been completed and celebrated, or
+///   • neither happened: the first launch on a later day.
+/// Someone who chose "just look around" sees it in onboarding instead.
+enum OnboardingHandoff {
+    private static let kindKey = "obHandoffKindV1"
+    private static let promptKey = "obHandoffPromptV1"
+    private static let paywallDueKey = "obHandoffPaywallDueV1"
+    private static let paywallDueSinceKey = "obHandoffPaywallDueSinceV1"
+
+    /// Why the paywall is being shown — also its analytics context.
+    enum PaywallMoment: String {
+        case aiMessagesUsedUp = "onboarding_ai_used_up"
+        case focusCompleted = "onboarding_focus_done"
+        case laterDay = "onboarding_later_day"
+    }
+    /// Read by FocusView together with its widget autostart flag.
+    static let focusShortPresetKey = "focus.pendingShortPreset"
+
+    private static var defaults: UserDefaults { .standard }
+
+    /// The action was picked up in this run (not persisted). Keeps the guided
+    /// tour away for the rest of this first session.
+    private static var actionInFlight = false
+
+    static func begin(_ action: OnboardingFirstAction) {
+        switch action {
+        case .askAI(let prompt):
+            defaults.set("ai", forKey: kindKey)
+            defaults.set(prompt, forKey: promptKey)
+            armPaywall()
+        case .focus:
+            defaults.set("focus", forKey: kindKey)
+            armPaywall()
+        case .explore:
+            clear()
+        }
+    }
+
+    /// Home chat: the question to send as the user's first message.
+    static func consumePrompt() -> String? {
+        guard defaults.string(forKey: kindKey) == "ai" else { return nil }
+        let prompt = defaults.string(forKey: promptKey)
+        defaults.removeObject(forKey: kindKey)
+        defaults.removeObject(forKey: promptKey)
+        guard let prompt, !prompt.isEmpty else { return nil }
+        actionInFlight = true
+        return prompt
+    }
+
+    /// Main tabs: true once if the first action is a focus session. Arms the
+    /// Focus tab's own autostart with the short preset.
+    static func consumeFocus() -> Bool {
+        guard defaults.string(forKey: kindKey) == "focus" else { return false }
+        defaults.removeObject(forKey: kindKey)
+        defaults.set(true, forKey: focusShortPresetKey)
+        defaults.set(true, forKey: "focus.pendingWidgetAutostart")
+        actionInFlight = true
+        return true
+    }
+
+    /// The first action is still waiting for its screen, or running right now.
+    static var hasPendingAction: Bool { defaults.string(forKey: kindKey) != nil || actionInFlight }
+
+    /// The post-action paywall has not been shown yet.
+    static var paywallDue: Bool { defaults.bool(forKey: paywallDueKey) }
+
+    private static func armPaywall() {
+        defaults.set(true, forKey: paywallDueKey)
+        defaults.set(Date().timeIntervalSince1970, forKey: paywallDueSinceKey)
+    }
+
+    /// The paywall has been owed since an earlier day (the fallback moment).
+    static var paywallDueSinceEarlierDay: Bool {
+        guard paywallDue else { return false }
+        let since = Date(timeIntervalSince1970: defaults.double(forKey: paywallDueSinceKey))
+        return !Calendar.current.isDateInToday(since)
+    }
+
+    /// An earned moment arrived — MainTabView shows the paywall, once.
+    static func paywallMoment(_ moment: PaywallMoment) {
+        guard paywallDue else { return }
+        NotificationCenter.default.post(name: .onboardingPaywallMoment, object: moment.rawValue)
+    }
+
+    static func markPaywallShown() {
+        defaults.removeObject(forKey: paywallDueKey)
+        defaults.removeObject(forKey: paywallDueSinceKey)
+    }
+
+    static func clear() {
+        [kindKey, promptKey, paywallDueKey, paywallDueSinceKey, focusShortPresetKey].forEach(defaults.removeObject(forKey:))
+    }
+}
+
+extension Notification.Name {
+    static let onboardingPaywallMoment = Notification.Name("onboardingPaywallMoment")
+}
+
+// MARK: - First action screen
+
+/// The last onboarding screen: instead of ending on a paywall, the user picks
+/// one real thing to do — ask Updo AI a question about their own courses, or
+/// start a short focus — and lands in the app already doing it.
+struct OnboardingFirstActionView: View {
+    var isBusy: Bool
+    var onChoose: (OnboardingFirstAction) -> Void
+
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var studentStore: StudentStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Query private var allEvents: [EventItem]
+
+    @State private var appeared = false
+    @State private var chosen: Int?
+    @State private var showPaywall = false
+
+    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
+    private var cyan: Color { Color(arenaHex: AppArenaPalette.cyan) }
+
+    private var personal: OnboardingPersonalSnapshot {
+        OnboardingPersonalSnapshot.make(
+            events: allEvents,
+            userID: session.currentUser?.id.uuidString,
+            fullName: session.currentUser?.fullName,
+            dailyGoalMinutes: studentStore.profile?.dailyStudyGoalMinutes
+        )
+    }
+
+    private struct Option {
+        let icon: String
+        let eyebrow: String
+        let title: String
+        let action: OnboardingFirstAction
+        let kind: String
+    }
+
+    private var options: [Option] {
+        let data = personal
+        var list: [Option] = []
+
+        // 1 — a question about the very next class (or the first course).
+        if let course = data.nextClass?.block.title ?? data.courseNames.first {
+            let prompt = tr("ob_fa_q_course", course)
+            list.append(Option(icon: "sparkles", eyebrow: tr("ob_fa_ask"), title: prompt, action: .askAI(prompt), kind: "ai_course"))
+        }
+        // 2 — a plan for the week, or where to begin when there is no week yet.
+        let second = tr(data.hasWeek ? "ob_fa_q_week" : "ob_fa_q_start")
+        list.append(Option(icon: "sparkles", eyebrow: tr("ob_fa_ask"), title: second, action: .askAI(second), kind: data.hasWeek ? "ai_week" : "ai_start"))
+        // 3 — a short first focus.
+        list.append(Option(icon: "timer", eyebrow: tr("ob_fa_focus_eyebrow"), title: tr("ob_fa_focus"), action: .focus, kind: "focus"))
+        return list
+    }
+
+    private var subtitle: String {
+        if let next = personal.nextClass {
+            return tr("ob_fa_sub_class", next.whenText, next.block.title)
+        }
+        return tr("ob_fa_sub")
+    }
+
+    var body: some View {
+        ZStack {
+            ArenaBackground(
+                primaryGlow: cyan,
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: Color(arenaHex: AppArenaPalette.blue),
+                intensity: 0.95
+            )
+
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer(minLength: 24)
+
+                UpdoAIOrb(mode: .idle, size: isPad ? 96 : 72)
+                    .scaleEffect(appeared ? 1 : 0.8)
+                    .opacity(appeared ? 1 : 0)
+
+                ArenaLargeTitle(
+                    eyebrow: tr("ob_fa_eyebrow"),
+                    title: tr("ob_fa_title"),
+                    accent: tr("ob_fa_accent"),
+                    accentColor: cyan
+                )
+                .padding(.top, 22)
+
+                Text(subtitle)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.6))
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 12)
+
+                VStack(spacing: 10) {
+                    ForEach(Array(options.enumerated()), id: \.offset) { index, option in
+                        optionCard(option, index: index)
+                    }
+                }
+                .padding(.top, 26)
+
+                Spacer(minLength: 20)
+
+                Button {
+                    HapticManager.shared.navigation()
+                    Analytics.shared.track("onboarding_first_action", properties: ["kind": "explore"])
+                    showPaywall = true
+                } label: {
+                    Text(tr("ob_fa_explore"))
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isBusy || chosen != nil)
+                .padding(.bottom, 18)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxWidth: isPad ? 560 : .infinity)
+            .opacity(appeared ? 1 : 0)
+        }
+        .updoColorScheme()
+        .onAppear {
+            Analytics.shared.track("onboarding_first_action_viewed")
+            withAnimation(reduceMotion ? nil : .spring(response: 0.6, dampingFraction: 0.82)) { appeared = true }
+        }
+        // "Just look around" keeps today's order: paywall, then the app.
+        .fullScreenCover(isPresented: $showPaywall, onDismiss: { onChoose(.explore) }) {
+            PaywallView(context: "onboarding")
+                .updoReadableColumn()
+        }
+    }
+
+    private func optionCard(_ option: Option, index: Int) -> some View {
+        let isChosen = chosen == index
+        return Button {
+            guard chosen == nil, !isBusy else { return }
+            HapticManager.shared.action()
+            Analytics.shared.track("onboarding_first_action", properties: ["kind": option.kind])
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { chosen = index }
+            onChoose(option.action)
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: option.icon)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(cyan)
+                    .frame(width: 40, height: 40)
+                    .background(cyan.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(option.eyebrow)
+                        .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                        .tracking(1.2)
+                        .foregroundStyle(UpdoTheme.filmy(0.45))
+                    Text(option.title)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(UpdoTheme.textPrimary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 6)
+
+                if isChosen {
+                    ProgressView().tint(cyan)
+                } else {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(UpdoTheme.filmy(0.35))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(UpdoTheme.filmy(isChosen ? 0.09 : 0.055))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(isChosen ? cyan.opacity(0.7) : UpdoTheme.filmy(0.1), lineWidth: isChosen ? 1.5 : 1)
+                    )
+            )
+            .opacity(chosen != nil && !isChosen ? 0.45 : 1)
+        }
+        .buttonStyle(OnboardingScaleButtonStyle())
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 14)
+        .animation(reduceMotion ? nil : .spring(response: 0.55, dampingFraction: 0.84).delay(0.12 + Double(index) * 0.07), value: appeared)
+    }
+}
+
+// MARK: - The user's own data, for the personal onboarding screens
+
+/// What onboarding knows about the user once setup is saved: their classes,
+/// the next one coming up, their goal and first name. Built from the stored
+/// events (not from onboarding's in-memory state), so it is right after a
+/// relaunch too.
+struct OnboardingPersonalSnapshot {
+    struct NextClass {
+        let block: OnboardingWeekBlock
+        /// 0 = today, 1 = tomorrow …
+        let dayOffset: Int
+
+        /// "Bugün 14.00" · "Yarın 09.00" · "Perşembe 09.00"
+        var whenText: String {
+            let time = AIOnboardingStore.minuteText(block.startMinute)
+            switch dayOffset {
+            case 0: return tr("ob_when_today", time)
+            case 1: return tr("ob_when_tomorrow", time)
+            default: return "\(AIOnboardingStore.weekdayFullNames[block.weekday]) \(time)"
+            }
+        }
+    }
+
+    var firstName: String
+    var blocks: [OnboardingWeekBlock]
+    var courseNames: [String]
+    var dailyGoalMinutes: Int
+    var nextClass: NextClass?
+    /// Today, 0 = Monday.
+    var todayIndex: Int
+
+    var hasWeek: Bool { !blocks.isEmpty }
+    var activeDayCount: Int { Set(blocks.map(\.weekday)).count }
+
+    func blocks(on day: Int) -> [OnboardingWeekBlock] {
+        blocks.filter { $0.weekday == day }.sorted { $0.startMinute < $1.startMinute }
+    }
+
+    static func make(
+        events: [EventItem],
+        userID: String?,
+        fullName: String?,
+        dailyGoalMinutes: Int?,
+        now: Date = Date()
+    ) -> OnboardingPersonalSnapshot {
+        // Weekly classes only (dated one-offs are not part of the timetable).
+        let weekly = events
+            .filter { $0.ownerUserID == userID && userID != nil && $0.scheduledDate == nil }
+            .sorted { ($0.weekday, $0.startMinute) < ($1.weekday, $1.startMinute) }
+
+        let blocks = weekly.map {
+            OnboardingWeekBlock(
+                id: $0.id,
+                weekday: min(max($0.weekday, 0), 6),
+                startMinute: $0.startMinute,
+                durationMinute: $0.durationMinute,
+                title: $0.title,
+                colorHex: $0.colorHex
+            )
+        }
+
+        var seen = Set<String>()
+        let courseNames = blocks.map(\.title).filter { seen.insert($0.lowercased()).inserted }
+
+        let calendar = Calendar.current
+        let todayIndex = (calendar.component(.weekday, from: now) + 5) % 7
+        let nowMinute = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+
+        var next: NextClass?
+        for offset in 0..<7 where next == nil {
+            let day = (todayIndex + offset) % 7
+            let candidates = blocks
+                .filter { $0.weekday == day && (offset > 0 || $0.startMinute > nowMinute) }
+                .sorted { $0.startMinute < $1.startMinute }
+            if let first = candidates.first { next = NextClass(block: first, dayOffset: offset) }
+        }
+        // Everything this week is already behind us today → next week's first.
+        if next == nil, let first = blocks.filter({ $0.weekday == todayIndex }).min(by: { $0.startMinute < $1.startMinute }) {
+            next = NextClass(block: first, dayOffset: 7)
+        }
+
+        let rawName = (fullName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let first = rawName.split(separator: " ").first.map(String.init) ?? ""
+
+        return OnboardingPersonalSnapshot(
+            firstName: first == "User" ? "" : first,
+            blocks: blocks,
+            courseNames: courseNames,
+            dailyGoalMinutes: dailyGoalMinutes ?? 120,
+            nextClass: next,
+            todayIndex: todayIndex
+        )
     }
 }

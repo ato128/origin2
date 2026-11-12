@@ -154,6 +154,14 @@ struct RootView: View {
                 .onAppear {
                     // Onboarding'den ilk çıkışta rehberli turu bir kez göster.
                     guard !hasSeenAppTour, !showAppTour else { return }
+                    // The user picked a first action on onboarding's last screen
+                    // (a question to Updo AI, or a focus): that is their way in.
+                    // A guided tour on top of it would only get in the way — it
+                    // stays available from the Profile.
+                    if OnboardingHandoff.hasPendingAction {
+                        hasSeenAppTour = true
+                        return
+                    }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                         if !hasSeenAppTour { startAppTour() }
                     }

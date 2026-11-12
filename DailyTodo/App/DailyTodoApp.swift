@@ -270,6 +270,11 @@ struct DailyTodoApp: App {
             // chain above — inject explicitly or the celebration crashes.
             FocusCelebrationView(summary: summary) {
                 focusSession.dismissCompletionSummary()
+                // A new user's first paywall: right after their first finished
+                // focus, once the celebration sheet has gone.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    OnboardingHandoff.paywallMoment(.focusCompleted)
+                }
             }
             .environmentObject(todoStore)
         }

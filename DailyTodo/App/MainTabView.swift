@@ -141,6 +141,9 @@ struct MainTabView: View {
     }
     @State private var pendingChatRoute: PendingChatRoute?
     @State private var showReferralReward = false
+    /// A new user's first paywall (see `OnboardingHandoff` for when).
+    @State private var showOnboardingPaywall = false
+    @State private var onboardingPaywallContext = OnboardingHandoff.PaywallMoment.laterDay.rawValue
     /// Home shows a mini tab bar under the chat; a tap grows it to full size.
     @State private var homeBarExpanded = false
     @State private var homeBarCollapseTask: Task<Void, Never>?
@@ -292,6 +295,15 @@ struct MainTabView: View {
         .onChange(of: activeTab) { _, newTab in
             // Back on Home → the bar shrinks again (animated).
             if newTab == .tasks { collapseHomeBar() }
+        }
+        .onAppear { beginOnboardingHandoffIfNeeded() }
+        .onReceive(NotificationCenter.default.publisher(for: .onboardingPaywallMoment)) { note in
+            if let context = note.object as? String { onboardingPaywallContext = context }
+            presentOnboardingPaywallIfDue()
+        }
+        .fullScreenCover(isPresented: $showOnboardingPaywall) {
+            PaywallView(context: onboardingPaywallContext)
+                .updoReadableColumn()
         }
         .fullScreenCover(item: $pendingChatRoute) { route in
             NavigationStack {
@@ -1445,5 +1457,50 @@ private struct ReferralRewardPresenter: ViewModifier {
                 Task { await SubscriptionManager.shared.refresh() }
                 isPresented = true
             }
+    }
+}
+
+// MARK: - Onboarding hand-off (first action, first paywall)
+
+private extension MainTabView {
+    /// Picks up what onboarding's last screen left: a first focus opens the
+    /// Focus tab (FocusView then starts the short session itself); a first
+    /// question is sent by the Home chat. And the fallback paywall moment: it
+    /// has been owed since an earlier day and no earned moment came.
+    func beginOnboardingHandoffIfNeeded() {
+        guard forcedTab == nil else { return }
+
+        if OnboardingHandoff.consumeFocus() {
+            tab = .focus
+            NotificationCenter.default.post(name: .startFocusFromWidget, object: nil)
+            return
+        }
+
+        if OnboardingHandoff.paywallDueSinceEarlierDay {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                OnboardingHandoff.paywallMoment(.laterDay)
+            }
+        }
+    }
+
+    /// Shows the first paywall once — never to a subscriber, never over the
+    /// keyboard or another full-screen page (try again shortly).
+    func presentOnboardingPaywallIfDue(attempt: Int = 0) {
+        guard OnboardingHandoff.paywallDue, forcedTab == nil, !showOnboardingPaywall else { return }
+
+        guard !SubscriptionManager.shared.isPro else {
+            OnboardingHandoff.markPaywallShown()
+            return
+        }
+
+        if keyboard.isVisible || pendingChatRoute != nil {
+            guard attempt < 6 else { return }   // stays due; the next moment shows it
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { presentOnboardingPaywallIfDue(attempt: attempt + 1) }
+            return
+        }
+
+        OnboardingHandoff.markPaywallShown()
+        Analytics.shared.track("onboarding_paywall_moment", properties: ["moment": onboardingPaywallContext])
+        showOnboardingPaywall = true
     }
 }

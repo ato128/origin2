@@ -8,6 +8,7 @@ import SwiftUI
 import Foundation
 import UserNotifications
 import Combine
+import UIKit
 
 @MainActor
 final class NotificationManager: ObservableObject {
@@ -16,16 +17,62 @@ final class NotificationManager: ObservableObject {
 
     // MARK: - Permission
 
+    // The system prompt can be shown once, ever — so it is never raised cold.
+    // New users are asked by the onboarding first ("want a heads-up before
+    // class?") and only a "yes" leads to the prompt. Everything that runs on
+    // its own (launch, rescheduling) goes through `requestPermissionIfNeeded`,
+    // which stays silent until onboarding is over and while a "not now" is
+    // still fresh.
+
+    private static let primerDeclinedAtKey = "notifPrimerDeclinedAtV1"
+    private static let onboardingDoneKey = "didFinishFullOnboardingV2"
+    /// How long a "not now" in onboarding is respected before the app may ask.
+    private static let declineSnooze: TimeInterval = 3 * 24 * 3600
+
+    /// iOS has not been asked yet.
+    func isUndetermined() async -> Bool {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .notDetermined
+    }
+
+    private var mayPromptOnItsOwn: Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: Self.onboardingDoneKey) else { return false }
+        let declinedAt = defaults.double(forKey: Self.primerDeclinedAtKey)
+        guard declinedAt > 0 else { return true }
+        return Date().timeIntervalSince1970 - declinedAt > Self.declineSnooze
+    }
+
+    /// Automatic paths (launch, rescheduling). Prompts only when allowed to.
     func requestPermissionIfNeeded() async {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
+        guard mayPromptOnItsOwn, await isUndetermined() else { return }
+        await prompt()
+    }
 
-        guard settings.authorizationStatus == .notDetermined else { return }
+    /// The user just said yes to our own question — show the system prompt now.
+    @discardableResult
+    func requestPermissionFromPrimer() async -> Bool {
+        guard await isUndetermined() else {
+            let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+            return status == .authorized || status == .provisional
+        }
+        return await prompt()
+    }
 
+    /// The user said "not now" to our own question.
+    func recordPrimerDeclined() {
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: Self.primerDeclinedAtKey)
+    }
+
+    @discardableResult
+    private func prompt() async -> Bool {
         do {
-            _ = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            let granted = try await UNUserNotificationCenter.current()
+                .requestAuthorization(options: [.alert, .sound, .badge])
+            if granted { UIApplication.shared.registerForRemoteNotifications() }
+            return granted
         } catch {
             Log.debug("🔴 Notification permission error:", error)
+            return false
         }
     }
 

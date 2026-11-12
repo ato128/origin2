@@ -494,6 +494,7 @@ struct UpdoAIView: View {
             autoStartScanIfNeeded()
             consumeHomeOpenerIfNeeded()
             consumeNotebookPageIfNeeded()
+            consumeOnboardingFirstQuestionIfNeeded()
             #if DEBUG
             // QA/screenshot hook: `-debugAISheet history|exam|byo|paywall`.
             if embeddedInHome, let which = UserDefaults.standard.string(forKey: "debugAISheet") {
@@ -628,6 +629,33 @@ struct UpdoAIView: View {
         Analytics.shared.track("ai_nudge_opened")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             chatStore.appendAssistant(trimmed)
+        }
+    }
+
+    /// Home-embedded chat: the question picked on onboarding's last screen is
+    /// sent as the user's first message. No paywall follows it — that waits
+    /// until the free messages are used up (`offerPaywallIfFreeMessagesUsedUp`).
+    private func consumeOnboardingFirstQuestionIfNeeded() {
+        guard embeddedInHome, let question = OnboardingHandoff.consumePrompt() else { return }
+        Task { @MainActor in
+            // Let the page settle and the credits load before sending.
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            sendQuickMessage(question)
+            Analytics.shared.track("onboarding_first_question_sent")
+        }
+    }
+
+    /// The first paywall of a new user, at the moment it is earned: a reply
+    /// has just finished and it was their last free message. Shown once; after
+    /// that the "limit reached" button in the composer does the job.
+    private func offerPaywallIfFreeMessagesUsedUp() {
+        guard embeddedInHome, OnboardingHandoff.paywallDue else { return }
+        Task { @MainActor in
+            await credits.refresh()
+            guard credits.isLoaded, !credits.canSendChatMessage, OnboardingHandoff.paywallDue else { return }
+            // A beat to finish reading the reply.
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            OnboardingHandoff.paywallMoment(.aiMessagesUsedUp)
         }
     }
 
@@ -984,6 +1012,7 @@ struct UpdoAIView: View {
             }
             .onChange(of: chatStore.isSending) { _, sending in
                 if sending { withAnimation(.easeOut(duration: 0.22)) { proxy.scrollTo("bottom", anchor: .bottom) } }
+                else { offerPaywallIfFreeMessagesUsedUp() }
             }
         }
     }
@@ -2835,7 +2864,8 @@ private struct AIStreamingRow: View {
 
 /// Under every reply: the orb (latest reply only) and a copy button.
 /// Fixed height, so the orb moving to a newer reply never shifts the layout.
-private struct AIReplyFooter: View {
+/// (Also under Updo AI's lines in the onboarding conversation.)
+struct AIReplyFooter: View {
     let orb: UpdoAIOrb.Mode?
     let copyText: String?
     @State private var copied = false
@@ -2873,7 +2903,8 @@ private struct AIReplyFooter: View {
 
 /// Three dots riding a soft wave (or a live status like "Web'de aranıyor…").
 /// TimelineView-driven — no Timer publisher re-created on every parent render.
-private struct TypingIndicatorBubble: View {
+/// (Also the "working" state of the onboarding conversation.)
+struct TypingIndicatorBubble: View {
     var status: String? = nil
 
     var body: some View {

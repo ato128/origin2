@@ -952,6 +952,13 @@ private extension FocusView {
         guard defaults.bool(forKey: "focus.pendingWidgetAutostart") else { return }
         defaults.removeObject(forKey: "focus.pendingWidgetAutostart")
 
+        // Onboarding's "start a short first focus": a personal 15-minute session.
+        if defaults.bool(forKey: OnboardingHandoff.focusShortPresetKey) {
+            defaults.removeObject(forKey: OnboardingHandoff.focusShortPresetKey)
+            selectedMode = .personal
+            selectedPreset = .short
+        }
+
         guard !focusSession.isSessionActive else {
             focusSession.expandSession()
             return

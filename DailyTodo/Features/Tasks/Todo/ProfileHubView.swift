@@ -847,6 +847,7 @@ private extension ProfileHubView {
             defaults.set("", forKey: "lastCompletedFullOnboardingUserIDV2")
             defaults.set(AppOnboardingStage.welcome.rawValue, forKey: "appOnboardingStageV2")
             defaults.set(false, forKey: "hasSeenAppTourV1")
+            OnboardingHandoff.clear()
             dismiss()
         }
     }

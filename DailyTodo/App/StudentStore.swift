@@ -9,6 +9,7 @@ import Foundation
 import SwiftData
 import SwiftUI
 import Combine
+import WidgetKit
 import Supabase
 
 private struct StudentProfileRow: Codable {
@@ -33,7 +34,14 @@ final class StudentStore: ObservableObject {
     private let context: ModelContext
 
     @Published private(set) var currentUserID: String?
-    @Published private(set) var profile: StudentProfile?
+    @Published private(set) var profile: StudentProfile? {
+        didSet {
+            // Widgets show today's focus against this goal.
+            if WidgetShared.writeDailyGoal(profile?.dailyStudyGoalMinutes) {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+        }
+    }
     @Published private(set) var courses: [Course] = []
 
     @Published var isLoading: Bool = false
@@ -582,6 +590,14 @@ final class StudentStore: ObservableObject {
         } catch {
             Log.debug("❌ createScheduleEvents save error:", error.localizedDescription)
         }
+    }
+
+    /// Rebuilds the "class starts in 10 minutes" reminders from this user's
+    /// weekly events. Does nothing visible unless notifications are allowed.
+    func refreshClassReminders() async {
+        guard let currentUserID else { return }
+        let all = (try? context.fetch(FetchDescriptor<EventItem>())) ?? []
+        await NotificationManager.shared.rescheduleAll(events: all.filter { $0.ownerUserID == currentUserID })
     }
 
     /// Keeps the "active courses" list in step with the weekly schedule so a
