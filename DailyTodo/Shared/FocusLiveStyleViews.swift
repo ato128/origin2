@@ -273,6 +273,29 @@ struct FocusLiveStyleCard: View {
     }
 }
 
+// MARK: - Trailing info (when it ends — not a percentage that goes stale)
+
+/// A Live Activity is only redrawn when the app updates it, so a "44%" label
+/// freezes at whatever it was at the last update while the timer and bar next
+/// to it keep moving. While the session runs this shows the one figure that
+/// stays true without updates — the time it ends. Paused or finished (nothing
+/// is moving any more) it shows the percentage reached.
+private struct LiveStyleTrailingInfo: View {
+    let state: FocusAttributes.ContentState
+
+    var body: some View {
+        if liveStyleFinished(state) || state.isPaused {
+            Text("\(Int(liveStyleProgress(state) * 100))%")
+        } else {
+            HStack(spacing: 3) {
+                Image(systemName: "flag.checkered")
+                    .imageScale(.small)
+                Text(state.endDate, style: .time)
+            }
+        }
+    }
+}
+
 // MARK: - Shared card chrome
 
 private struct LiveCardChrome: ViewModifier {
@@ -344,7 +367,7 @@ private struct ClassicStyleView: View {
 
                 Spacer(minLength: 6)
 
-                Text("\(Int(liveStyleProgress(state) * 100))%")
+                LiveStyleTrailingInfo(state: state)
                     .font(.system(size: 13, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(accent)
@@ -560,7 +583,7 @@ private struct GoldStyleView: View {
 
                 Spacer(minLength: 6)
 
-                Text("\(Int(liveStyleProgress(state) * 100))%")
+                LiveStyleTrailingInfo(state: state)
                     .font(.system(size: 13, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(gold)
@@ -839,7 +862,7 @@ private struct ArenaStyleView: View {
 
                     Spacer(minLength: 6)
 
-                    Text("\(Int(liveStyleProgress(state) * 100))%")
+                    LiveStyleTrailingInfo(state: state)
                         .font(.system(size: 12, weight: .black))
                         .italic()
                         .monospacedDigit()

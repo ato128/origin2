@@ -66,6 +66,29 @@ enum WidgetShared {
     static func readWidgetStyle() -> String {
         UserDefaults(suiteName: appGroupID)?.string(forKey: widgetStyleKey) ?? ""
     }
+
+    // MARK: Daily focus goal (minutes) — lets widgets show progress toward it
+
+    static let dailyGoalKey = "daily_focus_goal_minutes_v1"
+
+    /// Returns true when the stored value changed.
+    @discardableResult
+    static func writeDailyGoal(_ minutes: Int?) -> Bool {
+        let defaults = UserDefaults(suiteName: appGroupID)
+        let old = defaults?.object(forKey: dailyGoalKey) as? Int
+        guard old != minutes else { return false }
+        if let minutes, minutes > 0 {
+            defaults?.set(minutes, forKey: dailyGoalKey)
+        } else {
+            defaults?.removeObject(forKey: dailyGoalKey)
+        }
+        return true
+    }
+
+    static func readDailyGoal() -> Int? {
+        let value = UserDefaults(suiteName: appGroupID)?.integer(forKey: dailyGoalKey) ?? 0
+        return value > 0 ? value : nil
+    }
 }
 
 // MARK: - Models written to App Group
