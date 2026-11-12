@@ -240,7 +240,7 @@ struct ForgotPasswordSheet: View {
             }
         }
         .onAppear { if email.isEmpty { email = prefillEmail } }
-        .preferredColorScheme(.dark)
+        .updoColorScheme()
         .presentationDetents([.large])
     }
 

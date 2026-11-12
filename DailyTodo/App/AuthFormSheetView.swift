@@ -39,7 +39,9 @@ struct AuthFormSheetView: View {
                 .padding(.bottom, 34)
             }
         }
-        .preferredColorScheme(.dark)
+        // Follows the app's appearance, like the sign-in screen behind it (it
+        // used to be pinned dark, so a light sign-in opened a black sheet).
+        .updoColorScheme()
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
@@ -177,7 +179,8 @@ private extension AuthFormSheetView {
                     Text((isLoading || session.isLoading) ? tr("afs_please_wait") : mode.buttonTitle)
                         .font(.system(size: 18, weight: .black, design: .rounded))
                 }
-                .foregroundStyle(UpdoTheme.textPrimary)
+                // White on the colour gradient; the idle (grey) state follows the theme.
+                .foregroundStyle(canSubmit ? Color.white : UpdoTheme.filmy(0.6))
                 .frame(maxWidth: .infinity)
                 .frame(height: 58)
                 .background(
@@ -465,49 +468,13 @@ private enum AuthFormPalette {
 
 private struct AuthFormArenaBackground: View {
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    Color(arenaHex: AuthFormPalette.backgroundTop),
-                    Color(arenaHex: AuthFormPalette.backgroundMid),
-                    Color(arenaHex: AuthFormPalette.backgroundBottom)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(Color(arenaHex: AuthFormPalette.appBlue).opacity(0.12))
-                .frame(width: 270, height: 270)
-                .blur(radius: 98)
-                .offset(x: 165, y: -220)
-
-            Circle()
-                .fill(Color(arenaHex: AuthFormPalette.appPurple).opacity(0.16))
-                .frame(width: 330, height: 330)
-                .blur(radius: 115)
-                .offset(x: -180, y: 500)
-
-            Circle()
-                .fill(Color(arenaHex: AuthFormPalette.coral).opacity(0.070))
-                .frame(width: 280, height: 280)
-                .blur(radius: 105)
-                .offset(x: 170, y: 285)
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.16),
-                    Color.black.opacity(0.0),
-                    Color.black.opacity(0.42)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        }
+        // The same adaptive field as the sign-in screen this sheet opens over.
+        ArenaBackground(
+            primaryGlow: Color(arenaHex: AuthFormPalette.appBlue),
+            secondaryGlow: Color(arenaHex: AuthFormPalette.appPurple),
+            warmGlow: Color(arenaHex: AuthFormPalette.coral),
+            intensity: 0.8
+        )
     }
 }
 
