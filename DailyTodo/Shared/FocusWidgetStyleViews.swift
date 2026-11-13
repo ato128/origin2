@@ -83,9 +83,26 @@ struct UpdoWidgetStyleContent: View {
     let isSmall: Bool
     /// The student's daily focus goal (minutes), if they have set one.
     var dailyGoalMinutes: Int? = WidgetShared.readDailyGoal()
+    /// Today's programme. When given, the medium widget's right block lists
+    /// it instead of the week's bars (the "Focus + Schedule" widget).
+    var schedule: [WidgetEvent]? = nil
+    /// The moment this is drawn for — a timeline entry's date in the widget.
+    var now: Date = Date()
 
     var body: some View {
-        if style == .minimal {
+        if let schedule, !isSmall {
+            HStack(spacing: 14) {
+                summary
+                    .frame(width: 112, alignment: .leading)
+
+                Rectangle()
+                    .fill(voice.track)
+                    .frame(width: 1)
+                    .padding(.vertical, 2)
+
+                dayPanel(schedule)
+            }
+        } else if style == .minimal {
             minimal
         } else if isSmall {
             summary
@@ -474,6 +491,113 @@ struct UpdoWidgetStyleContent: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
+    // MARK: Day (the right block of the "Focus + Schedule" widget)
+
+    private func clock(_ minute: Int) -> String {
+        String(format: "%02d:%02d", (minute / 60) % 24, minute % 60)
+    }
+
+    private func eventColor(_ hex: String) -> Color {
+        // Styles with a single-ink identity keep to their own colour.
+        if style == .terminal || style == .zen { return voice.accent }
+        var value: UInt64 = 0
+        let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "# "))
+        guard cleaned.count == 6, Scanner(string: cleaned).scanHexInt64(&value) else { return voice.accent }
+        return Color(
+            red: Double((value >> 16) & 0xFF) / 255,
+            green: Double((value >> 8) & 0xFF) / 255,
+            blue: Double(value & 0xFF) / 255
+        )
+    }
+
+    /// What is still ahead today (the lesson in progress first). Past lessons
+    /// drop off by themselves as the day goes on.
+    private func dayPanel(_ events: [WidgetEvent]) -> some View {
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: now)
+        let nowMinute = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+        let remaining = events.filter { $0.startMinute + $0.durationMinute > nowMinute }
+        let shown = Array(remaining.prefix(3))
+        let hidden = remaining.count - shown.count
+
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(words(liveStyleLocalized("Program", "Schedule")))
+                    .font(voice.captionFont(10.5).weight(.semibold))
+                    .foregroundStyle(voice.caption)
+
+                Spacer(minLength: 4)
+
+                if !remaining.isEmpty {
+                    Text(hidden > 0 ? "+\(hidden)" : "\(remaining.count)")
+                        .font(voice.captionFont(10.5).weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(voice.caption)
+                }
+            }
+
+            if shown.isEmpty {
+                Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 3) {
+                    Image(systemName: events.isEmpty ? "calendar" : "checkmark.circle.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(events.isEmpty ? voice.caption : voice.accent)
+                    Text(words(events.isEmpty
+                               ? liveStyleLocalized("Bugün program boş", "Nothing scheduled today")
+                               : liveStyleLocalized("Bugünlük bitti", "Done for today")))
+                        .font(voice.captionFont(12).weight(.semibold))
+                        .foregroundStyle(voice.text)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                }
+                Spacer(minLength: 0)
+            } else {
+                Spacer(minLength: 6)
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(shown) { event in
+                        dayRow(event, isLive: event.startMinute <= nowMinute)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private func dayRow(_ event: WidgetEvent, isLive: Bool) -> some View {
+        let end = event.startMinute + event.durationMinute
+        let place = (event.location ?? "").trimmingCharacters(in: .whitespaces)
+        let time = "\(clock(event.startMinute))–\(clock(end))"
+
+        return HStack(spacing: 7) {
+            Capsule()
+                .fill(eventColor(event.colorHex))
+                .frame(width: 3)
+                .shadow(color: voice.heroGlow == nil ? .clear : eventColor(event.colorHex).opacity(0.7), radius: 3)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(words(event.title))
+                    .font(voice.captionFont(12).weight(.semibold))
+                    .foregroundStyle(voice.text)
+                    .lineLimit(1)
+
+                HStack(spacing: 4) {
+                    if isLive {
+                        Text(words(liveStyleLocalized("Şimdi", "Now")))
+                            .font(voice.captionFont(9.5).weight(.bold))
+                            .foregroundStyle(voice.accent)
+                    }
+                    Text(place.isEmpty || isLive ? time : "\(time) · \(place)")
+                        .font(voice.captionFont(9.5))
+                        .monospacedDigit()
+                        .foregroundStyle(voice.caption)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+        }
+        .frame(height: 28)
+    }
+
     // MARK: Minimal (one number, one line — nothing else)
 
     private var minimal: some View {
@@ -508,12 +632,15 @@ struct UpdoWidgetStylePreview: View {
     let isSmall: Bool
     /// Defaults to the student's own goal; samples pass one explicitly.
     var dailyGoalMinutes: Int? = WidgetShared.readDailyGoal()
+    /// Pass today's programme to preview the "Focus + Schedule" widget.
+    var schedule: [WidgetEvent]? = nil
+    var now: Date = Date()
 
     var body: some View {
         ZStack {
             WidgetStyleBackground(style: style)
 
-            UpdoWidgetStyleContent(style: style, state: state, isSmall: isSmall, dailyGoalMinutes: dailyGoalMinutes)
+            UpdoWidgetStyleContent(style: style, state: state, isSmall: isSmall, dailyGoalMinutes: dailyGoalMinutes, schedule: schedule, now: now)
                 .padding(16)
         }
         .frame(width: isSmall ? 158 : 338, height: 158)

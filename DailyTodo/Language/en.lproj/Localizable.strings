@@ -460,6 +460,10 @@
 "ph_manage_sub_title" = "Manage subscription";
 "ph_terms_title" = "Terms of Use";
 "ph_privacy_title" = "Privacy Policy";
+"ph_kvkk_title" = "KVKK information notice";
+"ph_analytics_title" = "Usage analytics";
+"ph_analytics_note" = "Optional. If on, events about how you use the app (e.g. which screen opened) are processed to improve Updo. You can turn it off at any time.";
+"afs_analytics_consent" = "Optional: I consent to my usage analytics data being processed to improve Updo. I can withdraw this at any time in Profile.";
 "ph_restore_success" = "Your subscription was restored. Pro features are active.";
 "ph_restore_none" = "No active subscription was found to restore on this Apple ID.";
 "ph_restore_failed" = "Restore failed. Please try again.";
@@ -2823,3 +2827,6 @@
 "ob_widget_hint" = "Touch and hold the Home Screen, then tap + and add Updo.";
 "ob_widget_lock" = "LOCK SCREEN";
 "ob_widget_home" = "HOME SCREEN";
+"ob_widget_sample_1" = "Mathematics";
+"ob_widget_sample_2" = "Physics";
+"ob_widget_sample_3" = "English";

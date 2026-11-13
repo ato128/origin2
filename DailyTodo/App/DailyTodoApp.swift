@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 import SwiftData
 import WidgetKit
 import UserNotifications
@@ -198,6 +199,14 @@ struct DailyTodoApp: App {
         }
         .onReceive(NotificationCenter.default.publisher(for: .appIconDidChange)) { _ in
             rescheduleLocalNotificationsAndRegisterPush(reason: "app icon changed")
+        }
+        // Whatever saved the store — an edit, a delete, a sync from the web —
+        // the widgets get the programme as it is now.
+        .onReceive(
+            NotificationCenter.default.publisher(for: ModelContext.didSave)
+                .debounce(for: .milliseconds(600), scheduler: RunLoop.main)
+        ) { _ in
+            WidgetAppSync.refreshFromSwiftData(context: ModelContext(container))
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusSessionRecordSaved)) { _ in
             let context = ModelContext(container)

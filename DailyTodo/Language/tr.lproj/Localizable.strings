@@ -462,6 +462,10 @@
 "ph_manage_sub_title" = "Aboneliği yönet";
 "ph_terms_title" = "Kullanım koşulları";
 "ph_privacy_title" = "Gizlilik politikası";
+"ph_kvkk_title" = "KVKK aydınlatma metni";
+"ph_analytics_title" = "Kullanım analitiği";
+"ph_analytics_note" = "İsteğe bağlı. Açarsan uygulamayı nasıl kullandığına dair olaylar (ör. hangi ekran açıldı) Updo'yu geliştirmek için işlenir. İstediğin an kapatabilirsin.";
+"afs_analytics_consent" = "İsteğe bağlı: Updo'yu geliştirmek için kullanım analitiği verilerimin işlenmesine açık rıza veriyorum. Profil'den istediğim an geri alabilirim.";
 "ph_restore_success" = "Aboneliğin geri yüklendi. Pro özellikleri aktif.";
 "ph_restore_none" = "Bu Apple ID’de geri yüklenecek aktif bir abonelik bulunamadı.";
 "ph_restore_failed" = "Geri yükleme başarısız oldu. Lütfen tekrar dene.";
@@ -2824,3 +2828,6 @@
 "ob_widget_hint" = "Ana ekrana basılı tut, + ile Updo'yu ekle.";
 "ob_widget_lock" = "KİLİT EKRANI";
 "ob_widget_home" = "ANA EKRAN";
+"ob_widget_sample_1" = "Matematik";
+"ob_widget_sample_2" = "Fizik";
+"ob_widget_sample_3" = "İngilizce";

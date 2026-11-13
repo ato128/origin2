@@ -59,9 +59,11 @@ struct ScheduleWidgetView: View {
     private var todayWeekday: Int { widgetWeekdayToday() }
 
     private var todayEvents: [WidgetEvent] {
-        (entry.payload?.events ?? [])
-            .filter { $0.weekday == todayWeekday }
-            .sorted { $0.startMinute < $1.startMinute }
+        // The payload holds the whole week; pick today, then what is left of it.
+        let all = entry.payload?.events(on: Date()) ?? []
+        let now = nowMinute
+        let upcoming = all.filter { $0.startMinute + $0.durationMinute > now }
+        return Array((upcoming.isEmpty ? all : upcoming).prefix(3))
     }
 
     private var nowMinute: Int { currentMinuteOfDay() }

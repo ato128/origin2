@@ -92,39 +92,50 @@ enum WidgetAppSync {
                 sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
             )
             let all = try context.fetch(descriptor)
-            writeTodayPayload(from: all)
-
-            // ✅ Widget kind EXACT aynı olmalı:
-            WidgetCenter.shared.reloadAllTimelines()
+            // Redraw only when the programme really changed — this runs on
+            // every save, and widgets advance through the day on their own.
+            if writeSchedulePayload(from: all) {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
         } catch {
             // sessiz geç
         }
     }
 
-    static func writeTodayPayload(from allEvents: [EventItem]) {
-        let todayIndex = weekdayIndexToday()      // ✅ 0=Pzt ... 6=Paz
-        let nowMinute = currentMinuteOfDay()
+    /// Shares the signed-in student's whole programme — every weekly lesson
+    /// and every one-off from today on — so the widgets always show what is
+    /// in the Week right now: nothing removed, nothing from another account.
+    /// Returns whether anything changed.
+    @discardableResult
+    static func writeSchedulePayload(from allEvents: [EventItem]) -> Bool {
+        let userID = UserDefaults.standard.string(forKey: "current_user_id")
+        let startOfToday = Calendar.current.startOfDay(for: Date())
 
-        let today = allEvents
-            .filter { $0.weekday == todayIndex }
-            .sorted { $0.startMinute < $1.startMinute }
+        let events: [WidgetEvent] = allEvents
+            .filter { event in
+                guard let userID, event.ownerUserID == userID else { return false }
+                if let date = event.scheduledDate { return date >= startOfToday }
+                return true
+            }
+            .sorted { ($0.weekday, $0.startMinute) < ($1.weekday, $1.startMinute) }
+            .map { event in
+                WidgetEvent(
+                    id: event.id.uuidString,
+                    title: event.title,
+                    weekday: event.weekday,
+                    startMinute: event.startMinute,
+                    durationMinute: event.durationMinute,
+                    location: event.location,
+                    colorHex: (event.colorHex.isEmpty ? "#3B82F6" : event.colorHex),
+                    dateKey: event.scheduledDate.map { WidgetUserState.dayKey($0) }
+                )
+            }
 
-        let upcoming = today.filter { ($0.startMinute + $0.durationMinute) > nowMinute }
-        let selected = Array((upcoming.isEmpty ? today : upcoming).prefix(3))
-
-        let events = selected.map {
-            WidgetEvent(
-                id: $0.id.uuidString,
-                title: $0.title,
-                weekday: $0.weekday,
-                startMinute: $0.startMinute,
-                durationMinute: $0.durationMinute,
-                location: $0.location,
-                colorHex: ($0.colorHex.isEmpty ? "#3B82F6" : $0.colorHex)
-            )
-        }
-
-        WidgetShared.writePayload(.init(weekday: todayIndex, events: events))
+        let payload = WidgetPayload(weekday: weekdayIndexToday(), events: events)
+        let defaults = UserDefaults(suiteName: WidgetShared.appGroupID)
+        let old = defaults?.data(forKey: WidgetShared.payloadKey)
+        WidgetShared.writePayload(payload)
+        return old != defaults?.data(forKey: WidgetShared.payloadKey)
     }
 
     // ✅ 0=Pzt ... 6=Paz

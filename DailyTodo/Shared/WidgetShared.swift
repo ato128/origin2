@@ -106,6 +106,24 @@ struct WidgetEvent: Codable, Identifiable {
     var durationMinute: Int
     var location: String?
     var colorHex: String
+    /// "yyyy-MM-dd" for a one-off entry; nil for a lesson that repeats weekly.
+    var dateKey: String? = nil
+}
+
+extension WidgetPayload {
+    /// What is on the programme on `date`: the weekly lessons of that weekday
+    /// plus the one-offs dated that day, in order. The app shares the whole
+    /// week, so a widget can answer this for any day without being reopened.
+    func events(on date: Date, calendar: Calendar = .current) -> [WidgetEvent] {
+        let weekday = (calendar.component(.weekday, from: date) + 5) % 7   // 0 = Monday
+        let key = WidgetUserState.dayKey(date)
+        return events
+            .filter { event in
+                if let dateKey = event.dateKey { return dateKey == key }
+                return event.weekday == weekday
+            }
+            .sorted { $0.startMinute < $1.startMinute }
+    }
 }
 
 /// Shared snapshot the app pushes for widget/live-activity theming and Pro extras.
