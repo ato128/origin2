@@ -3395,6 +3395,11 @@ struct HomeAIChatScreen: View {
                 .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
                 .contentShape(.hoverEffect, Circle())
                 .hoverEffect(.highlight)
+                // The circle is 34 pt; the touch target is the full 44 pt
+                // around it, without moving anything in the bar.
+                .padding(5)
+                .contentShape(Rectangle())
+                .padding(-5)
         }
         .buttonStyle(.plain)
         .keyboardShortcut("i", modifiers: [.command, .option])

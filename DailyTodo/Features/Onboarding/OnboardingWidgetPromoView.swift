@@ -4,6 +4,8 @@
 //
 
 import SwiftUI
+import SwiftData
+import WidgetKit
 
 /// Onboarding, after the showcase: what Updo looks like OUTSIDE the app. One
 /// phone screen that moves between the two places Updo lives — the lock screen

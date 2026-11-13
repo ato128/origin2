@@ -412,9 +412,18 @@ final class SessionStore: ObservableObject {
                 method: "POST"
             )
             // Deletion sweeps every user-scoped table — give it room.
-            request.timeoutInterval = 45
+            request.timeoutInterval = 90
             let (_, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            guard let http = response as? HTTPURLResponse else { return false }
+
+            if http.statusCode == 401 {
+                // The server no longer knows this session. If it cannot be
+                // renewed either, the account is already gone (an earlier
+                // attempt finished after its reply was lost) — that is success.
+                guard (try? await SupabaseManager.shared.client.auth.refreshSession()) == nil else {
+                    return false
+                }
+            } else if http.statusCode != 200 {
                 return false
             }
         } catch {
