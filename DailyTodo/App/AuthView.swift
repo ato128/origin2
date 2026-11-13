@@ -272,9 +272,10 @@ private extension AuthView {
             .buttonStyle(.plain)
             .padding(.top, 4)
 
-            Text(tr("av_terms_note"))
+            Text(.init(ProfileHubView.legalNoticeMarkdown))
                 .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(UpdoTheme.filmy(0.32))
+                .foregroundStyle(UpdoTheme.filmy(0.5))
+                .tint(Color(arenaHex: AuthArenaPalette.appCyan))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 14)
                 .padding(.top, 8)

@@ -17,6 +17,8 @@ struct AuthFormSheetView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
+    /// Optional, separate from the notice below, and off by default.
+    @State private var analyticsConsent = false
     @State private var showPassword = false
     @State private var showConfirmPassword = false
     @State private var errorMessage: String?
@@ -205,6 +207,37 @@ private extension AuthFormSheetView {
             .buttonStyle(AuthFormPressButtonStyle())
             .disabled(!canSubmit || isLoading || session.isLoading)
 
+            if mode == .signup {
+                // Explicit consent for the one thing that needs it — asked on
+                // its own, never bundled with the terms, and free to leave off.
+                Button {
+                    HapticManager.shared.selection()
+                    analyticsConsent.toggle()
+                } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: analyticsConsent ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(analyticsConsent ? Color(arenaHex: AuthFormPalette.appPurple) : UpdoTheme.filmy(0.4))
+                        Text(tr("afs_analytics_consent"))
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(UpdoTheme.filmy(0.62))
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(analyticsConsent ? .isSelected : [])
+
+                Text(.init(ProfileHubView.legalNoticeMarkdown))
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(UpdoTheme.filmy(0.5))
+                    .tint(Color(arenaHex: AuthFormPalette.appPurple))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             if mode == .login {
                 Button {
                     showForgotSheet = true
@@ -293,6 +326,7 @@ private extension AuthFormSheetView {
                     username: "",
                     password: cleanPassword
                 )
+                Analytics.shared.setConsent(analyticsConsent)
             }
 
             dismiss()

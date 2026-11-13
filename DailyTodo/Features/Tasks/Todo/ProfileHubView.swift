@@ -13,6 +13,17 @@ struct ProfileHubView: View {
     // The legal texts live on updo.me; `lang` opens them in the app's language.
     static var termsURL: String { "https://updo.me/terms/?lang=\(appLanguageIsEnglish() ? "en" : "tr")" }
     static var privacyURL: String { "https://updo.me/privacy/?lang=\(appLanguageIsEnglish() ? "en" : "tr")" }
+    /// KVKK information notice (the Turkish text is the binding one).
+    static var kvkkURL: String { "https://updo.me/kvkk/?lang=\(appLanguageIsEnglish() ? "en" : "tr")" }
+
+    /// Shown wherever an account is created: what is accepted (the terms),
+    /// what is only being informed (KVKK notice, privacy policy), and the age
+    /// rule. Markdown, so the three documents open from the sentence itself.
+    static var legalNoticeMarkdown: String {
+        appLanguageIsEnglish()
+        ? "By continuing you accept the [Terms of Use](\(termsURL)) and confirm you have read the [KVKK Information Notice](\(kvkkURL)) and the [Privacy Policy](\(privacyURL)). Updo is for ages 13 and up; if you are under 18, use it with your parent's or guardian's permission."
+        : "Devam ederek [Kullanım Koşulları](\(termsURL))'nı kabul etmiş, [KVKK Aydınlatma Metni](\(kvkkURL))'ni ve [Gizlilik Politikası](\(privacyURL))'nı okumuş olursun. Updo 13 yaş ve üzeri içindir; 18 yaşından küçüksen velinin izniyle kullan."
+    }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -20,6 +31,7 @@ struct ProfileHubView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var languageManager: LanguageManager
     @EnvironmentObject var studentStore: StudentStore
+    @State private var analyticsConsent = Analytics.hasConsent
     @ObservedObject private var subscription = SubscriptionManager.shared
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled = true
@@ -679,6 +691,41 @@ private extension ProfileHubView {
                     )
                 }
                 .buttonStyle(.plain)
+
+                Divider().overlay(UpdoTheme.filmy(0.075))
+
+                Button {
+                    if let url = URL(string: Self.kvkkURL) { openURL(url) }
+                } label: {
+                    profileRow(
+                        icon: "checkmark.shield.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.cyan),
+                        title: tr("ph_kvkk_title"),
+                        subtitle: ""
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Divider().overlay(UpdoTheme.filmy(0.075))
+
+                // Usage analytics is optional and off unless the user agrees;
+                // turning it off here withdraws that consent on the spot.
+                VStack(alignment: .leading, spacing: 8) {
+                    toggleRow(
+                        icon: "chart.bar.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.blue),
+                        title: tr("ph_analytics_title"),
+                        subtitle: "",
+                        isOn: $analyticsConsent
+                    )
+                    Text(tr("ph_analytics_note"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(UpdoTheme.filmy(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .onChange(of: analyticsConsent) { _, granted in
+                    Analytics.shared.setConsent(granted)
+                }
             }
             .padding(18)
             .background(
